@@ -121,24 +121,26 @@ def _snapshot_from_db_row(row: Any):
         return None
 
 
-def _materialize_signals_for_evaluate(session: Any, signals: list[Any]) -> list[Any]:
-    """Force-load deferred JSON columns and detach ORM rows for evaluate().
+async def _materialize_signals_for_evaluate(session: Any, signals: list[Any]) -> list[Any]:
+    """Eager-load deferred JSON columns before evaluate() leaves the session.
 
-    Cold-start SELECT uses ``defer_heavy_columns=True`` so asyncpg does not
-    decode multi-KB ``payload_json`` / ``strategy_context_json`` for every
-    header row on the event loop.  Strategy ``evaluate()`` still needs those
-    payloads, and it runs *after* the session closes (and often in a worker
-    thread).  Accessing an unloaded deferred column on a detached instance
-    raises ``DetachedInstanceError``.
+    Cold-start SELECT may use ``defer(payload_json, ...)``. Strategy
+    ``evaluate()`` / submit run *after* the session closes (and often in a
+    worker thread).  Accessing an unloaded deferred column on a detached
+    ORM instance raises ``DetachedInstanceError``.
 
-    While the session is still open: touch the deferred attributes (loads
-    them), then ``expunge`` so Session.close does not expire the values.
-    Plain SimpleNamespace / non-ORM signals are left unchanged.
+    Sync ``getattr`` cannot load deferred columns on ``AsyncSession`` —
+    it raises ``MissingGreenlet``.  Use ``await session.refresh(...)``
+    while the session is open, then ``expunge`` so close does not expire
+    the loaded values.  Non-ORM signals (intent_runtime / SignalSnapshot)
+    are left unchanged.
     """
     if not signals or session is None:
         return list(signals or [])
 
     from sqlalchemy import inspect as sa_inspect
+
+    _HEAVY_ATTRS = ("payload_json", "strategy_context_json", "quality_rejection_reasons")
 
     prepared: list[Any] = []
     for signal in signals:
@@ -148,22 +150,26 @@ def _materialize_signals_for_evaluate(session: Any, signals: list[Any]) -> list[
             prepared.append(signal)
             continue
 
-        # Non-ORM / already-detached plain objects (e.g. intent_runtime views).
-        if state.session is None and not state.detached:
+        # Non-ORM plain objects (intent_runtime views, SignalSnapshot, etc.).
+        if not state.mapper:
             prepared.append(signal)
             continue
 
         try:
-            # Load deferred columns while still session-bound.
+            unloaded = [
+                name
+                for name in _HEAVY_ATTRS
+                if name in state.unloaded or name in state.expired_attributes
+            ]
+            if unloaded and state.session is not None:
+                await session.refresh(signal, attribute_names=list(unloaded))
+            # Normalize non-dict payloads so evaluate() contracts hold.
             payload = getattr(signal, "payload_json", None)
             if payload is not None and not isinstance(payload, dict):
-                # Keep evaluate() contracts that expect a mapping.
                 try:
                     object.__setattr__(signal, "payload_json", {})
                 except Exception:
                     pass
-            _ = getattr(signal, "strategy_context_json", None)
-            _ = getattr(signal, "quality_rejection_reasons", None)
             if state.session is not None:
                 state.session.expunge(signal)
         except Exception as exc:
@@ -1044,13 +1050,13 @@ class _FastTraderTask:
                     cursor_created_at=cursor_created_at,
                     cursor_signal_id=cursor_signal_id,
                     limit=_MAX_SIGNALS_PER_CYCLE,
-                    # Defer multi-KB JSON on the SELECT so idle/header scans
-                    # stay cheap.  Immediately below we materialize those
-                    # columns for rows we will evaluate (strategy.evaluate
-                    # needs payload_json) and expunge so Session.close does
-                    # not expire them — see DetachedInstanceError on
-                    # payload_json when evaluate runs after the session.
-                    defer_heavy_columns=True,
+                    # Load payload_json for the (≤4) rows we will evaluate.
+                    # Deferring here and then sync-getattr'ing fails on
+                    # AsyncSession (MissingGreenlet → DetachedInstanceError
+                    # once the session closes).  4 small JSON blobs are fine
+                    # on the event loop; the 200-row scan case is what
+                    # defer_heavy_columns was built for.
+                    defer_heavy_columns=False,
                 )
                 self._last_stage_timings_ms["coldstart_db_list"] = round(
                     (time.monotonic() - db_t0) * 1000.0, 1
@@ -1095,10 +1101,10 @@ class _FastTraderTask:
                     )
                     return
 
-                # Must run before the session exits: evaluate() runs outside
-                # this block and needs payload_json / strategy_context_json.
+                # Expunge so Session.close does not expire already-loaded
+                # payload_json / strategy_context_json before evaluate().
                 mat_t0 = time.monotonic()
-                signals = _materialize_signals_for_evaluate(session, signals)
+                signals = await _materialize_signals_for_evaluate(session, signals)
                 self._last_stage_timings_ms["coldstart_payload_materialize"] = round(
                     (time.monotonic() - mat_t0) * 1000.0, 1
                 )

@@ -61,7 +61,7 @@ import { FlashNumber } from './AnimatedNumber'
 
 type ViewMode = 'all' | 'sandbox' | 'live'
 type LiveVenueFilter = 'all' | 'polymarket' | 'kalshi'
-type PositionVenue = 'sandbox' | 'autotrader-paper' | 'polymarket-live' | 'kalshi-live'
+type PositionVenue = 'sandbox' | 'autotrader-paper' | 'shadow-bot' | 'polymarket-live' | 'kalshi-live'
 type PriceMarkMode = 'live' | 'entry_estimate'
 type SideFilter = 'all' | 'yes' | 'no' | 'other'
 type MarkFilter = 'all' | PriceMarkMode
@@ -69,7 +69,10 @@ type SortField = 'exposure' | 'unrealized' | 'pnl_percent' | 'cost_basis' | 'upd
 type SortDirection = 'asc' | 'desc'
 type ExposureFloor = 'all' | '100' | '500' | '1000' | '5000'
 
-const OPEN_PAPER_ORDER_STATUSES = new Set(['submitted', 'executed', 'open'])
+// Shadow bots write mode=shadow (not paper). Include both so Positions tab
+// matches Trading → Bots → Positions for open paper/shadow inventory.
+const OPEN_PAPER_ORDER_STATUSES = new Set(['submitted', 'executed', 'open', 'working', 'partial'])
+const PAPER_SHADOW_ORDER_MODES = new Set(['paper', 'shadow'])
 const OPEN_LIVE_MANAGED_ORDER_STATUSES = new Set([
   'pending',
   'submitted',
@@ -99,6 +102,9 @@ const VENUE_META: Record<PositionVenue, {
   },
   'autotrader-paper': {
     label: 'Autotrader Paper',
+  },
+  'shadow-bot': {
+    label: 'Shadow Bot',
   },
   'polymarket-live': {
     label: 'Polymarket Live',
@@ -372,9 +378,10 @@ export default function PositionsPanel() {
   const queryClient = useQueryClient()
   const globalSelectedAccountId = useAtomValue(selectedAccountIdAtom)
 
-  const [viewMode, setViewMode] = useState<ViewMode>(() => (
-    globalSelectedAccountId?.startsWith('live:') ? 'live' : 'all'
-  ))
+  // Always default to All so shadow/paper bot inventory is visible even when
+  // the header account is a live venue (previously forced Live-only and hid
+  // every mode=shadow row).
+  const [viewMode, setViewMode] = useState<ViewMode>('all')
   const [selectedSandboxAccount, setSelectedSandboxAccount] = useState<string | null>(() => {
     if (!globalSelectedAccountId || globalSelectedAccountId.startsWith('live:')) return null
     return globalSelectedAccountId
@@ -510,7 +517,10 @@ export default function PositionsPanel() {
     queryKey: ['positions-panel', 'trader-orders-open'],
     queryFn: async () => {
       try {
-        return await getAllTraderOrders(220)
+        // Shadow bot open inventory lives on trader_orders (mode=shadow).
+        // Pull a wide page so open positions are not truncated behind
+        // older terminal history.
+        return await getAllTraderOrders(1000)
       } catch {
         return []
       }
@@ -529,6 +539,18 @@ export default function PositionsPanel() {
     queryFn: () => getTraders({ mode: 'live' }),
     enabled: shouldShowLive,
     refetchInterval: shouldShowLive ? 5000 : false,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    retry: false,
+  })
+
+  const {
+    data: shadowTraders = [],
+  } = useQuery<Trader[]>({
+    queryKey: ['positions-panel', 'shadow-traders'],
+    queryFn: () => getTraders({ mode: 'shadow' }),
+    enabled: shouldShowSandbox,
+    refetchInterval: shouldShowSandbox ? 10000 : false,
     staleTime: 0,
     refetchOnMount: 'always',
     retry: false,
@@ -636,6 +658,10 @@ export default function PositionsPanel() {
   const liveTraderNameById = useMemo(() => {
     return new Map(liveTraders.map((trader) => [trader.id, trader.name]))
   }, [liveTraders])
+
+  const shadowTraderNameById = useMemo(() => {
+    return new Map(shadowTraders.map((trader) => [trader.id, trader.name]))
+  }, [shadowTraders])
 
   const sortedLiveTraders = useMemo(
     () => [...liveTraders].sort((left, right) => left.name.localeCompare(right.name)),
@@ -823,31 +849,55 @@ export default function PositionsPanel() {
       lastUpdated: string | null
       status: string | null
       marketUrl: string | null
+      mode: 'paper' | 'shadow'
+      traderId: string | null
+      orderId: string | null
+      markPrice: number | null
+      markUpdatedAt: string | null
     }>()
 
     traderOrders.forEach((order) => {
       const mode = String(order.mode || '').toLowerCase()
       const status = String(order.status || '').toLowerCase()
-      if (mode !== 'paper' || !OPEN_PAPER_ORDER_STATUSES.has(status)) return
+      if (!PAPER_SHADOW_ORDER_MODES.has(mode) || !OPEN_PAPER_ORDER_STATUSES.has(status)) return
 
       const marketId = readString(order.market_id) || ''
       if (!marketId) return
 
       const side = normalizeDirection(order.direction_side ?? order.direction)
       const sideLabel = readString(order.direction_label) || side
-      const notional = Math.abs(toNumber(order.notional_usd))
-      const entryPrice = toNumber(order.effective_price ?? order.entry_price)
+      // Prefer filled notional when present (shadow lifecycle keeps both).
+      const notional = Math.max(
+        Math.abs(toNumber(order.notional_usd)),
+        Math.abs(toNumber(order.filled_notional_usd)),
+      )
+      const entryPrice = toNumber(order.average_fill_price ?? order.effective_price ?? order.entry_price)
       const payload = (order.payload && typeof order.payload === 'object')
         ? order.payload as Record<string, unknown>
         : {}
       const simulationLedger = (payload.simulation_ledger && typeof payload.simulation_ledger === 'object')
         ? payload.simulation_ledger as Record<string, unknown>
         : null
+      const positionState = (payload.position_state && typeof payload.position_state === 'object')
+        ? payload.position_state as Record<string, unknown>
+        : null
       const linkedAccountId = readString(simulationLedger?.account_id)
-      const bucketScope = linkedAccountId || 'unassigned'
-      const key = `${bucketScope}:${marketId}:${side}`
+      const traderId = readString(order.trader_id)
+      // Keep per-bot rows for shadow so Positions matches Bots → Positions.
+      const bucketScope = mode === 'shadow'
+        ? (traderId || linkedAccountId || 'unassigned')
+        : (linkedAccountId || 'unassigned')
+      const key = `${mode}:${bucketScope}:${marketId}:${side}`
 
-      if (selectedSandboxAccount && linkedAccountId !== selectedSandboxAccount) return
+      if (selectedSandboxAccount && linkedAccountId && linkedAccountId !== selectedSandboxAccount) return
+
+      // Top-level mark fields from list_serialized_trader_orders, with
+      // position_state as fallback (older rows).
+      const markFromOrder = toNumber(order.current_price)
+      const markFromState = toNumber(positionState?.last_mark_price)
+      const markPriceRaw = markFromOrder > 0 ? markFromOrder : markFromState
+      const markUpdatedAt = readString(order.mark_updated_at)
+        || readString(positionState?.last_marked_at)
 
       if (!buckets.has(key)) {
         buckets.set(key, {
@@ -866,6 +916,11 @@ export default function PositionsPanel() {
             marketSlug: readString(payload.market_slug) || readString(payload.market_slug_hint),
             marketId,
           }),
+          mode: mode === 'shadow' ? 'shadow' : 'paper',
+          traderId,
+          orderId: readString(order.id),
+          markPrice: markPriceRaw > 0 ? markPriceRaw : null,
+          markUpdatedAt,
         })
       }
 
@@ -875,8 +930,16 @@ export default function PositionsPanel() {
       if (!bucket.linkedAccountId && linkedAccountId) {
         bucket.linkedAccountId = linkedAccountId
       }
+      if (!bucket.traderId && traderId) {
+        bucket.traderId = traderId
+      }
       if (bucket.sideLabel === bucket.side && sideLabel !== side) {
         bucket.sideLabel = sideLabel
+      }
+
+      if (markPriceRaw > 0) {
+        bucket.markPrice = markPriceRaw
+        bucket.markUpdatedAt = markUpdatedAt || bucket.markUpdatedAt
       }
 
       if (notional <= 0) return
@@ -890,6 +953,7 @@ export default function PositionsPanel() {
       const nextTs = toTimestamp(order.updated_at || order.executed_at || order.created_at)
       if (nextTs > currentTs) {
         bucket.lastUpdated = order.updated_at || order.executed_at || order.created_at || bucket.lastUpdated
+        bucket.orderId = readString(order.id) || bucket.orderId
       }
     })
 
@@ -897,7 +961,7 @@ export default function PositionsPanel() {
       .map<PositionRow | null>(([key, bucket]) => {
         if (bucket.costBasis <= 0) return null
 
-        if (bucket.linkedAccountId) {
+        if (bucket.mode !== 'shadow' && bucket.linkedAccountId) {
           const coverageKey = `${bucket.linkedAccountId}:${bucket.marketId}:${bucket.side}`
           if (simulationCoverageKeys.has(coverageKey)) {
             return null
@@ -906,13 +970,27 @@ export default function PositionsPanel() {
 
         const entryPrice = bucket.costBasis > 0 ? bucket.weightedEntry / bucket.costBasis : null
         const size = bucket.weightedSize > 0 ? bucket.weightedSize : null
+        const currentPrice = bucket.markPrice
+        const marketValue = (currentPrice !== null && size !== null && size > 0)
+          ? currentPrice * size
+          : bucket.costBasis
+        const unrealizedPnl = (currentPrice !== null && entryPrice !== null && size !== null && size > 0)
+          ? (currentPrice - entryPrice) * size
+          : null
+        const pnlPercent = (unrealizedPnl !== null && bucket.costBasis > 0)
+          ? (unrealizedPnl / bucket.costBasis) * 100
+          : null
+        const botName = bucket.traderId
+          ? (shadowTraderNameById.get(bucket.traderId) || bucket.traderId)
+          : null
         const accountLabel = bucket.linkedAccountId
-          ? (accountNameById.get(bucket.linkedAccountId) || 'Autotrader (Paper)')
-          : 'Autotrader (Paper)'
+          ? (accountNameById.get(bucket.linkedAccountId) || (bucket.mode === 'shadow' ? 'Shadow account' : 'Autotrader (Paper)'))
+          : (bucket.mode === 'shadow' ? (botName || 'Shadow Bot') : 'Autotrader (Paper)')
+        const isShadow = bucket.mode === 'shadow'
         return {
-          key: `paper:${key}`,
-          venue: 'autotrader-paper',
-          venueLabel: 'Autotrader Paper',
+          key: `${isShadow ? 'shadow' : 'paper'}:${key}`,
+          venue: isShadow ? 'shadow-bot' : 'autotrader-paper',
+          venueLabel: isShadow ? 'Shadow Bot' : 'Autotrader Paper',
           accountLabel,
           marketId: bucket.marketId,
           marketQuestion: bucket.marketQuestion,
@@ -921,25 +999,25 @@ export default function PositionsPanel() {
           status: bucket.status,
           size,
           entryPrice,
-          currentPrice: null,
+          currentPrice,
           costBasis: bucket.costBasis,
-          marketValue: bucket.costBasis,
-          unrealizedPnl: null,
-          pnlPercent: null,
+          marketValue,
+          unrealizedPnl,
+          pnlPercent,
           openedAt: bucket.lastUpdated,
-          markUpdatedAt: null,
-          markFresh: false,
+          markUpdatedAt: bucket.markUpdatedAt,
+          markFresh: currentPrice !== null && toTimestamp(bucket.markUpdatedAt) >= (Date.now() - LIVE_MARK_FRESH_MS),
           tokenId: null,
-          managedByBot: null,
-          managedBotId: null,
-          managedOrderId: null,
+          managedByBot: botName,
+          managedBotId: bucket.traderId,
+          managedOrderId: bucket.orderId,
           marketUrl: bucket.marketUrl,
-          markMode: 'entry_estimate',
+          markMode: currentPrice !== null ? 'live' : 'entry_estimate',
         }
       })
       .filter((row): row is PositionRow => row !== null)
       .sort((left, right) => right.marketValue - left.marketValue)
-  }, [accountNameById, selectedSandboxAccount, simulationCoverageKeys, traderOrders])
+  }, [accountNameById, selectedSandboxAccount, shadowTraderNameById, simulationCoverageKeys, traderOrders])
 
   const polymarketLiveRows = useMemo<PositionRow[]>(() => {
     const fallbackMarkTs = polymarketLiveUpdatedAt > 0
@@ -1177,7 +1255,7 @@ export default function PositionsPanel() {
 
   const sourceBreakdown = useMemo(() => {
     const totalExposure = sortedRows.reduce((sum, row) => sum + row.marketValue, 0)
-    const order: PositionVenue[] = ['sandbox', 'autotrader-paper', 'polymarket-live', 'kalshi-live']
+    const order: PositionVenue[] = ['sandbox', 'shadow-bot', 'autotrader-paper', 'polymarket-live', 'kalshi-live']
 
     return order.map((venue) => {
       const rows = sortedRows.filter((row) => row.venue === venue)
@@ -1500,7 +1578,11 @@ export default function PositionsPanel() {
                     <TableBody>
                       {pagedRows.map((row) => {
                         const hasLiveMark = row.markMode === 'live' && row.currentPrice !== null
-                        const modeLabel = row.venue === 'polymarket-live' || row.venue === 'kalshi-live' ? 'LIVE' : 'PAPER'
+                        const modeLabel = row.venue === 'polymarket-live' || row.venue === 'kalshi-live'
+                          ? 'LIVE'
+                          : row.venue === 'shadow-bot'
+                            ? 'SHADOW'
+                            : 'PAPER'
                         const exposureShare = totalExposure > 0 ? (row.marketValue / totalExposure) * 100 : 0
                         return (
                           <TableRow

@@ -87,13 +87,19 @@ curl -fsS -X POST http://127.0.0.1:8000/api/traders \
       "strategy_params": {}
     }],
     "risk_limits": {
-      "max_trade_notional_usd": 2,
-      "max_position_notional_usd": 5,
-      "max_gross_exposure_usd": 25,
-      "max_open_positions": 3,
-      "max_open_orders": 4,
-      "max_daily_loss_usd": 15,
-      "max_spread_bps": 75
+      "max_orders_per_cycle": 6,
+      "max_open_orders": 20,
+      "max_open_positions": 12,
+      "max_trade_notional_usd": 10,
+      "max_position_notional_usd": 50,
+      "max_gross_exposure_usd": 500,
+      "max_daily_loss_usd": 150,
+      "max_daily_spend_usd": 500,
+      "max_spread_bps": 150,
+      "slippage_bps": 50,
+      "max_entry_drift_pct": 15,
+      "max_consecutive_losses": 5,
+      "order_ttl_seconds": 1200
     },
     "requested_by": "grok"
   }'
@@ -125,11 +131,36 @@ curl -fsS -X DELETE "http://127.0.0.1:8000/api/traders/<trader_id>?action=force_
 
 Crypto fast path lives in `workers/fast_trader_runtime.py`.
 
+## Risk limits (paper defaults)
+
+Sizing uses `base_size = max(1, 0.4 × max_trade_notional_usd)`.  
+With `max_trade=2`, base is **$1** → often blocked by **min-exit-notional** (needs ~$1.06 with a 6% stop, ~$2 with the 0.5 exit-price floor).
+
+Default shadow profile (apply to all paper bots unless the user wants tighter):
+
+| Field | Paper default | Why |
+|-------|---------------|-----|
+| `max_trade_notional_usd` | **10** | base size ~$4 clears min-exit |
+| `max_position_notional_usd` | **50** | multi-clip room |
+| `max_gross_exposure_usd` | **500** | concurrent positions |
+| `max_open_positions` | **12** | platform default |
+| `max_open_orders` | **20** | platform default |
+| `max_orders_per_cycle` | **6** | platform default |
+| `max_daily_loss_usd` | **150** | not trip on noise |
+| `max_daily_spend_usd` | **500** | explore without daily hard-stop |
+| `max_spread_bps` | **150** | weather / illiquid markets |
+| `slippage_bps` | **50** | slightly looser than live |
+| `max_entry_drift_pct` | **15** | more fill opportunity |
+| `max_consecutive_losses` | **5** | fewer false halts |
+
+Do **not** reintroduce the old ultra-tight skill template (`trade=2 / gross=25 / positions=3`).
+
 ## Interpreting decisions
 
 | Message | Meaning |
 |---------|---------|
 | SKIPPED + gate reason (spread, edge, …) | Healthy filter |
+| BLOCKED + Min-exit-notional | Size too small vs $1 exit floor — raise `max_trade_notional_usd` |
 | FAILED + DetachedInstanceError | Bug (payload materialize); restart trading plane |
 | FAST_SUBMIT_NO_ORDER after SKIPPED | Expected — no order written |
 | Missing Polymarket credentials | Live only; shadow OK without keys |

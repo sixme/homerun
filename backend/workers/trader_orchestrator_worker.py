@@ -10135,11 +10135,19 @@ async def start_loop(*, lane: str = _LANE_GENERAL, notifier_enabled: bool = True
                 name=f"trader-orchestrator-runtime-{lane_key}",
             )
             if lane_key == _LANE_GENERAL:
+                # process_scheduled_signals must stay True when Redis is down
+                # or the cross-plane signal bus bridge is idle: scanner/
+                # detection writes trade_signals in the detection process
+                # and only wakes the trading plane via Redis pub/sub.
+                # Without a scheduled drain, general-lane bots (stat_arb,
+                # ctf_basic_arb, …) sit on pending DB signals forever while
+                # cycles report signals=0.  Runtime triggers still provide
+                # low-latency wake when Redis is healthy.
                 await run_worker_loop(
                     lane=lane_key,
                     write_snapshot=write_snapshot,
                     process_runtime_triggers=False,
-                    process_scheduled_signals=False,
+                    process_scheduled_signals=True,
                 )
             else:
                 await run_worker_loop(
