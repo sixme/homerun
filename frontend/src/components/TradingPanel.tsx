@@ -529,6 +529,29 @@ const TERMINAL_COMPACT_OVERSCAN = 16
 const ORDERS_PAGE_SIZE = 200
 const ORDERS_PAGE_SIZE_OPTIONS = [100, 200, 500] as const
 const SELECTED_TRADER_ORDERS_LIMIT = 20000
+const ALL_BOTS_OVERVIEW_SPLIT_KEY = 'homerun.allBots.overviewSplitPct'
+const ALL_BOTS_OVERVIEW_SPLIT_DEFAULT = 55
+const ALL_BOTS_OVERVIEW_SPLIT_MIN = 28
+const ALL_BOTS_OVERVIEW_SPLIT_MAX = 75
+
+function readAllBotsOverviewSplitPct(): number {
+  try {
+    const raw = localStorage.getItem(ALL_BOTS_OVERVIEW_SPLIT_KEY)
+    const n = raw != null ? Number(raw) : ALL_BOTS_OVERVIEW_SPLIT_DEFAULT
+    if (!Number.isFinite(n)) return ALL_BOTS_OVERVIEW_SPLIT_DEFAULT
+    return Math.min(ALL_BOTS_OVERVIEW_SPLIT_MAX, Math.max(ALL_BOTS_OVERVIEW_SPLIT_MIN, n))
+  } catch {
+    return ALL_BOTS_OVERVIEW_SPLIT_DEFAULT
+  }
+}
+
+function writeAllBotsOverviewSplitPct(pct: number): void {
+  try {
+    localStorage.setItem(ALL_BOTS_OVERVIEW_SPLIT_KEY, String(pct))
+  } catch {
+    // ignore quota / private mode
+  }
+}
 
 const CRYPTO_SPIKE_REVERSION_PARAM_FIELDS = [
   { key: 'min_edge_percent', label: 'Min Edge (%)', type: 'number', min: 0, max: 100 },
@@ -5405,11 +5428,14 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
   const [allBotsPositionDirectionFilter, setAllBotsPositionDirectionFilter] = useState<PositionDirectionFilter>('all')
   const [allBotsPositionSortField, setAllBotsPositionSortField] = useState<PositionSortField>('exposure')
   const [allBotsPositionSortDirection, setAllBotsPositionSortDirection] = useState<PositionSortDirection>('desc')
+  const [allBotsOverviewSplitPct, setAllBotsOverviewSplitPct] = useState(readAllBotsOverviewSplitPct)
   const [ordersPage, setOrdersPage] = useState(0)
   const [ordersPageSize, setOrdersPageSize] = useState(ORDERS_PAGE_SIZE)
   const terminalViewportRef = useRef<HTMLDivElement | null>(null)
   const tradesTableParentRef = useRef<HTMLDivElement | null>(null)
   const positionsTableParentRef = useRef<HTMLDivElement | null>(null)
+  const allBotsOverviewSplitRef = useRef<HTMLDivElement | null>(null)
+  const allBotsSplitDraggingRef = useRef(false)
 
   const [traderFlyoutOpen, setTraderFlyoutOpen] = useState(false)
   const [traderFlyoutMode, setTraderFlyoutMode] = useState<'create' | 'edit'>('create')
@@ -5460,6 +5486,36 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
   const [tuneRevertSnapshot, setTuneRevertSnapshot] = useState<TuneRevertSnapshot | null>(null)
   const [tuneRevertError, setTuneRevertError] = useState<string | null>(null)
   const [tuneParamSectionTab, setTuneParamSectionTab] = useState('')
+
+  useEffect(() => {
+    const onMove = (event: MouseEvent) => {
+      if (!allBotsSplitDraggingRef.current || !allBotsOverviewSplitRef.current) return
+      const rect = allBotsOverviewSplitRef.current.getBoundingClientRect()
+      if (rect.width <= 0) return
+      const pct = ((event.clientX - rect.left) / rect.width) * 100
+      const clamped = Math.min(
+        ALL_BOTS_OVERVIEW_SPLIT_MAX,
+        Math.max(ALL_BOTS_OVERVIEW_SPLIT_MIN, pct)
+      )
+      setAllBotsOverviewSplitPct(clamped)
+    }
+    const onUp = () => {
+      if (!allBotsSplitDraggingRef.current) return
+      allBotsSplitDraggingRef.current = false
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      setAllBotsOverviewSplitPct((pct) => {
+        writeAllBotsOverviewSplitPct(pct)
+        return pct
+      })
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+  }, [])
 
   const overviewQuery = useQuery({
     queryKey: ['trader-orchestrator-overview'],
@@ -10477,9 +10533,13 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                   </div>
 
                   <TabsContent value="overview" className="mt-2 flex-1 min-h-0 overflow-hidden">
-                    <div className="h-full min-h-0 grid gap-2 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] xl:grid-rows-[auto_minmax(0,1fr)]">
-                      <div className="min-h-0 flex flex-col gap-2 xl:contents">
-                        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3 xl:col-start-1 xl:row-start-1">
+                    <div
+                      ref={allBotsOverviewSplitRef}
+                      className="h-full min-h-0 flex flex-col gap-2 xl:flex-row xl:gap-0"
+                      style={{ ['--all-bots-split' as string]: `${allBotsOverviewSplitPct}%` }}
+                    >
+                      <div className="min-h-0 flex flex-col gap-2 w-full min-w-0 flex-1 xl:h-full xl:flex-none xl:shrink-0 xl:[width:var(--all-bots-split)]">
+                        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3 shrink-0">
                           <div className="rounded-md border border-emerald-500/25 bg-emerald-500/10 p-2.5">
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-1.5">
@@ -10641,7 +10701,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                           </div>
                         </div>
 
-                        <div className="min-h-0 flex-1 xl:min-h-0 xl:col-start-1 xl:row-start-2 rounded-md border border-border/60 bg-card/80 overflow-hidden flex flex-col">
+                        <div className="min-h-0 flex-1 rounded-md border border-border/60 bg-card/80 overflow-hidden flex flex-col">
                           <div className="px-2.5 py-2 border-b border-border/40 flex items-center justify-between gap-2 shrink-0">
                             <div className="flex items-center gap-1.5">
                               <Clock3 className="w-3.5 h-3.5 text-cyan-500" />
@@ -10708,8 +10768,19 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                               ))}
                             </select>
                           </div>
-                          <ScrollArea className="h-[260px] xl:h-full xl:flex-1 xl:min-h-0">
-                            <div className={cn('p-2', terminalDensity === 'compact' ? 'space-y-0.5 font-mono text-[11px]' : 'space-y-1.5 text-[11px]')}>
+                          {/* overflow-auto: vertical + horizontal so compact rows show full messages */}
+                          <div className="h-[260px] xl:h-full xl:flex-1 xl:min-h-0 overflow-auto">
+                            <div
+                              className={cn(
+                                'p-2',
+                                terminalDensity === 'compact'
+                                  ? cn(
+                                      'space-y-0.5 font-mono text-[11px]',
+                                      displayedActivityRows.length > 0 && 'w-max min-w-full'
+                                    )
+                                  : 'space-y-1.5 text-[11px]'
+                              )}
+                            >
                               {displayedActivityRows.length === 0 ? (
                                 <p className="py-10 text-center text-muted-foreground text-xs">
                                   {terminalPaused
@@ -10723,7 +10794,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                                   <div
                                     key={`${row.kind}:${row.id}`}
                                     className={cn(
-                                      'rounded border px-2 py-1 flex items-center gap-1.5 whitespace-nowrap',
+                                      'rounded border px-2 py-1 flex items-center gap-1.5 whitespace-nowrap w-max min-w-full',
                                       row.tone === 'positive' && 'border-emerald-500/25 text-emerald-700 dark:text-emerald-100',
                                       row.tone === 'negative' && 'border-red-500/30 text-red-700 dark:text-red-100',
                                       row.tone === 'warning' && 'border-amber-500/30 text-amber-700 dark:text-amber-100',
@@ -10747,8 +10818,8 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                                     <span className="text-[10px] text-muted-foreground shrink-0">
                                       {traderNameById[String(row.traderId || '')] || shortId(row.traderId || '')}
                                     </span>
-                                    <span className="font-medium truncate">{row.title}</span>
-                                    <span className="text-muted-foreground truncate">{row.detail}</span>
+                                    <span className="font-medium shrink-0">{row.title}</span>
+                                    <span className="text-muted-foreground shrink-0">{row.detail}</span>
                                   </div>
                                 ))
                               ) : (
@@ -10779,12 +10850,34 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                                 ))
                               )}
                             </div>
-                          </ScrollArea>
+                          </div>
                         </div>
                       </div>
 
-                      <div className="min-h-0 flex flex-col gap-2 xl:contents">
-                        <div className="rounded-md border border-border/60 bg-card/80 p-2.5 xl:col-start-2 xl:row-start-1">
+                      <div
+                        role="separator"
+                        aria-orientation="vertical"
+                        aria-valuenow={Math.round(allBotsOverviewSplitPct)}
+                        aria-valuemin={ALL_BOTS_OVERVIEW_SPLIT_MIN}
+                        aria-valuemax={ALL_BOTS_OVERVIEW_SPLIT_MAX}
+                        title="Drag to resize · double-click to reset"
+                        className="hidden xl:flex w-2 shrink-0 cursor-col-resize items-stretch justify-center group select-none"
+                        onMouseDown={(event) => {
+                          event.preventDefault()
+                          allBotsSplitDraggingRef.current = true
+                          document.body.style.cursor = 'col-resize'
+                          document.body.style.userSelect = 'none'
+                        }}
+                        onDoubleClick={() => {
+                          setAllBotsOverviewSplitPct(ALL_BOTS_OVERVIEW_SPLIT_DEFAULT)
+                          writeAllBotsOverviewSplitPct(ALL_BOTS_OVERVIEW_SPLIT_DEFAULT)
+                        }}
+                      >
+                        <div className="w-px h-full bg-border/70 group-hover:bg-cyan-500/70 group-active:bg-cyan-400 transition-colors" />
+                      </div>
+
+                      <div className="min-h-0 flex flex-col gap-2 flex-1 min-w-0 xl:h-full">
+                        <div className="rounded-md border border-border/60 bg-card/80 p-2.5 shrink-0">
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-1.5">
                               <PieChart className="w-3.5 h-3.5 text-cyan-500" />
@@ -10857,15 +10950,15 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                           </div>
                         </div>
 
-                        <div className="min-h-0 flex-1 xl:min-h-0 xl:col-start-2 xl:row-start-2 rounded-md border border-border/60 bg-card/80 overflow-hidden">
-                          <div className="px-2.5 py-2 border-b border-border/40 flex items-center justify-between gap-2">
+                        <div className="min-h-0 flex-1 rounded-md border border-border/60 bg-card/80 overflow-hidden flex flex-col">
+                          <div className="px-2.5 py-2 border-b border-border/40 flex items-center justify-between gap-2 shrink-0">
                             <div className="flex items-center gap-1.5">
                               <Trophy className="w-3.5 h-3.5 text-cyan-500" />
                               <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('tradingPanel.allBots.leaderboard')}</span>
                             </div>
                             <span className="text-[10px] font-mono text-muted-foreground">{t('tradingPanel.allBots.top')} {allBotsLeaderboardWithTrend.length}</span>
                           </div>
-                          <ScrollArea className="h-[280px] xl:h-full">
+                          <ScrollArea className="h-[280px] xl:h-full xl:flex-1 xl:min-h-0">
                             <div className="space-y-1.5 p-2">
                               {allBotsLeaderboardWithTrend.length === 0 ? (
                                 <p className="py-8 text-center text-[11px] text-muted-foreground">{t('tradingPanel.allBots.noBotData')}</p>
