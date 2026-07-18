@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useAtom } from 'jotai'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import {
   Activity,
@@ -10,6 +10,8 @@ import {
   DollarSign,
   LayoutDashboard,
   ListChecks,
+  Loader2,
+  Plus,
   Receipt,
   RefreshCw,
   Shield,
@@ -24,8 +26,19 @@ import { accountModeAtom, selectedAccountIdAtom } from '../store/atoms'
 import { Card, CardContent } from './ui/card'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
+import { Input } from './ui/input'
+import { Label } from './ui/label'
 import { ScrollArea } from './ui/scroll-area'
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog'
+import {
+  createSimulationAccount,
   getAccountPositions,
   getAccountTrades,
   getAllTraderOrders,
@@ -129,18 +142,128 @@ function liveOrderStatusClass(statusRaw: string): string {
   return 'border-border/60 text-muted-foreground'
 }
 
+const DEFAULT_SANDBOX_FORM = {
+  name: '',
+  initialCapital: '10000',
+  maxPositionPct: '10',
+  maxPositions: '10',
+}
+
+function parseApiError(error: unknown, fallback: string): string {
+  if (!error || typeof error !== 'object') return fallback
+  const maybeAxios = error as {
+    response?: { data?: { detail?: unknown; message?: unknown } }
+    message?: string
+  }
+  const detail = maybeAxios.response?.data?.detail
+  if (typeof detail === 'string' && detail.trim()) return detail
+  if (Array.isArray(detail)) {
+    const parts = detail
+      .map((item) => {
+        if (typeof item === 'string') return item
+        if (item && typeof item === 'object' && 'msg' in item) {
+          return String((item as { msg?: unknown }).msg || '')
+        }
+        return ''
+      })
+      .filter(Boolean)
+    if (parts.length) return parts.join('; ')
+  }
+  if (typeof maybeAxios.response?.data?.message === 'string' && maybeAxios.response.data.message.trim()) {
+    return maybeAxios.response.data.message
+  }
+  if (typeof maybeAxios.message === 'string' && maybeAxios.message.trim()) return maybeAxios.message
+  return fallback
+}
+
 export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const [accountMode, setAccountMode] = useAtom(accountModeAtom)
   const [selectedAccountId, setSelectedAccountId] = useAtom(selectedAccountIdAtom)
   const [workspaceTab, setWorkspaceTab] = useState<AccountsWorkspaceTab>(accountMode === 'live' ? 'live' : 'overview')
   const [sandboxView, setSandboxView] = useState<DeskView>('overview')
   const [liveView, setLiveView] = useState<DeskView>('overview')
+  const [createSandboxOpen, setCreateSandboxOpen] = useState(false)
+  const [sandboxForm, setSandboxForm] = useState(DEFAULT_SANDBOX_FORM)
+  const [createSandboxError, setCreateSandboxError] = useState<string | null>(null)
 
   const { data: sandboxAccounts = [] } = useQuery({
     queryKey: ['simulation-accounts'],
     queryFn: getSimulationAccounts,
     refetchInterval: 10000,
+  })
+
+  const openCreateSandboxDialog = () => {
+    setSandboxForm({
+      ...DEFAULT_SANDBOX_FORM,
+      name: sandboxAccounts.length === 0 ? 'Paper Trading' : `Paper Trading ${sandboxAccounts.length + 1}`,
+    })
+    setCreateSandboxError(null)
+    setCreateSandboxOpen(true)
+  }
+
+  const createSandboxMutation = useMutation({
+    mutationFn: async () => {
+      const name = sandboxForm.name.trim()
+      const initialCapital = Number(sandboxForm.initialCapital)
+      const maxPositionPct = Number(sandboxForm.maxPositionPct)
+      const maxPositions = Number(sandboxForm.maxPositions)
+
+      if (!name) {
+        throw new Error(t('accounts.createSandboxNameRequired', { defaultValue: 'Account name is required.' }))
+      }
+      if (!Number.isFinite(initialCapital) || initialCapital < 100 || initialCapital > 10_000_000) {
+        throw new Error(
+          t('accounts.createSandboxCapitalInvalid', {
+            defaultValue: 'Initial capital must be between $100 and $10,000,000.',
+          }),
+        )
+      }
+      if (!Number.isFinite(maxPositionPct) || maxPositionPct < 1 || maxPositionPct > 100) {
+        throw new Error(
+          t('accounts.createSandboxPositionPctInvalid', {
+            defaultValue: 'Max position % must be between 1 and 100.',
+          }),
+        )
+      }
+      if (!Number.isFinite(maxPositions) || maxPositions < 1 || maxPositions > 100) {
+        throw new Error(
+          t('accounts.createSandboxMaxPositionsInvalid', {
+            defaultValue: 'Max positions must be between 1 and 100.',
+          }),
+        )
+      }
+
+      return createSimulationAccount({
+        name,
+        initial_capital: initialCapital,
+        max_position_pct: maxPositionPct,
+        max_positions: Math.trunc(maxPositions),
+      })
+    },
+    onMutate: () => {
+      setCreateSandboxError(null)
+    },
+    onSuccess: async (result) => {
+      await queryClient.invalidateQueries({ queryKey: ['simulation-accounts'] })
+      const accountId = String(result?.account_id || '').trim()
+      if (accountId) {
+        setSelectedAccountId(accountId)
+        setAccountMode('sandbox')
+      }
+      setCreateSandboxOpen(false)
+      setSandboxForm(DEFAULT_SANDBOX_FORM)
+      setWorkspaceTab('sandbox')
+    },
+    onError: (error: unknown) => {
+      setCreateSandboxError(
+        parseApiError(
+          error,
+          t('accounts.createSandboxFailed', { defaultValue: 'Failed to create sandbox account.' }),
+        ),
+      )
+    },
   })
 
   const { data: tradingStatus } = useQuery({
@@ -779,20 +902,39 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                     <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70">{t('accounts.sandboxFleet')}</p>
                     <p className="text-xs text-muted-foreground">{t('accounts.sandboxFleetDesc')}</p>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => openSandboxDesk()}
-                    className="h-6 text-[11px]"
-                  >
-                    {t('accounts.openSandboxDesk')}
-                  </Button>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={openCreateSandboxDialog}
+                      className="h-6 gap-1 text-[11px]"
+                    >
+                      <Plus className="h-3 w-3" />
+                      {t('accounts.createSandbox', { defaultValue: 'New Sandbox' })}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openSandboxDesk()}
+                      className="h-6 text-[11px]"
+                    >
+                      {t('accounts.openSandboxDesk')}
+                    </Button>
+                  </div>
                 </div>
 
                 {sandboxAccounts.length === 0 ? (
                   <div className="px-4 py-8 text-center">
                     <Shield className="mx-auto mb-2 h-6 w-6 text-muted-foreground" />
                     <p className="text-sm text-muted-foreground">{t('accounts.noSandboxAccountsYet')}</p>
+                    <Button
+                      size="sm"
+                      onClick={openCreateSandboxDialog}
+                      className="mt-3 h-8 gap-1.5 text-xs"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      {t('accounts.createSandbox', { defaultValue: 'New Sandbox' })}
+                    </Button>
                   </div>
                 ) : (
                   <div className="min-h-0 flex-1 overflow-auto">
@@ -990,13 +1132,37 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
         <div className="flex-1 min-h-0 grid gap-2 xl:grid-cols-[250px_minmax(0,1fr)]">
           <div className="hidden xl:flex min-h-0 flex-col rounded-lg border border-border/70 bg-card overflow-hidden">
             <div className="shrink-0 border-b border-border/50 px-2.5 py-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('accounts.sandboxAccounts')}</p>
-              <p className="text-[10px] text-muted-foreground">{t('accounts.desksConfigured', { n: sandboxAccounts.length })}</p>
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('accounts.sandboxAccounts')}</p>
+                  <p className="text-[10px] text-muted-foreground">{t('accounts.desksConfigured', { n: sandboxAccounts.length })}</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={openCreateSandboxDialog}
+                  className="h-6 gap-1 px-2 text-[10px]"
+                >
+                  <Plus className="h-3 w-3" />
+                  {t('accounts.createSandboxShort', { defaultValue: 'New' })}
+                </Button>
+              </div>
             </div>
             <ScrollArea className="flex-1 min-h-0">
               <div className="space-y-1.5 p-1.5">
                 {sandboxAccounts.length === 0 ? (
-                  <p className="px-2 py-6 text-center text-[11px] text-muted-foreground">{t('accounts.noSandboxConfigured')}</p>
+                  <div className="px-2 py-6 text-center">
+                    <p className="text-[11px] text-muted-foreground">{t('accounts.noSandboxConfigured')}</p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={openCreateSandboxDialog}
+                      className="mt-3 h-7 gap-1 text-[11px]"
+                    >
+                      <Plus className="h-3 w-3" />
+                      {t('accounts.createSandbox', { defaultValue: 'New Sandbox' })}
+                    </Button>
+                  </div>
                 ) : (
                   sandboxAccounts.map((account) => {
                     const isActive = activeSandboxAccountId === account.id
@@ -1662,6 +1828,130 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
           </div>
         </div>
       )}
+
+      <Dialog
+        open={createSandboxOpen}
+        onOpenChange={(open) => {
+          setCreateSandboxOpen(open)
+          if (!open) {
+            setCreateSandboxError(null)
+            createSandboxMutation.reset()
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {t('accounts.createSandboxTitle', { defaultValue: 'Create Sandbox Account' })}
+            </DialogTitle>
+            <DialogDescription>
+              {t('accounts.createSandboxDescription', {
+                defaultValue:
+                  'Paper capital for shadow trading. No real money moves until you use a live bot.',
+              })}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-3 py-1">
+            <div className="grid gap-1.5">
+              <Label htmlFor="sandbox-account-name">
+                {t('accounts.createSandboxName', { defaultValue: 'Account name' })}
+              </Label>
+              <Input
+                id="sandbox-account-name"
+                value={sandboxForm.name}
+                onChange={(e) => setSandboxForm((current) => ({ ...current, name: e.target.value }))}
+                placeholder={t('accounts.createSandboxNamePlaceholder', { defaultValue: 'Paper Trading' })}
+                maxLength={100}
+                autoFocus
+              />
+            </div>
+
+            <div className="grid gap-1.5">
+              <Label htmlFor="sandbox-initial-capital">
+                {t('accounts.createSandboxCapital', { defaultValue: 'Initial capital (USD)' })}
+              </Label>
+              <Input
+                id="sandbox-initial-capital"
+                type="number"
+                min={100}
+                max={10_000_000}
+                step={100}
+                value={sandboxForm.initialCapital}
+                onChange={(e) => setSandboxForm((current) => ({ ...current, initialCapital: e.target.value }))}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                {t('accounts.createSandboxCapitalHint', {
+                  defaultValue: 'Virtual starting balance for shadow fills ($100 – $10,000,000).',
+                })}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="sandbox-max-position-pct">
+                  {t('accounts.createSandboxMaxPositionPct', { defaultValue: 'Max position %' })}
+                </Label>
+                <Input
+                  id="sandbox-max-position-pct"
+                  type="number"
+                  min={1}
+                  max={100}
+                  step={1}
+                  value={sandboxForm.maxPositionPct}
+                  onChange={(e) => setSandboxForm((current) => ({ ...current, maxPositionPct: e.target.value }))}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="sandbox-max-positions">
+                  {t('accounts.createSandboxMaxPositions', { defaultValue: 'Max open positions' })}
+                </Label>
+                <Input
+                  id="sandbox-max-positions"
+                  type="number"
+                  min={1}
+                  max={100}
+                  step={1}
+                  value={sandboxForm.maxPositions}
+                  onChange={(e) => setSandboxForm((current) => ({ ...current, maxPositions: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            {createSandboxError ? (
+              <div className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+                {createSandboxError}
+              </div>
+            ) : null}
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setCreateSandboxOpen(false)}
+              disabled={createSandboxMutation.isPending}
+            >
+              {t('accounts.cancel', { defaultValue: 'Cancel' })}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => createSandboxMutation.mutate()}
+              disabled={createSandboxMutation.isPending || !sandboxForm.name.trim()}
+              className="gap-1.5"
+            >
+              {createSandboxMutation.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Plus className="h-3.5 w-3.5" />
+              )}
+              {createSandboxMutation.isPending
+                ? t('accounts.createSandboxCreating', { defaultValue: 'Creating…' })
+                : t('accounts.createSandboxSubmit', { defaultValue: 'Create account' })}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

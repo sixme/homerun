@@ -1527,6 +1527,8 @@ class HomerunApp:
         env.setdefault("NEWS_FAISS_THREADS", "1")
         env.setdefault("TOKENIZERS_PARALLELISM", "false")
         env.setdefault("EMBEDDING_DEVICE", "cpu")
+        # macOS dual-libomp workaround (torch + sklearn + faiss).
+        env.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
         return env
 
     def _runtime_database_url_path(self) -> Path:

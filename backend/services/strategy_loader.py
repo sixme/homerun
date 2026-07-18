@@ -295,6 +295,9 @@ ALLOWED_IMPORT_PREFIXES = {
     "services.data_events",
     "services.event_dispatcher",
     "services.forecasting",
+    # Strategy-attached ML declarations (MLCapability on BaseStrategy.ml_capability).
+    # Documented on BaseStrategy; used by btc_eth_directional_edge and peers.
+    "services.ml",
     "config",
     "utils",
     # Standard library (safe subset)

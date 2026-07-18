@@ -9687,7 +9687,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     !orchestratorStartStopActive &&
     Boolean(selectedAccountId) &&
     selectedAccountValid &&
-    !(selectedAccountIsLive && killSwitchOn)
+    !killSwitchOn
   const canStopOrchestrator = !controlBusy && orchestratorStartStopActive
   const startStopIsConfigured = orchestratorStartStopActive
   const startStopIsRunning = orchestratorRunning
@@ -9698,13 +9698,40 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
   const startStopPending = startStopIsStarting || startStopIsStopping
   const startStopDisabled = startStopPending || (startStopIsConfigured ? !canStopOrchestrator : !canStartOrchestrator)
 
+  // Account binding is GLOBAL (header Select Account), not per-bot. Shadow
+  // fills debit the selected sandbox ledger for every shadow bot.
+  const boundAccountLabel = selectedAccountIsLive
+    ? (selectedAccountId === 'live:kalshi' ? 'Kalshi (live)' : 'Polymarket (live)')
+    : selectedSandboxAccount
+      ? `${selectedSandboxAccount.name} (sandbox)`
+      : null
+  const boundAccountCapital = selectedSandboxAccount
+    ? Number(selectedSandboxAccount.current_capital ?? selectedSandboxAccount.initial_capital ?? 0)
+    : null
+  const startBlockedReason = startStopIsConfigured
+    ? null
+    : !selectedAccountId
+      ? 'Select a sandbox account in the top bar (Select Account). Bots do not have their own account field.'
+      : !selectedAccountValid
+        ? 'Selected account is invalid or missing. Open Select Account and pick a sandbox desk.'
+        : killSwitchOn
+          ? 'Kill switch is BLOCKED. Toggle it OFF (OPEN) in this hub strip before starting.'
+          : controlBusy
+            ? 'Control action in progress…'
+            : null
+
   const runStartStopCommand = () => {
     if (startStopIsConfigured) {
       if (!canStopOrchestrator) return
       stopByModeMutation.mutate()
       return
     }
-    if (!canStartOrchestrator) return
+    if (!canStartOrchestrator) {
+      if (startBlockedReason) {
+        setControlActionError(startBlockedReason)
+      }
+      return
+    }
     requestOrchestratorStart()
   }
 
@@ -10232,10 +10259,11 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
         <div className="flex items-center gap-1.5">
           <Button
             onClick={runStartStopCommand}
-            disabled={startStopDisabled}
+            disabled={startStopDisabled && !startBlockedReason}
             className="h-7 min-w-[140px] text-[11px]"
             variant={startStopIsConfigured ? 'secondary' : 'default'}
             size="sm"
+            title={startBlockedReason || undefined}
           >
             {startStopPending ? (
               <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
@@ -10258,13 +10286,16 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
             <ShieldAlert className="w-3 h-3 text-red-400" />
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="inline-flex">
+                <span className="inline-flex items-center gap-1">
                   <Switch
                     checked={killSwitchSwitchValue}
                     onCheckedChange={(enabled) => killSwitchMutation.mutate(enabled)}
                     disabled={controlBusy}
                     className="scale-[0.8]"
                   />
+                  <span className={cn('text-[10px] font-medium', killSwitchOn ? 'text-red-300' : 'text-emerald-300')}>
+                    {killSwitchStatusLabel}
+                  </span>
                 </span>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="max-w-[320px] text-xs leading-snug">
@@ -10307,10 +10338,21 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
             {selectedAccountMode.toUpperCase()}
           </Badge>
           <Badge
-            className="h-5 px-1.5 text-[10px]"
-            variant={killSwitchMutation.isPending ? 'secondary' : killSwitchOn ? 'destructive' : 'outline'}
+            className={cn(
+              'h-5 max-w-[220px] truncate px-1.5 text-[10px]',
+              boundAccountLabel
+                ? 'border-amber-500/35 bg-amber-500/10 text-amber-100'
+                : 'border-red-500/40 bg-red-500/10 text-red-200',
+            )}
+            title={
+              boundAccountLabel
+                ? `Shadow/live engine ledger: ${boundAccountLabel}${boundAccountCapital != null ? ` · $${boundAccountCapital.toLocaleString()}` : ''}. This is global — not configured on each bot.`
+                : 'No account selected. Open the top-bar Select Account control and pick a sandbox desk.'
+            }
           >
-            {killSwitchStatusLabel}
+            {boundAccountLabel
+              ? `Acct: ${boundAccountLabel}${boundAccountCapital != null ? ` · $${Math.round(boundAccountCapital).toLocaleString()}` : ''}`
+              : 'Acct: none — select in top bar'}
           </Badge>
         </div>
 
@@ -10386,6 +10428,16 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
       {controlActionError ? (
         <div className="shrink-0 rounded-md border border-red-500/35 bg-red-500/10 px-2 py-1 text-[11px] text-red-300">
           {controlActionError}
+        </div>
+      ) : startBlockedReason && !startStopIsConfigured ? (
+        <div className="shrink-0 rounded-md border border-amber-500/35 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-100">
+          <span className="font-medium">Cannot start engine: </span>
+          {startBlockedReason}
+        </div>
+      ) : !startStopIsConfigured && boundAccountLabel && !killSwitchOn ? (
+        <div className="shrink-0 rounded-md border border-cyan-500/25 bg-cyan-500/5 px-2 py-1 text-[11px] text-muted-foreground">
+          Account is selected. Press <span className="font-medium text-foreground">SHADOW</span> to start
+          the engine. Bots share this global account — there is no per-bot account assignment.
         </div>
       ) : null}
 

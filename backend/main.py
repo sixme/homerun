@@ -24,6 +24,10 @@ os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
 os.environ.setdefault("NEWS_FAISS_THREADS", "1")
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 os.environ.setdefault("EMBEDDING_DEVICE", "cpu")
+# macOS: torch, sklearn, and faiss each ship a libomp. Loading more than
+# one aborts the process with OMP Error #15 unless this is set before any
+# of those libraries initialize OpenMP.
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 # Headless backend — disable tqdm progress bars to prevent spurious
 # tqdm_asyncio __del__ AttributeError tracebacks during GC.
 os.environ.setdefault("TQDM_DISABLE", "1")

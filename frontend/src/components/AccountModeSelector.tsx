@@ -141,8 +141,13 @@ export default function AccountModeSelector() {
           </div>
           <div className="max-h-48 overflow-y-auto">
             {sandboxAccounts.length === 0 ? (
-              <div className="px-3 py-3 text-xs text-muted-foreground">
-                {t('accountModeSelector.noSandboxAccounts')}
+              <div className="px-3 py-3 text-xs text-muted-foreground space-y-1">
+                <p>{t('accountModeSelector.noSandboxAccounts')}</p>
+                <p className="text-[11px] text-amber-300/90">
+                  {t('accountModeSelector.createInAccounts', {
+                    defaultValue: 'Create one under Accounts → New Sandbox, then pick it here.',
+                  })}
+                </p>
               </div>
             ) : (
               sandboxAccounts.map(acc => (
