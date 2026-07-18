@@ -121,6 +121,61 @@ def _snapshot_from_db_row(row: Any):
         return None
 
 
+def _materialize_signals_for_evaluate(session: Any, signals: list[Any]) -> list[Any]:
+    """Force-load deferred JSON columns and detach ORM rows for evaluate().
+
+    Cold-start SELECT uses ``defer_heavy_columns=True`` so asyncpg does not
+    decode multi-KB ``payload_json`` / ``strategy_context_json`` for every
+    header row on the event loop.  Strategy ``evaluate()`` still needs those
+    payloads, and it runs *after* the session closes (and often in a worker
+    thread).  Accessing an unloaded deferred column on a detached instance
+    raises ``DetachedInstanceError``.
+
+    While the session is still open: touch the deferred attributes (loads
+    them), then ``expunge`` so Session.close does not expire the values.
+    Plain SimpleNamespace / non-ORM signals are left unchanged.
+    """
+    if not signals or session is None:
+        return list(signals or [])
+
+    from sqlalchemy import inspect as sa_inspect
+
+    prepared: list[Any] = []
+    for signal in signals:
+        try:
+            state = sa_inspect(signal)
+        except Exception:
+            prepared.append(signal)
+            continue
+
+        # Non-ORM / already-detached plain objects (e.g. intent_runtime views).
+        if state.session is None and not state.detached:
+            prepared.append(signal)
+            continue
+
+        try:
+            # Load deferred columns while still session-bound.
+            payload = getattr(signal, "payload_json", None)
+            if payload is not None and not isinstance(payload, dict):
+                # Keep evaluate() contracts that expect a mapping.
+                try:
+                    object.__setattr__(signal, "payload_json", {})
+                except Exception:
+                    pass
+            _ = getattr(signal, "strategy_context_json", None)
+            _ = getattr(signal, "quality_rejection_reasons", None)
+            if state.session is not None:
+                state.session.expunge(signal)
+        except Exception as exc:
+            logger.warning(
+                "Failed to materialize signal payload for evaluate; evaluate may fail",
+                signal_id=str(getattr(signal, "id", "") or ""),
+                error=str(exc),
+            )
+        prepared.append(signal)
+    return prepared
+
+
 def _get_sequence_cursor(trader_id: str) -> Optional[int]:
     """Read the live signal-sequence cursor from hot state (non-blocking)."""
     try:
@@ -989,10 +1044,12 @@ class _FastTraderTask:
                     cursor_created_at=cursor_created_at,
                     cursor_signal_id=cursor_signal_id,
                     limit=_MAX_SIGNALS_PER_CYCLE,
-                    # Fast trader never reads payload_json /
-                    # strategy_context_json; deferring them turns this
-                    # SELECT from a 200-row × 3KB JSON-decode-on-loop
-                    # blocker into a header-only fetch.
+                    # Defer multi-KB JSON on the SELECT so idle/header scans
+                    # stay cheap.  Immediately below we materialize those
+                    # columns for rows we will evaluate (strategy.evaluate
+                    # needs payload_json) and expunge so Session.close does
+                    # not expire them — see DetachedInstanceError on
+                    # payload_json when evaluate runs after the session.
                     defer_heavy_columns=True,
                 )
                 self._last_stage_timings_ms["coldstart_db_list"] = round(
@@ -1037,6 +1094,14 @@ class _FastTraderTask:
                         (time.monotonic() - idle_t0) * 1000.0, 1
                     )
                     return
+
+                # Must run before the session exits: evaluate() runs outside
+                # this block and needs payload_json / strategy_context_json.
+                mat_t0 = time.monotonic()
+                signals = _materialize_signals_for_evaluate(session, signals)
+                self._last_stage_timings_ms["coldstart_payload_materialize"] = round(
+                    (time.monotonic() - mat_t0) * 1000.0, 1
+                )
 
         mode = str(self._trader.get("mode", "shadow")).strip().lower() or "shadow"
         risk_limits = dict(self._trader.get("risk_limits") or {})

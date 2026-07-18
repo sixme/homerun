@@ -7353,9 +7353,11 @@ async def list_unconsumed_trade_signals(
     # decoded by asyncpg ON THE EVENT LOOP — for a 200-row result the
     # fast trader's cycle blocked 2-4 seconds on JSON decode alone,
     # exceeding the 2.5s fast-tier ``statement_timeout`` and corrupting
-    # asyncpg protocol state.  Fast trader never reads these columns
-    # so it opts in; the orchestrator worker keeps the default eager
-    # load because it does need the payload for execution.
+    # asyncpg protocol state.  Fast trader still opts in for the list
+    # SELECT, then materializes deferred columns only for rows it will
+    # evaluate (see ``_materialize_signals_for_evaluate``).  The
+    # orchestrator worker keeps the default eager load because it needs
+    # payload for execution immediately.
     query = select(TradeSignal)
     if defer_heavy_columns:
         query = query.options(

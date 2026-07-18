@@ -1,0 +1,18 @@
+# Homerun project-scoped Grok config.
+# Loaded when the working directory is inside this repo.
+# See: https:// (local) ~/.grok/docs/user-guide/07-mcp-servers.md
+
+# ---------------------------------------------------------------------------
+# MCP — Homerun agent tool surface (same ~88 tools as the AI tab)
+# Requires the FastAPI backend running (default http://127.0.0.1:8000).
+# Transport: streamable HTTP mounted at /mcp (services/mcp/http_app.py).
+# ---------------------------------------------------------------------------
+[mcp_servers.homerun]
+url = "http://127.0.0.1:8000/mcp"
+enabled = true
+startup_timeout_sec = 15
+tool_timeout_sec = 120
+
+# Optional: restrict categories via backend env when starting uvicorn, e.g.
+#   HOMERUN_MCP_ALLOWED_CATEGORIES=market,strategy,trading
+#   HOMERUN_MCP_DENIED_CATEGORIES=web
