@@ -1,6 +1,7 @@
 import axios from 'axios'
+import { attachApiInterceptors } from './apiClient'
 
-const api = axios.create({ baseURL: '/api', timeout: 60000 })
+const api = attachApiInterceptors(axios.create({ baseURL: '/api', timeout: 60000 }))
 
 export interface FillModelRow {
   id: string
@@ -91,22 +92,25 @@ export async function getActiveFillModel(strataKey = 'pooled'): Promise<FillMode
   }
 }
 
-export async function getFillModelHistory(
-  strataKey?: string,
-  limit = 20,
-): Promise<FillModelRow[]> {
+export async function getFillModelHistory(strataKey?: string, limit = 20): Promise<FillModelRow[]> {
   const params: Record<string, string | number> = { limit }
   if (strataKey) params.strata_key = strataKey
   const { data } = await api.get<{ models: FillModelRow[] }>('/fill-model/history', { params })
   return data.models ?? []
 }
 
-export async function triggerRetrain(windowDays = 30): Promise<{ trained: Array<Record<string, unknown>>; window_days: number }> {
-  const { data } = await api.post('/fill-model/retrain', null, { params: { window_days: windowDays } })
+export async function triggerRetrain(
+  windowDays = 30,
+): Promise<{ trained: Array<Record<string, unknown>>; window_days: number }> {
+  const { data } = await api.post('/fill-model/retrain', null, {
+    params: { window_days: windowDays },
+  })
   return data
 }
 
-export async function promoteModel(modelId: string): Promise<{ promoted: boolean; model_id: string }> {
+export async function promoteModel(
+  modelId: string,
+): Promise<{ promoted: boolean; model_id: string }> {
   const { data } = await api.post(`/fill-model/promote/${encodeURIComponent(modelId)}`)
   return data
 }
@@ -119,7 +123,10 @@ export async function getEmpiricalConstants(): Promise<EmpiricalConstantsRespons
 export async function setEmpiricalOverrides(
   overrides: Partial<EmpiricalConstantsResponse['values']>,
 ): Promise<EmpiricalConstantsResponse> {
-  const { data } = await api.put<EmpiricalConstantsResponse>('/fill-model/empirical-constants', overrides)
+  const { data } = await api.put<EmpiricalConstantsResponse>(
+    '/fill-model/empirical-constants',
+    overrides,
+  )
   return data
 }
 
@@ -128,9 +135,11 @@ export async function getLatencyDistribution(): Promise<LatencyDistribution> {
   return data
 }
 
-export async function updateLatencyFallbacks(
-  values: { p50_ms?: number | null; p95_ms?: number | null; p99_ms?: number | null },
-): Promise<{ p50_ms: number; p95_ms: number; p99_ms: number }> {
+export async function updateLatencyFallbacks(values: {
+  p50_ms?: number | null
+  p95_ms?: number | null
+  p99_ms?: number | null
+}): Promise<{ p50_ms: number; p95_ms: number; p99_ms: number }> {
   const params: Record<string, number> = {}
   if (values.p50_ms != null) params.p50_ms = values.p50_ms
   if (values.p95_ms != null) params.p95_ms = values.p95_ms
@@ -150,10 +159,16 @@ export async function getDecompositionSummary(hours = 24): Promise<Decomposition
   return data
 }
 
-export async function getTriangulation(strategySlug: string, days = 30): Promise<TriangulationResponse> {
-  const { data } = await api.get<TriangulationResponse>(`/fill-model/triangulation/${encodeURIComponent(strategySlug)}`, {
-    params: { days },
-  })
+export async function getTriangulation(
+  strategySlug: string,
+  days = 30,
+): Promise<TriangulationResponse> {
+  const { data } = await api.get<TriangulationResponse>(
+    `/fill-model/triangulation/${encodeURIComponent(strategySlug)}`,
+    {
+      params: { days },
+    },
+  )
   return data
 }
 

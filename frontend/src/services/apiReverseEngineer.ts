@@ -6,17 +6,12 @@
  * action link.
  */
 import axios from 'axios'
+import { attachApiInterceptors } from './apiClient'
 
-const api = axios.create({ baseURL: '/api', timeout: 600_000 })
+const api = attachApiInterceptors(axios.create({ baseURL: '/api', timeout: 600_000 }))
 
 export type ReverseEngineerJobStatus =
-  | 'queued'
-  | 'profiling'
-  | 'importing_data'
-  | 'running'
-  | 'completed'
-  | 'failed'
-  | 'cancelled'
+  'queued' | 'profiling' | 'importing_data' | 'running' | 'completed' | 'failed' | 'cancelled'
 
 export type DataSourceKind = 'auto' | 'recording_session' | 'provider_dataset' | 'live'
 export type ReportMode = 'report' | 'strategy_seed'
@@ -189,9 +184,7 @@ export async function cancelReverseEngineerJob(
 export async function deleteReverseEngineerJob(
   jobId: string,
 ): Promise<{ deleted: boolean; id: string }> {
-  const { data } = await api.delete(
-    `/strategy-reverse-engineer/jobs/${encodeURIComponent(jobId)}`,
-  )
+  const { data } = await api.delete(`/strategy-reverse-engineer/jobs/${encodeURIComponent(jobId)}`)
   return data
 }
 

@@ -7,8 +7,9 @@
  *  • Strategy editor "subscriptions" autocomplete.
  */
 import axios from 'axios'
+import { attachApiInterceptors } from './apiClient'
 
-const api = axios.create({ baseURL: '/api', timeout: 60_000 })
+const api = attachApiInterceptors(axios.create({ baseURL: '/api', timeout: 60_000 }))
 
 export type StorageKind = 'parquet' | 'external_parquet' | 'sql_table' | 'memory'
 
@@ -81,8 +82,8 @@ export async function deleteTopic(slug: string): Promise<void> {
 export interface PatchTopicRequest {
   enabled?: boolean
   is_replayable?: boolean
-  retention_days?: number  // 0 → clear cap
-  max_bytes?: number       // 0 → clear cap
+  retention_days?: number // 0 → clear cap
+  max_bytes?: number // 0 → clear cap
   description?: string
 }
 
@@ -105,9 +106,10 @@ export async function getBusRotationSettings(): Promise<BusRotationSettings> {
   return r.data
 }
 
-export async function updateBusRotationSettings(
-  req: { pruner_enabled?: boolean; global_max_bytes?: number },
-): Promise<BusRotationSettings> {
+export async function updateBusRotationSettings(req: {
+  pruner_enabled?: boolean
+  global_max_bytes?: number
+}): Promise<BusRotationSettings> {
   const r = await api.patch<BusRotationSettings>('/topics/settings/rotation', req)
   return r.data
 }
@@ -160,11 +162,12 @@ export async function replayPreview(req: ReplayPreviewRequest): Promise<ReplayPr
 
 export function formatTopicVolume(t: TopicSpec): string {
   if (t.event_count <= 0 && t.bytes_on_disk <= 0) return '—'
-  const events = t.event_count >= 1_000_000
-    ? `${(t.event_count / 1_000_000).toFixed(1)}M events`
-    : t.event_count >= 1_000
-    ? `${(t.event_count / 1_000).toFixed(1)}K events`
-    : `${t.event_count} events`
+  const events =
+    t.event_count >= 1_000_000
+      ? `${(t.event_count / 1_000_000).toFixed(1)}M events`
+      : t.event_count >= 1_000
+        ? `${(t.event_count / 1_000).toFixed(1)}K events`
+        : `${t.event_count} events`
   const sizeMB = t.bytes_on_disk / (1024 * 1024)
   if (sizeMB <= 0) return events
   if (sizeMB >= 1024) return `${events} · ${(sizeMB / 1024).toFixed(2)} GB`
@@ -174,9 +177,13 @@ export function formatTopicVolume(t: TopicSpec): string {
 
 export function topicStorageBadgeColor(kind: StorageKind): string {
   switch (kind) {
-    case 'parquet':   return '#16a34a'  // green — operator-managed canonical store
-    case 'sql_table': return '#0891b2'  // teal  — wraps existing table
-    case 'memory':    return '#a855f7'  // purple — live-only
-    default:          return '#64748b'
+    case 'parquet':
+      return '#16a34a' // green — operator-managed canonical store
+    case 'sql_table':
+      return '#0891b2' // teal  — wraps existing table
+    case 'memory':
+      return '#a855f7' // purple — live-only
+    default:
+      return '#64748b'
   }
 }

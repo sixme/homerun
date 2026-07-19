@@ -1,31 +1,39 @@
-import axios from 'axios'
+import axios, { type AxiosInstance } from 'axios'
 import { normalizeUtcTimestampsInPlace } from '../lib/timestamps'
 
-export const api = axios.create({
-  baseURL: '/api',
-  timeout: 60000,
-})
-
-api.interceptors.response.use(
-  (response) => {
-    normalizeUtcTimestampsInPlace(response.data)
-    const count = Array.isArray(response.data) ? response.data.length : '?'
-    console.debug(`[API] ${response.config.method?.toUpperCase()} ${response.config.url} -> ${response.status} (${count} items)`)
-    return response
-  },
-  (error) => {
-    const status = error?.response?.status
-    if (status === 423 && typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('ui-lock-required'))
-    }
-    if (status !== 423) {
-      console.error(
-        `[API] ${error.config?.method?.toUpperCase()} ${error.config?.url} -> ${status || error.message}`,
-        error.response?.data
+/** Attach shared response handling (UTC timestamp normalize, 423 lock). */
+export function attachApiInterceptors(client: AxiosInstance): AxiosInstance {
+  client.interceptors.response.use(
+    (response) => {
+      normalizeUtcTimestampsInPlace(response.data)
+      const count = Array.isArray(response.data) ? response.data.length : '?'
+      console.debug(
+        `[API] ${response.config.method?.toUpperCase()} ${response.config.url} -> ${response.status} (${count} items)`,
       )
-    }
-    return Promise.reject(error)
-  }
+      return response
+    },
+    (error) => {
+      const status = error?.response?.status
+      if (status === 423 && typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('ui-lock-required'))
+      }
+      if (status !== 423) {
+        console.error(
+          `[API] ${error.config?.method?.toUpperCase()} ${error.config?.url} -> ${status || error.message}`,
+          error.response?.data,
+        )
+      }
+      return Promise.reject(error)
+    },
+  )
+  return client
+}
+
+export const api = attachApiInterceptors(
+  axios.create({
+    baseURL: '/api',
+    timeout: 60000,
+  }),
 )
 
 export function unwrapApiData(data: any): any {

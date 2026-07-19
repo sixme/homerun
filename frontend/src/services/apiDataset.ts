@@ -1,6 +1,7 @@
 import axios from 'axios'
+import { attachApiInterceptors } from './apiClient'
 
-const api = axios.create({ baseURL: '/api', timeout: 600000 })
+const api = attachApiInterceptors(axios.create({ baseURL: '/api', timeout: 600000 }))
 
 export type DatasetColumnType = 'string' | 'int' | 'float' | 'datetime' | 'json' | 'enum'
 
@@ -15,11 +16,7 @@ export interface DatasetColumn {
 }
 
 export type DatasetFilterKind =
-  | 'eq'
-  | 'contains'
-  | 'time_range_start'
-  | 'time_range_end'
-  | 'enum_in'
+  'eq' | 'contains' | 'time_range_start' | 'time_range_end' | 'enum_in'
 
 export interface DatasetFilter {
   key: string
@@ -69,10 +66,7 @@ export interface RecordedToken {
 
 /** Recently-recorded tokens for a parquet per-token dataset (recency-ranked,
  *  labelled). Feeds the Data Lab token picker. Empty for SQL datasets. */
-export async function getRecordedTokens(
-  name: string,
-  limit = 200,
-): Promise<RecordedToken[]> {
+export async function getRecordedTokens(name: string, limit = 200): Promise<RecordedToken[]> {
   const { data } = await api.get<{ tokens: RecordedToken[] }>(
     `/dataset/${encodeURIComponent(name)}/recorded-tokens`,
     { params: { limit } },
@@ -127,13 +121,7 @@ export async function queryDataset(
 // ─── Recording sessions ─────────────────────────────────────────────────
 
 export type RecordingSessionStatus =
-  | 'pending'
-  | 'scheduled'
-  | 'running'
-  | 'paused'
-  | 'completed'
-  | 'failed'
-  | 'cancelled'
+  'pending' | 'scheduled' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled'
 
 export type RecordingTargetKind = 'token' | 'condition' | 'event'
 export type RecordingCaptureType = 'book' | 'trade' | 'delta'
@@ -201,17 +189,23 @@ export async function getRecordingSession(id: string): Promise<RecordingSession>
 }
 
 export async function startRecordingSession(id: string): Promise<RecordingSession> {
-  const { data } = await api.post<RecordingSession>(`/dataset/sessions/${encodeURIComponent(id)}/start`)
+  const { data } = await api.post<RecordingSession>(
+    `/dataset/sessions/${encodeURIComponent(id)}/start`,
+  )
   return data
 }
 
 export async function stopRecordingSession(id: string): Promise<RecordingSession> {
-  const { data } = await api.post<RecordingSession>(`/dataset/sessions/${encodeURIComponent(id)}/stop`)
+  const { data } = await api.post<RecordingSession>(
+    `/dataset/sessions/${encodeURIComponent(id)}/stop`,
+  )
   return data
 }
 
 export async function cancelRecordingSession(id: string): Promise<RecordingSession> {
-  const { data } = await api.post<RecordingSession>(`/dataset/sessions/${encodeURIComponent(id)}/cancel`)
+  const { data } = await api.post<RecordingSession>(
+    `/dataset/sessions/${encodeURIComponent(id)}/cancel`,
+  )
   return data
 }
 
@@ -272,7 +266,6 @@ export async function runRecorderBackfill(req: BackfillRequest): Promise<Backfil
   const { data } = await api.post<BackfillResult>('/dataset/recorder/backfill', req)
   return data
 }
-
 
 export interface ProactiveSubscriptionStatus {
   max_tokens: number

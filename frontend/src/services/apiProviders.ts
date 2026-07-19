@@ -5,8 +5,9 @@
  * tab and the Backtest Studio dataset picker.
  */
 import axios from 'axios'
+import { attachApiInterceptors } from './apiClient'
 
-const api = axios.create({ baseURL: '/api', timeout: 600_000 })
+const api = attachApiInterceptors(axios.create({ baseURL: '/api', timeout: 600_000 }))
 
 // ─── Provider catalog ─────────────────────────────────────────────────
 
@@ -69,21 +70,15 @@ export async function listPolybacktestMarkets(params: {
   resolved?: boolean
   limit?: number
 }): Promise<PolybacktestMarketsPage> {
-  const { data } = await api.get<PolybacktestMarketsPage>(
-    '/providers/polybacktest/markets',
-    { params },
-  )
+  const { data } = await api.get<PolybacktestMarketsPage>('/providers/polybacktest/markets', {
+    params,
+  })
   return data
 }
 
 // ─── Imports ──────────────────────────────────────────────────────────
 
-export type ImportJobStatus =
-  | 'queued'
-  | 'running'
-  | 'completed'
-  | 'failed'
-  | 'cancelled'
+export type ImportJobStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled'
 
 export interface ImportJob {
   id: string
@@ -238,7 +233,6 @@ export async function updateProviderSettings(
   return data
 }
 
-
 // ─── Parquet datasets (operator-supplied vendor data) ────────────────
 
 /** Per-root status — the scanner walks every entry; UI shows
@@ -386,7 +380,6 @@ export async function updateStorageLocation(
   return data
 }
 
-
 // ─── Telonex (markets catalog, availability, import, quota) ──────────
 
 export interface TelonexCatalogStatus {
@@ -483,8 +476,12 @@ export interface TelonexImportRequest {
   outcome_id?: number | null
 }
 
-export async function getTelonexCatalogStatus(exchange = 'polymarket'): Promise<TelonexCatalogStatus> {
-  const { data } = await api.get<TelonexCatalogStatus>('/providers/telonex/catalog', { params: { exchange } })
+export async function getTelonexCatalogStatus(
+  exchange = 'polymarket',
+): Promise<TelonexCatalogStatus> {
+  const { data } = await api.get<TelonexCatalogStatus>('/providers/telonex/catalog', {
+    params: { exchange },
+  })
   return data
 }
 
@@ -497,11 +494,10 @@ export async function refreshTelonexCatalog(exchange = 'polymarket'): Promise<{
   elapsed_seconds: number
 }> {
   // The catalog parquet is ~660MB — give the request a long timeout.
-  const { data } = await api.post(
-    '/providers/telonex/catalog/refresh',
-    null,
-    { params: { exchange }, timeout: 600_000 },
-  )
+  const { data } = await api.post('/providers/telonex/catalog/refresh', null, {
+    params: { exchange },
+    timeout: 600_000,
+  })
   return data
 }
 
@@ -534,7 +530,9 @@ export async function getTelonexAvailability(params: {
   return data
 }
 
-export async function getTelonexChannels(exchange = 'polymarket'): Promise<{ exchange: string; channels: string[] }> {
+export async function getTelonexChannels(
+  exchange = 'polymarket',
+): Promise<{ exchange: string; channels: string[] }> {
   const { data } = await api.get('/providers/telonex/channels', { params: { exchange } })
   return data
 }

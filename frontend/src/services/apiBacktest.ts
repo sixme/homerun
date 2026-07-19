@@ -1,6 +1,7 @@
 import axios from 'axios'
+import { attachApiInterceptors } from './apiClient'
 
-const api = axios.create({ baseURL: '/api', timeout: 600000 })
+const api = attachApiInterceptors(axios.create({ baseURL: '/api', timeout: 600000 }))
 
 export interface MetricCI {
   value: number
@@ -416,7 +417,9 @@ export async function getBacktestRunStatus(runId: string): Promise<BacktestRunSt
   return data
 }
 
-export async function cancelBacktestRun(runId: string): Promise<{ run_id: string; cancel_requested: boolean }> {
+export async function cancelBacktestRun(
+  runId: string,
+): Promise<{ run_id: string; cancel_requested: boolean }> {
   const { data } = await api.post<{ run_id: string; cancel_requested: boolean }>(
     `/backtest/runs/${encodeURIComponent(runId)}/cancel`,
   )
@@ -439,10 +442,9 @@ export async function deleteBacktestRun(
  *  browser download.  Throws on 5xx (e.g. 503 if WeasyPrint isn't
  *  installed) so the UI can surface a helpful message. */
 export async function downloadBacktestRunPdf(runId: string): Promise<Blob> {
-  const res = await api.get<Blob>(
-    `/backtest/runs/${encodeURIComponent(runId)}/report.pdf`,
-    { responseType: 'blob' },
-  )
+  const res = await api.get<Blob>(`/backtest/runs/${encodeURIComponent(runId)}/report.pdf`, {
+    responseType: 'blob',
+  })
   return res.data
 }
 
@@ -455,13 +457,10 @@ export interface BulkDeleteResult {
   skipped_active: string[]
   not_found: string[]
 }
-export async function bulkDeleteBacktestRuns(
-  runIds: string[],
-): Promise<BulkDeleteResult> {
-  const { data } = await api.post<BulkDeleteResult>(
-    '/backtest/runs/bulk-delete',
-    { run_ids: runIds },
-  )
+export async function bulkDeleteBacktestRuns(runIds: string[]): Promise<BulkDeleteResult> {
+  const { data } = await api.post<BulkDeleteResult>('/backtest/runs/bulk-delete', {
+    run_ids: runIds,
+  })
   return data
 }
 
@@ -471,7 +470,9 @@ export async function listBacktestRuns(): Promise<BacktestRunSummary[]> {
 }
 
 export async function getBacktestRun(runId: string): Promise<UnifiedBacktestResult> {
-  const { data } = await api.get<UnifiedBacktestResult>(`/backtest/runs/${encodeURIComponent(runId)}`)
+  const { data } = await api.get<UnifiedBacktestResult>(
+    `/backtest/runs/${encodeURIComponent(runId)}`,
+  )
   return data
 }
 
