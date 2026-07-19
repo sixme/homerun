@@ -1,15 +1,12 @@
 import axios from 'axios'
-import { normalizeUtcTimestampsInPlace } from '../lib/timestamps'
+import { attachApiInterceptors } from './apiClient'
 
 const API_BASE = '/api/discovery'
-const discoveryHttp = axios.create({
-  timeout: 60000,
-})
-
-discoveryHttp.interceptors.response.use((response) => {
-  normalizeUtcTimestampsInPlace(response.data)
-  return response
-})
+const discoveryHttp = attachApiInterceptors(
+  axios.create({
+    timeout: 60000,
+  }),
+)
 
 export interface DiscoveredWallet {
   address: string
@@ -411,27 +408,29 @@ export interface PoolMembersResponse {
 }
 
 export const discoveryApi = {
-  getLeaderboard: async (params: {
-    limit?: number
-    offset?: number
-    min_trades?: number
-    min_resolved_positions?: number
-    min_pnl?: number
-    insider_only?: boolean
-    min_insider_score?: number
-    sort_by?: string
-    sort_dir?: string
-    tags?: string
-    recommendation?: string
-    time_period?: string
-    active_within_hours?: number
-    min_activity_score?: number
-    pool_only?: boolean
-    tier?: string
-    search?: string
-    unique_entities_only?: boolean
-    market_category?: string
-  } = {}) => {
+  getLeaderboard: async (
+    params: {
+      limit?: number
+      offset?: number
+      min_trades?: number
+      min_resolved_positions?: number
+      min_pnl?: number
+      insider_only?: boolean
+      min_insider_score?: number
+      sort_by?: string
+      sort_dir?: string
+      tags?: string
+      recommendation?: string
+      time_period?: string
+      active_within_hours?: number
+      min_activity_score?: number
+      pool_only?: boolean
+      tier?: string
+      search?: string
+      unique_entities_only?: boolean
+      market_category?: string
+    } = {},
+  ) => {
     const { data } = await discoveryHttp.get(`${API_BASE}/leaderboard`, { params })
     return data
   },
@@ -475,51 +474,79 @@ export const discoveryApi = {
     return data
   },
 
-  recomputePool: async (mode: PoolRecomputeMode): Promise<{ status: string; mode: PoolRecomputeMode; pool_stats: PoolStats }> => {
+  recomputePool: async (
+    mode: PoolRecomputeMode,
+  ): Promise<{ status: string; mode: PoolRecomputeMode; pool_stats: PoolStats }> => {
     const { data } = await discoveryHttp.post(`${API_BASE}/pool/actions/recompute`, null, {
       params: { mode },
     })
     return data
   },
 
-  getPoolMembers: async (params: {
-    limit?: number
-    offset?: number
-    pool_only?: boolean
-    tracked_only?: boolean
-    include_blacklisted?: boolean
-    tier?: 'core' | 'rising'
-    search?: string
-    min_win_rate?: number
-    sort_by?: 'selection_score' | 'composite_score' | 'quality_score' | 'activity_score' | 'trades_24h' | 'trades_1h' | 'total_trades' | 'total_pnl' | 'win_rate' | 'last_trade_at' | 'rank_score'
-    sort_dir?: 'asc' | 'desc'
-  } = {}): Promise<PoolMembersResponse> => {
+  getPoolMembers: async (
+    params: {
+      limit?: number
+      offset?: number
+      pool_only?: boolean
+      tracked_only?: boolean
+      include_blacklisted?: boolean
+      tier?: 'core' | 'rising'
+      search?: string
+      min_win_rate?: number
+      sort_by?:
+        | 'selection_score'
+        | 'composite_score'
+        | 'quality_score'
+        | 'activity_score'
+        | 'trades_24h'
+        | 'trades_1h'
+        | 'total_trades'
+        | 'total_pnl'
+        | 'win_rate'
+        | 'last_trade_at'
+        | 'rank_score'
+      sort_dir?: 'asc' | 'desc'
+    } = {},
+  ): Promise<PoolMembersResponse> => {
     const { data } = await discoveryHttp.get(`${API_BASE}/pool/members`, { params })
     return data
   },
 
   poolManualInclude: async (address: string, reason?: string): Promise<{ status: string }> => {
-    const { data } = await discoveryHttp.post(`${API_BASE}/pool/members/${address}/manual-include`, reason ? { reason } : undefined)
+    const { data } = await discoveryHttp.post(
+      `${API_BASE}/pool/members/${address}/manual-include`,
+      reason ? { reason } : undefined,
+    )
     return data
   },
 
   clearPoolManualInclude: async (address: string): Promise<{ status: string }> => {
-    const { data } = await discoveryHttp.delete(`${API_BASE}/pool/members/${address}/manual-include`)
+    const { data } = await discoveryHttp.delete(
+      `${API_BASE}/pool/members/${address}/manual-include`,
+    )
     return data
   },
 
   poolManualExclude: async (address: string, reason?: string): Promise<{ status: string }> => {
-    const { data } = await discoveryHttp.post(`${API_BASE}/pool/members/${address}/manual-exclude`, reason ? { reason } : undefined)
+    const { data } = await discoveryHttp.post(
+      `${API_BASE}/pool/members/${address}/manual-exclude`,
+      reason ? { reason } : undefined,
+    )
     return data
   },
 
   clearPoolManualExclude: async (address: string): Promise<{ status: string }> => {
-    const { data } = await discoveryHttp.delete(`${API_BASE}/pool/members/${address}/manual-exclude`)
+    const { data } = await discoveryHttp.delete(
+      `${API_BASE}/pool/members/${address}/manual-exclude`,
+    )
     return data
   },
 
   blacklistPoolWallet: async (address: string, reason?: string): Promise<{ status: string }> => {
-    const { data } = await discoveryHttp.post(`${API_BASE}/pool/members/${address}/blacklist`, reason ? { reason } : undefined)
+    const { data } = await discoveryHttp.post(
+      `${API_BASE}/pool/members/${address}/blacklist`,
+      reason ? { reason } : undefined,
+    )
     return data
   },
 
@@ -533,28 +560,34 @@ export const discoveryApi = {
     return data
   },
 
-  promoteTrackedWalletsToPool: async (limit = 300): Promise<{ status: string; promoted: number; created: number; updated: number }> => {
+  promoteTrackedWalletsToPool: async (
+    limit = 300,
+  ): Promise<{ status: string; promoted: number; created: number; updated: number }> => {
     const { data } = await discoveryHttp.post(`${API_BASE}/pool/actions/promote-tracked`, null, {
       params: { limit },
     })
     return data
   },
 
-  getTradersOverview: async (params: {
-    tracked_limit?: number
-    confluence_limit?: number
-    hours?: number
-  } = {}): Promise<TradersOverview> => {
+  getTradersOverview: async (
+    params: {
+      tracked_limit?: number
+      confluence_limit?: number
+      hours?: number
+    } = {},
+  ): Promise<TradersOverview> => {
     const { data } = await discoveryHttp.get(`${API_BASE}/traders`, { params })
     return data
   },
 
-  getTradersNetworkGraph: async (params: {
-    min_pair_score?: number
-    limit_wallets?: number
-    include_groups?: boolean
-    include_clusters?: boolean
-  } = {}): Promise<TradersNetworkGraph> => {
+  getTradersNetworkGraph: async (
+    params: {
+      min_pair_score?: number
+      limit_wallets?: number
+      include_groups?: boolean
+      include_clusters?: boolean
+    } = {},
+  ): Promise<TradersNetworkGraph> => {
     const { data } = await discoveryHttp.get(`${API_BASE}/traders/network`, { params })
     return data
   },
@@ -587,13 +620,23 @@ export const discoveryApi = {
       add_to_tracking?: boolean
       source_label?: string
     },
-  ): Promise<{ status: string; added_members: number; tracked_members: number; group: TraderGroup | null }> => {
+  ): Promise<{
+    status: string
+    added_members: number
+    tracked_members: number
+    group: TraderGroup | null
+  }> => {
     const { data } = await discoveryHttp.post(`${API_BASE}/groups/${groupId}/members`, payload)
     return data
   },
 
-  removeTraderGroupMember: async (groupId: string, walletAddress: string): Promise<{ status: string }> => {
-    const { data } = await discoveryHttp.delete(`${API_BASE}/groups/${groupId}/members/${walletAddress}`)
+  removeTraderGroupMember: async (
+    groupId: string,
+    walletAddress: string,
+  ): Promise<{ status: string }> => {
+    const { data } = await discoveryHttp.delete(
+      `${API_BASE}/groups/${groupId}/members/${walletAddress}`,
+    )
     return data
   },
 
@@ -602,16 +645,20 @@ export const discoveryApi = {
     return data
   },
 
-  trackTraderGroupMembers: async (groupId: string): Promise<{ status: string; tracked_members: number }> => {
+  trackTraderGroupMembers: async (
+    groupId: string,
+  ): Promise<{ status: string; tracked_members: number }> => {
     const { data } = await discoveryHttp.post(`${API_BASE}/groups/${groupId}/track`)
     return data
   },
 
-  getTraderGroupSuggestions: async (params: {
-    min_group_size?: number
-    max_suggestions?: number
-    min_composite_score?: number
-  } = {}): Promise<TraderGroupSuggestion[]> => {
+  getTraderGroupSuggestions: async (
+    params: {
+      min_group_size?: number
+      max_suggestions?: number
+      min_composite_score?: number
+    } = {},
+  ): Promise<TraderGroupSuggestion[]> => {
     const { data } = await discoveryHttp.get(`${API_BASE}/groups/suggestions`, { params })
     return data.suggestions || []
   },

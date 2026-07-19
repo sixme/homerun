@@ -1,18 +1,12 @@
 import axios from 'axios'
-import { normalizeUtcTimestampsInPlace } from '../lib/timestamps'
+import { attachApiInterceptors } from './apiClient'
 import { normalizeCountryCode } from '../lib/worldCountries'
 
-const api = axios.create({
-  baseURL: '/api',
-  timeout: 30000,
-})
-
-api.interceptors.response.use(
-  (response) => {
-    normalizeUtcTimestampsInPlace(response.data)
-    return response
-  },
-  (error) => Promise.reject(error)
+const api = attachApiInterceptors(
+  axios.create({
+    baseURL: '/api',
+    timeout: 30000,
+  }),
 )
 
 // ==================== TYPES ====================
@@ -158,8 +152,10 @@ function dedupeInstabilityScores(scores: InstabilityScore[]): InstabilityScore[]
   const byIso3 = new Map<string, InstabilityScore>()
   for (const score of scores) {
     const canonicalIso3 =
-      normalizeCountryCode(score.iso3 || score.country_name || score.country)
-      || String(score.iso3 || '').trim().toUpperCase()
+      normalizeCountryCode(score.iso3 || score.country_name || score.country) ||
+      String(score.iso3 || '')
+        .trim()
+        .toUpperCase()
     if (!canonicalIso3) continue
     const normalized: InstabilityScore = {
       ...score,
@@ -208,7 +204,7 @@ export async function getInstabilityScores(params?: {
   limit?: number
 }): Promise<{ scores: InstabilityScore[]; total: number }> {
   const { data } = await api.get('/events/instability', { params })
-  const rawScores = Array.isArray(data?.scores) ? data.scores as InstabilityScore[] : []
+  const rawScores = Array.isArray(data?.scores) ? (data.scores as InstabilityScore[]) : []
   const scores = dedupeInstabilityScores(rawScores)
   return {
     ...data,

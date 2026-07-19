@@ -17,6 +17,8 @@ SECONDARY_CLIENTS = (
     "apiTopicCatalog.ts",
     "apiProviders.ts",
     "apiReverseEngineer.ts",
+    "discoveryApi.ts",
+    "eventsApi.ts",
 )
 
 
