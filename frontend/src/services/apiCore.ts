@@ -200,7 +200,10 @@ export interface SimulationAccount {
   id: string
   name: string
   initial_capital: number
+  /** Free cash after open fills debit entry cost (not total equity). */
   current_capital: number
+  /** Free cash + open inventory mark when provided by the API. */
+  equity?: number
   total_pnl: number
   roi_percent: number
   total_trades: number
@@ -212,6 +215,31 @@ export interface SimulationAccount {
   book_value: number
   market_value: number
   created_at: string | null
+}
+
+/** Desk equity = free cash + open market value (fallback if equity omitted). */
+export function simulationAccountEquity(account: SimulationAccount): number {
+  if (typeof account.equity === 'number' && Number.isFinite(account.equity)) {
+    return account.equity
+  }
+  return (account.current_capital || 0) + (account.market_value || 0)
+}
+
+/** Mark-to-market total P&L vs initial capital (consistent with equity/ROI). */
+export function simulationAccountTotalPnl(account: SimulationAccount): number {
+  return simulationAccountEquity(account) - (account.initial_capital || 0)
+}
+
+export function simulationAccountRoiPercent(account: SimulationAccount): number {
+  const initial = account.initial_capital || 0
+  if (initial <= 0) return 0
+  if (typeof account.roi_percent === 'number' && Number.isFinite(account.roi_percent)) {
+    // Prefer API equity-based ROI when present and equity is known.
+    if (typeof account.equity === 'number' && Number.isFinite(account.equity)) {
+      return account.roi_percent
+    }
+  }
+  return (simulationAccountTotalPnl(account) / initial) * 100
 }
 
 export interface TradingPosition {

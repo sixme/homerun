@@ -51,6 +51,9 @@ import {
   getTradingBalance,
   getTradingPositions,
   getTradingStatus,
+  simulationAccountEquity,
+  simulationAccountRoiPercent,
+  simulationAccountTotalPnl,
 } from '../services/api'
 
 type AccountsWorkspaceTab = 'overview' | 'sandbox' | 'live'
@@ -421,30 +424,40 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
       (sum, account) => sum + (account.initial_capital || 0),
       0,
     )
-    const totalCapital = sandboxAccounts.reduce(
+    // Free cash (available to open new size) — not total equity.
+    const freeCash = sandboxAccounts.reduce(
       (sum, account) => sum + (account.current_capital || 0),
       0,
     )
-    const realizedPnl = sandboxAccounts.reduce((sum, account) => sum + (account.total_pnl || 0), 0)
-    const unrealizedPnl = sandboxAccounts.reduce(
-      (sum, account) => sum + (account.unrealized_pnl || 0),
+    // Mark-to-market equity = free cash + open inventory value.
+    const totalEquity = sandboxAccounts.reduce(
+      (sum, account) => sum + simulationAccountEquity(account),
       0,
     )
-    const totalPnl = realizedPnl + unrealizedPnl
+    // True desk P&L / ROI must match equity vs initial, not realized-only.
+    const totalPnl = sandboxAccounts.reduce(
+      (sum, account) => sum + simulationAccountTotalPnl(account),
+      0,
+    )
     const totalTrades = sandboxAccounts.reduce(
       (sum, account) => sum + (account.total_trades || 0),
       0,
     )
+    // open_positions is the sim desk inventory count; only overlay bot counts
+    // when the desk ledger still reports zero (legacy unledgered shadow fills).
     const totalOpenPositions =
       sandboxAccounts.reduce((sum, account) => sum + (account.open_positions || 0), 0) +
       autotraderOverlay.openPositions
     const roi = totalInitial > 0 ? (totalPnl / totalInitial) * 100 : 0
-    const deployableCapital = Math.max(0, totalCapital - autotraderOverlay.exposureUsd)
+    const deployableCapital = Math.max(0, freeCash - autotraderOverlay.exposureUsd)
 
     return {
       count: sandboxAccounts.length,
       totalInitial,
-      totalCapital,
+      freeCash,
+      totalEquity,
+      /** @deprecated use totalEquity; kept for any remaining free-cash misreads */
+      totalCapital: totalEquity,
       deployableCapital,
       totalPnl,
       roi,
@@ -613,7 +626,7 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
     const sandboxRows = sandboxAccounts.map((account) => ({
       id: account.id,
       label: `${t('accounts.modeSandbox')} · ${account.name}`,
-      value: account.current_capital || 0,
+      value: simulationAccountEquity(account),
       tone: 'amber' as const,
     }))
 
@@ -801,8 +814,9 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
       : 0
   const selectedSandboxOpenPositions =
     (activeSandboxAccount?.open_positions || 0) + selectedSandboxOverlayOpen
-  const selectedSandboxTotalPnl =
-    (activeSandboxAccount?.total_pnl || 0) + (activeSandboxAccount?.unrealized_pnl || 0)
+  const selectedSandboxTotalPnl = activeSandboxAccount
+    ? simulationAccountTotalPnl(activeSandboxAccount)
+    : 0
 
   const activeLiveVenue: LiveVenue = selectedAccountId === 'live:kalshi' ? 'kalshi' : 'polymarket'
   const activeLiveSnapshot = activeLiveVenue === 'kalshi' ? kalshiSnapshot : polymarketSnapshot
@@ -909,12 +923,12 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
           <div className="grid grid-cols-2 gap-2 p-2.5 md:grid-cols-4 xl:grid-cols-8">
             <DenseMetric
               label={t('accounts.simEquity')}
-              value={formatUsd(sandboxMetrics.deployableCapital)}
+              value={formatUsd(sandboxMetrics.totalEquity)}
               hint={
-                sandboxMetrics.autotraderOverlay.exposureUsd > 0
-                  ? t('accounts.ledgerDeployedHint', {
-                      ledger: formatUsd(sandboxMetrics.totalCapital),
-                      deployed: formatUsd(sandboxMetrics.autotraderOverlay.exposureUsd),
+                sandboxMetrics.freeCash !== sandboxMetrics.totalEquity
+                  ? t('accounts.freeCashHint', {
+                      defaultValue: 'Cash {{cash}}',
+                      cash: formatUsd(sandboxMetrics.freeCash),
                     })
                   : t('accounts.accountsCount', { n: sandboxMetrics.count })
               }
@@ -967,7 +981,7 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
             />
             <DenseMetric
               label={t('accounts.fleetBalance')}
-              value={formatUsd(sandboxMetrics.totalCapital + liveMetrics.totalBalance)}
+              value={formatUsd(sandboxMetrics.totalEquity + liveMetrics.totalBalance)}
               hint={t('accounts.simulationPlusLive')}
               icon={Wallet}
             />
@@ -1081,7 +1095,10 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                               : 0
                           const totalOpenPositions =
                             (account.open_positions || 0) + autotraderOpenPositions
-                          const totalPnl = (account.total_pnl || 0) + (account.unrealized_pnl || 0)
+                          const equity = simulationAccountEquity(account)
+                          const totalPnl = simulationAccountTotalPnl(account)
+                          const roiPct = simulationAccountRoiPercent(account)
+                          const freeCash = account.current_capital || 0
                           const isSelected = selectedAccountId === account.id
                           return (
                             <tr
@@ -1111,7 +1128,15 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                                 </button>
                               </td>
                               <td className="px-3 py-2 text-right font-mono">
-                                {formatUsd(account.current_capital || 0)}
+                                <p>{formatUsd(equity)}</p>
+                                {Math.abs(equity - freeCash) > 0.005 && (
+                                  <p className="text-[10px] text-muted-foreground">
+                                    {t('accounts.cashSubline', {
+                                      defaultValue: 'Cash {{cash}}',
+                                      cash: formatUsd(freeCash),
+                                    })}
+                                  </p>
+                                )}
                               </td>
                               <td className="px-3 py-2 text-right font-mono">
                                 <span
@@ -1122,13 +1147,9 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                               </td>
                               <td className="px-3 py-2 text-right font-mono">
                                 <span
-                                  className={cn(
-                                    (account.roi_percent || 0) >= 0
-                                      ? 'text-green-400'
-                                      : 'text-red-400',
-                                  )}
+                                  className={cn(roiPct >= 0 ? 'text-green-400' : 'text-red-400')}
                                 >
-                                  {formatSignedPct(account.roi_percent || 0)}
+                                  {formatSignedPct(roiPct)}
                                 </span>
                               </td>
                               <td className="px-3 py-2 text-right font-mono">
@@ -1343,7 +1364,8 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                 ) : (
                   sandboxAccounts.map((account) => {
                     const isActive = activeSandboxAccountId === account.id
-                    const totalPnl = (account.total_pnl || 0) + (account.unrealized_pnl || 0)
+                    const totalPnl = simulationAccountTotalPnl(account)
+                    const equity = simulationAccountEquity(account)
                     const autotraderPositions =
                       sandboxMetrics.autotraderOverlay.accountId === account.id
                         ? sandboxMetrics.autotraderOverlay.openPositions
@@ -1383,7 +1405,7 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                         <p className="text-[9px] text-muted-foreground">
                           {t('accounts.openCapitalLine', {
                             n: account.open_positions + autotraderPositions,
-                            value: formatUsd(account.current_capital || 0),
+                            value: formatUsd(equity),
                           })}
                         </p>
                       </button>
@@ -1432,7 +1454,9 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                 </p>
                 <p className="text-[10px] text-muted-foreground">
                   {t('accounts.roiPrefix', {
-                    value: formatSignedPct(activeSandboxAccount?.roi_percent || 0),
+                    value: formatSignedPct(
+                      activeSandboxAccount ? simulationAccountRoiPercent(activeSandboxAccount) : 0,
+                    ),
                   })}
                 </p>
               </div>
