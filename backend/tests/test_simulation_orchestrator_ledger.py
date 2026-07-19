@@ -1,3 +1,4 @@
+import asyncio
 import sys
 import uuid
 from pathlib import Path
@@ -289,5 +290,68 @@ async def test_record_orchestrator_shadow_fill_succeeds_with_bare_buy_direction(
             assert position is not None
             assert position.side == PositionSide.YES
             assert position.token_id == "token-yes"
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_concurrent_shadow_fills_cannot_overspend_desk_capital(tmp_path):
+    """Two overlapping debits on the same desk must serialize on free cash.
+
+    Without FOR UPDATE both transactions can observe $100 and each debit $80,
+    leaving capital at -$60. With the row lock, exactly one fill succeeds.
+    """
+    engine, session_factory = await _build_session_factory(tmp_path)
+    service = SimulationService()
+    account_id = uuid.uuid4().hex
+    try:
+        async with session_factory() as session:
+            session.add(
+                SimulationAccount(
+                    id=account_id,
+                    name="Race Desk",
+                    initial_capital=100.0,
+                    current_capital=100.0,
+                )
+            )
+            await session.commit()
+
+        async def _attempt_fill(signal_id: str) -> str:
+            async with session_factory() as session:
+                try:
+                    await service.record_orchestrator_shadow_fill(
+                        account_id=account_id,
+                        trader_id="trader-race",
+                        signal_id=signal_id,
+                        market_id=f"market-{signal_id}",
+                        market_question="Race fill",
+                        direction="buy_yes",
+                        notional_usd=80.0,
+                        entry_price=0.5,
+                        strategy_type="race_test",
+                        token_id=f"token-{signal_id}",
+                        session=session,
+                        commit=True,
+                    )
+                    return "ok"
+                except ValueError as exc:
+                    await session.rollback()
+                    return str(exc)
+
+        outcomes = await asyncio.gather(
+            _attempt_fill("sig-a"),
+            _attempt_fill("sig-b"),
+        )
+        ok_count = sum(1 for o in outcomes if o == "ok")
+        reject_count = sum(1 for o in outcomes if "Insufficient shadow capital" in o)
+        assert ok_count == 1, outcomes
+        assert reject_count == 1, outcomes
+
+        async with session_factory() as session:
+            account = await session.get(SimulationAccount, account_id)
+            assert account is not None
+            assert float(account.current_capital) == pytest.approx(20.0, rel=1e-9)
+            assert float(account.current_capital) >= 0.0
+            assert int(account.total_trades) == 1
     finally:
         await engine.dispose()

@@ -96,6 +96,23 @@ class SimulationService:
     DB_RETRY_MAX_DELAY_SECONDS = 1.5
 
     @staticmethod
+    async def _lock_account_for_update(
+        session: AsyncSession,
+        account_id: str,
+    ) -> SimulationAccount | None:
+        """Load a simulation account row with a write lock.
+
+        Concurrent shadow fills / closes share one desk cash balance. Without
+        ``FOR UPDATE``, two transactions can both read the same free cash and
+        both debit past zero. Row lock serializes capital mutations for the
+        account until commit/rollback.
+        """
+        result = await session.execute(
+            select(SimulationAccount).where(SimulationAccount.id == account_id).with_for_update()
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
     def _direction_to_position_side(
         direction: str,
         payload: Optional[dict[str, Any]] = None,
@@ -330,8 +347,8 @@ class SimulationService:
     ) -> SimulationTrade:
         """Execute an arbitrage opportunity in simulation"""
         async with AsyncSessionLocal() as session:
-            # Get account
-            account = await session.get(SimulationAccount, account_id)
+            # Lock account so concurrent opportunity executes cannot overspend.
+            account = await self._lock_account_for_update(session, account_id)
             if not account:
                 raise ValueError(f"Account not found: {account_id}")
 
@@ -444,7 +461,8 @@ class SimulationService:
             if normalized_entry_price <= 0:
                 raise ValueError("Shadow fill entry price must be greater than 0.")
 
-            account = await session.get(SimulationAccount, account_id)
+            # Row-lock desk cash before check+debit so concurrent fills serialize.
+            account = await self._lock_account_for_update(session, account_id)
             if account is None:
                 raise ValueError(f"Shadow account not found: {account_id}")
 
@@ -573,7 +591,8 @@ class SimulationService:
 
             normalized_close_price = max(0.0, float(close_price or 0.0))
 
-            account = await session.get(SimulationAccount, account_id)
+            # Lock account before credit so concurrent open/close cannot clobber cash.
+            account = await self._lock_account_for_update(session, account_id)
             if account is None:
                 raise ValueError(f"Shadow account not found: {account_id}")
 
@@ -697,7 +716,9 @@ class SimulationService:
             if trade.status != TradeStatus.OPEN:
                 raise ValueError(f"Trade already resolved: {trade.status}")
 
-            account = await session.get(SimulationAccount, trade.account_id)
+            account = await self._lock_account_for_update(session, str(trade.account_id))
+            if account is None:
+                raise ValueError(f"Account not found for trade: {trade.account_id}")
 
             # Calculate payout
             payout = 0.0
