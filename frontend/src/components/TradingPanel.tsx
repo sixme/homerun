@@ -1,4 +1,14 @@
-import { Fragment, lazy, Suspense, type ReactNode, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  Fragment,
+  lazy,
+  Suspense,
+  type ReactNode,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -26,11 +36,7 @@ import {
   XCircle,
   Zap,
 } from 'lucide-react'
-import {
-  getCryptoMarkets,
-  getSimulationAccounts,
-  getWallets,
-} from '../services/apiCore'
+import { getCryptoMarkets, getSimulationAccounts, getWallets } from '../services/apiCore'
 import type { CryptoMarket } from '../services/apiCore'
 import {
   activateTrader,
@@ -92,11 +98,27 @@ import type { TraderTuneAgentResponse } from '../services/apiIntelligence'
 import { discoveryApi } from '../services/discoveryApi'
 import { cn } from '../lib/utils'
 import { getTraderOrderPlatformLinks } from '../lib/marketUrls'
-import { accountModeAtom, draftDescriptionAtom, draftIntervalAtom, draftNameAtom, draftRiskValuesAtom, draftTradingScheduleAtom, selectedAccountIdAtom, themeAtom } from '../store/atoms'
+import {
+  accountModeAtom,
+  draftDescriptionAtom,
+  draftIntervalAtom,
+  draftNameAtom,
+  draftRiskValuesAtom,
+  draftTradingScheduleAtom,
+  selectedAccountIdAtom,
+  themeAtom,
+} from '../store/atoms'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import { Card } from './ui/card'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
 import { ScrollArea } from './ui/scroll-area'
@@ -162,11 +184,15 @@ const TERMINAL_VERBOSITY_RANK: Record<TerminalVerbosity, number> = {
   shout: 4,
 }
 const TERMINAL_VOLUME_OPTIONS: { value: TerminalVolume; label: string; hint: string }[] = [
-  { value: 'off',     label: 'Off',     hint: 'Firehose silenced — only the existing event stream' },
-  { value: 'whisper', label: 'Whisper', hint: 'Every gate evaluation, every market — full firehose' },
-  { value: 'murmur',  label: 'Murmur',  hint: 'Real candidates that died on a meaningful gate' },
-  { value: 'voice',   label: 'Voice',   hint: 'Opportunities emitted (passed every gate)' },
-  { value: 'shout',   label: 'Shout',   hint: 'Orders only — ignore upstream chatter' },
+  { value: 'off', label: 'Off', hint: 'Firehose silenced — only the existing event stream' },
+  {
+    value: 'whisper',
+    label: 'Whisper',
+    hint: 'Every gate evaluation, every market — full firehose',
+  },
+  { value: 'murmur', label: 'Murmur', hint: 'Real candidates that died on a meaningful gate' },
+  { value: 'voice', label: 'Voice', hint: 'Opportunities emitted (passed every gate)' },
+  { value: 'shout', label: 'Shout', hint: 'Orders only — ignore upstream chatter' },
 ]
 type TraderToggleAction = 'start' | 'stop' | 'activate' | 'deactivate'
 type ExecutionLatencyStageKey =
@@ -496,7 +522,8 @@ type LatencyGroupRow = {
   latencyLabel: string
 }
 
-type StrategyParamGroupKey = 'signal' | 'scope' | 'timing' | 'entry' | 'sizing' | 'exit' | 'risk' | 'advanced'
+type StrategyParamGroupKey =
+  'signal' | 'scope' | 'timing' | 'entry' | 'sizing' | 'exit' | 'risk' | 'advanced'
 
 type StrategyParamGroup = {
   key: StrategyParamGroupKey
@@ -565,7 +592,13 @@ const CRYPTO_SPIKE_REVERSION_PARAM_FIELDS = [
   { key: 'take_profit_pct', label: 'Take Profit (%)', type: 'number', min: 0 },
   { key: 'stop_loss_pct', label: 'Stop Loss (%)', type: 'number', min: 0 },
   { key: 'max_hold_minutes', label: 'Max Hold (min)', type: 'number', min: 0 },
-  { key: 'liquidity_cap_fraction', label: 'Liquidity Cap Fraction', type: 'number', min: 0, max: 1 },
+  {
+    key: 'liquidity_cap_fraction',
+    label: 'Liquidity Cap Fraction',
+    type: 'number',
+    min: 0,
+    max: 1,
+  },
   { key: 'min_liquidity_usd', label: 'Min Liquidity (USD)', type: 'number', min: 0 },
   { key: 'max_entry_price', label: 'Max Entry Price', type: 'number', min: 0, max: 1 },
   { key: 'max_markets_per_event', label: 'Max Markets per Event', type: 'integer', min: 1 },
@@ -579,10 +612,28 @@ const CRYPTO_ENTROPY_MAKER_PARAM_FIELDS = [
   { key: 'max_spread_pct', label: 'Max Spread', type: 'number', min: 0, max: 1 },
   { key: 'max_spread_widening_bps', label: 'Max Spread Widening (bps)', type: 'number', min: 0 },
   { key: 'max_cancel_rate_30s', label: 'Max Cancel Rate 30s', type: 'number', min: 0, max: 1 },
-  { key: 'min_prior_peak_cancel_rate', label: 'Min Prior Peak Cancel Rate', type: 'number', min: 0, max: 1 },
+  {
+    key: 'min_prior_peak_cancel_rate',
+    label: 'Min Prior Peak Cancel Rate',
+    type: 'number',
+    min: 0,
+    max: 1,
+  },
   { key: 'min_cancel_drop', label: 'Min Cancel Drop', type: 'number', min: 0, max: 1 },
-  { key: 'min_orderflow_alignment', label: 'Min Orderflow Alignment', type: 'number', min: 0, max: 1 },
-  { key: 'min_recent_move_zscore', label: 'Min Recent Move Z-Score', type: 'number', min: 0, max: 10 },
+  {
+    key: 'min_orderflow_alignment',
+    label: 'Min Orderflow Alignment',
+    type: 'number',
+    min: 0,
+    max: 1,
+  },
+  {
+    key: 'min_recent_move_zscore',
+    label: 'Min Recent Move Z-Score',
+    type: 'number',
+    min: 0,
+    max: 10,
+  },
   { key: 'min_liquidity_usd', label: 'Min Liquidity (USD)', type: 'number', min: 0 },
   { key: 'min_order_size_usd', label: 'Min Order Size (USD)', type: 'number', min: 0 },
   { key: 'base_size_usd', label: 'Base Size (USD)', type: 'number', min: 0 },
@@ -596,7 +647,12 @@ const CRYPTO_ENTROPY_MAKER_PARAM_FIELDS = [
 
 const CRYPTO_STRATEGY_OPTIONS = [
   { key: 'btc_eth_maker_quote', label: 'Crypto Maker Quote', default_params: {}, param_fields: [] },
-  { key: 'btc_eth_directional_edge', label: 'Crypto Directional Edge', default_params: {}, param_fields: [] },
+  {
+    key: 'btc_eth_directional_edge',
+    label: 'Crypto Directional Edge',
+    default_params: {},
+    param_fields: [],
+  },
   { key: 'btc_eth_convergence', label: 'Crypto Convergence', default_params: {}, param_fields: [] },
   {
     key: 'crypto_spike_reversion',
@@ -833,7 +889,15 @@ const FALLBACK_TRADER_SOURCES: TraderSource[] = [
     description: 'News-driven intents and event reactions.',
     domains: ['event_markets'],
     signal_types: ['news_intent'],
-    strategy_options: [{ key: 'news_edge', label: 'News Edge', description: '', default_params: {}, param_fields: [] }],
+    strategy_options: [
+      {
+        key: 'news_edge',
+        label: 'News Edge',
+        description: '',
+        default_params: {},
+        param_fields: [],
+      },
+    ],
   },
   {
     key: 'scanner',
@@ -841,7 +905,15 @@ const FALLBACK_TRADER_SOURCES: TraderSource[] = [
     description: 'Scanner-originated arbitrage opportunities.',
     domains: ['event_markets'],
     signal_types: ['opportunity'],
-    strategy_options: [{ key: 'basic', label: 'Opportunity General', description: '', default_params: {}, param_fields: [] }],
+    strategy_options: [
+      {
+        key: 'basic',
+        label: 'Opportunity General',
+        description: '',
+        default_params: {},
+        param_fields: [],
+      },
+    ],
   },
   {
     key: 'traders',
@@ -849,7 +921,15 @@ const FALLBACK_TRADER_SOURCES: TraderSource[] = [
     description: 'Tracked/pool/individual/group trader activity signals.',
     domains: ['event_markets'],
     signal_types: ['confluence'],
-    strategy_options: [{ key: 'traders_confluence', label: 'Traders Confluence', description: '', default_params: {}, param_fields: [] }],
+    strategy_options: [
+      {
+        key: 'traders_confluence',
+        label: 'Traders Confluence',
+        description: '',
+        default_params: {},
+        param_fields: [],
+      },
+    ],
   },
   {
     key: 'weather',
@@ -857,7 +937,15 @@ const FALLBACK_TRADER_SOURCES: TraderSource[] = [
     description: 'Weather forecast probability dislocations.',
     domains: ['event_markets'],
     signal_types: ['weather_intent'],
-    strategy_options: [{ key: 'weather_distribution', label: 'Weather Distribution', description: '', default_params: {}, param_fields: [] }],
+    strategy_options: [
+      {
+        key: 'weather_distribution',
+        label: 'Weather Distribution',
+        description: '',
+        default_params: {},
+        param_fields: [],
+      },
+    ],
   },
 ]
 
@@ -893,7 +981,6 @@ type StrategyOption = {
 
 const STABLE_OUTCOME_LABELS_BY_MARKET_SIDE = new Map<string, string>()
 
-
 function toNumber(value: unknown): number {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : 0
@@ -923,101 +1010,136 @@ function normalizePendingExitTerminalStatusesCsv(value: string): string[] {
 
 function buildGlobalSettingsDraft(
   config: TraderOrchestratorConfig | null | undefined,
-  liveExecutionSettings: {
-    max_trade_size_usd?: number | null
-    max_daily_trade_volume?: number | null
-    max_slippage_percent?: number | null
-    min_account_balance_usd?: number | null
-  } | null | undefined,
+  liveExecutionSettings:
+    | {
+        max_trade_size_usd?: number | null
+        max_daily_trade_volume?: number | null
+        max_slippage_percent?: number | null
+        min_account_balance_usd?: number | null
+      }
+    | null
+    | undefined,
 ): GlobalSettingsDraft {
   const globalRisk = config?.global_risk || DEFAULT_ORCHESTRATOR_GLOBAL_RISK
   const runtime = config?.global_runtime || DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME
-  const pending = runtime.pending_live_exit_guard || DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.pending_live_exit_guard
+  const pending =
+    runtime.pending_live_exit_guard || DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.pending_live_exit_guard
   const clamps = runtime.live_risk_clamps || DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.live_risk_clamps
-  const marketContext = runtime.live_market_context || DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.live_market_context
-  const providerHealth = runtime.live_provider_health || DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.live_provider_health
+  const marketContext =
+    runtime.live_market_context || DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.live_market_context
+  const providerHealth =
+    runtime.live_provider_health || DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.live_provider_health
   const pendingTerminalStatuses = toStringList(pending.terminal_statuses)
-  const maxOpenPositions = clamps.max_open_positions_cap != null
-    ? Math.trunc(clampNumber(toNumber(clamps.max_open_positions_cap), 1, 1000, 1000))
-    : null
+  const maxOpenPositions =
+    clamps.max_open_positions_cap != null
+      ? Math.trunc(clampNumber(toNumber(clamps.max_open_positions_cap), 1, 1000, 1000))
+      : null
   return {
     runIntervalSeconds: String(config?.run_interval_seconds ?? 5),
-    maxGrossExposureUsd: String(globalRisk.max_gross_exposure_usd ?? DEFAULT_ORCHESTRATOR_GLOBAL_RISK.max_gross_exposure_usd),
-    maxDailyLossUsd: String(globalRisk.max_daily_loss_usd ?? DEFAULT_ORCHESTRATOR_GLOBAL_RISK.max_daily_loss_usd),
-    maxOrdersPerCycle: String(globalRisk.max_orders_per_cycle ?? DEFAULT_ORCHESTRATOR_GLOBAL_RISK.max_orders_per_cycle),
-    maxTradeSizeUsd: String(liveExecutionSettings?.max_trade_size_usd ?? DEFAULT_LIVE_EXECUTION_LIMITS.max_trade_size_usd),
+    maxGrossExposureUsd: String(
+      globalRisk.max_gross_exposure_usd ?? DEFAULT_ORCHESTRATOR_GLOBAL_RISK.max_gross_exposure_usd,
+    ),
+    maxDailyLossUsd: String(
+      globalRisk.max_daily_loss_usd ?? DEFAULT_ORCHESTRATOR_GLOBAL_RISK.max_daily_loss_usd,
+    ),
+    maxOrdersPerCycle: String(
+      globalRisk.max_orders_per_cycle ?? DEFAULT_ORCHESTRATOR_GLOBAL_RISK.max_orders_per_cycle,
+    ),
+    maxTradeSizeUsd: String(
+      liveExecutionSettings?.max_trade_size_usd ?? DEFAULT_LIVE_EXECUTION_LIMITS.max_trade_size_usd,
+    ),
     maxDailyTradeVolumeUsd: String(
-      liveExecutionSettings?.max_daily_trade_volume ?? DEFAULT_LIVE_EXECUTION_LIMITS.max_daily_trade_volume
+      liveExecutionSettings?.max_daily_trade_volume ??
+        DEFAULT_LIVE_EXECUTION_LIMITS.max_daily_trade_volume,
     ),
     minAccountBalanceUsd: String(
-      liveExecutionSettings?.min_account_balance_usd ?? DEFAULT_LIVE_EXECUTION_LIMITS.min_account_balance_usd
+      liveExecutionSettings?.min_account_balance_usd ??
+        DEFAULT_LIVE_EXECUTION_LIMITS.min_account_balance_usd,
     ),
     maxOpenPositions: maxOpenPositions != null ? String(maxOpenPositions) : '',
     maxSlippagePercent: String(
-      liveExecutionSettings?.max_slippage_percent ?? DEFAULT_LIVE_EXECUTION_LIMITS.max_slippage_percent
+      liveExecutionSettings?.max_slippage_percent ??
+        DEFAULT_LIVE_EXECUTION_LIMITS.max_slippage_percent,
     ),
-    pendingExitMaxAllowed: String(pending.max_pending_exits ?? DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.pending_live_exit_guard.max_pending_exits),
+    pendingExitMaxAllowed: String(
+      pending.max_pending_exits ??
+        DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.pending_live_exit_guard.max_pending_exits,
+    ),
     pendingExitIdentityGuardEnabled: Boolean(
-      pending.identity_guard_enabled ?? DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.pending_live_exit_guard.identity_guard_enabled
+      pending.identity_guard_enabled ??
+      DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.pending_live_exit_guard.identity_guard_enabled,
     ),
-    pendingExitTerminalStatuses: (
-      pendingTerminalStatuses.length > 0
-        ? pendingTerminalStatuses
-        : [...DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.pending_live_exit_guard.terminal_statuses]
+    pendingExitTerminalStatuses: (pendingTerminalStatuses.length > 0
+      ? pendingTerminalStatuses
+      : [...DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.pending_live_exit_guard.terminal_statuses]
     ).join(', '),
     enforceAllowAveragingOff: Boolean(clamps.enforce_allow_averaging_off),
-    minCooldownSeconds: clamps.min_cooldown_seconds != null ? String(clamps.min_cooldown_seconds) : '',
-    maxConsecutiveLossesCap: clamps.max_consecutive_losses_cap != null ? String(clamps.max_consecutive_losses_cap) : '',
+    minCooldownSeconds:
+      clamps.min_cooldown_seconds != null ? String(clamps.min_cooldown_seconds) : '',
+    maxConsecutiveLossesCap:
+      clamps.max_consecutive_losses_cap != null ? String(clamps.max_consecutive_losses_cap) : '',
     maxOpenOrdersCap: clamps.max_open_orders_cap != null ? String(clamps.max_open_orders_cap) : '',
-    maxTradeNotionalUsdCap: clamps.max_trade_notional_usd_cap != null ? String(clamps.max_trade_notional_usd_cap) : '',
-    maxOrdersPerCycleCap: clamps.max_orders_per_cycle_cap != null ? String(clamps.max_orders_per_cycle_cap) : '',
+    maxTradeNotionalUsdCap:
+      clamps.max_trade_notional_usd_cap != null ? String(clamps.max_trade_notional_usd_cap) : '',
+    maxOrdersPerCycleCap:
+      clamps.max_orders_per_cycle_cap != null ? String(clamps.max_orders_per_cycle_cap) : '',
     enforceHaltOnConsecutiveLosses: Boolean(clamps.enforce_halt_on_consecutive_losses),
-    maxDailySpendUsdCap: clamps.max_daily_spend_usd_cap != null ? String(clamps.max_daily_spend_usd_cap) : '',
+    maxDailySpendUsdCap:
+      clamps.max_daily_spend_usd_cap != null ? String(clamps.max_daily_spend_usd_cap) : '',
     maxSpreadBpsCap: clamps.max_spread_bps_cap != null ? String(clamps.max_spread_bps_cap) : '',
     slippageBpsCap: clamps.slippage_bps_cap != null ? String(clamps.slippage_bps_cap) : '',
     retryLimitCap: clamps.retry_limit_cap != null ? String(clamps.retry_limit_cap) : '',
-    retryBackoffMsCap: clamps.retry_backoff_ms_cap != null ? String(clamps.retry_backoff_ms_cap) : '',
-    orderTtlSecondsCap: clamps.order_ttl_seconds_cap != null ? String(clamps.order_ttl_seconds_cap) : '',
+    retryBackoffMsCap:
+      clamps.retry_backoff_ms_cap != null ? String(clamps.retry_backoff_ms_cap) : '',
+    orderTtlSecondsCap:
+      clamps.order_ttl_seconds_cap != null ? String(clamps.order_ttl_seconds_cap) : '',
     liveMarketContextEnabled: Boolean(
-      marketContext.enabled ?? DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.live_market_context.enabled
+      marketContext.enabled ?? DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.live_market_context.enabled,
     ),
     liveMarketHistoryWindowSeconds: String(
-      marketContext.history_window_seconds
-      ?? DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.live_market_context.history_window_seconds
+      marketContext.history_window_seconds ??
+        DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.live_market_context.history_window_seconds,
     ),
     liveMarketHistoryFidelitySeconds: String(
-      marketContext.history_fidelity_seconds
-      ?? DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.live_market_context.history_fidelity_seconds
+      marketContext.history_fidelity_seconds ??
+        DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.live_market_context.history_fidelity_seconds,
     ),
     liveMarketHistoryMaxPoints: String(
-      marketContext.max_history_points ?? DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.live_market_context.max_history_points
+      marketContext.max_history_points ??
+        DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.live_market_context.max_history_points,
     ),
     liveMarketContextTimeoutSeconds: String(
-      marketContext.timeout_seconds ?? DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.live_market_context.timeout_seconds
+      marketContext.timeout_seconds ??
+        DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.live_market_context.timeout_seconds,
     ),
     liveMarketStrictWsPricingOnly: Boolean(
-      marketContext.strict_ws_pricing_only
-      ?? DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.live_market_context.strict_ws_pricing_only
+      marketContext.strict_ws_pricing_only ??
+      DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.live_market_context.strict_ws_pricing_only,
     ),
     liveMarketMaxMarketDataAgeMs: String(
-      marketContext.max_market_data_age_ms
-      ?? DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.live_market_context.max_market_data_age_ms
+      marketContext.max_market_data_age_ms ??
+        DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.live_market_context.max_market_data_age_ms,
     ),
     liveProviderHealthWindowSeconds: String(
-      providerHealth.window_seconds ?? DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.live_provider_health.window_seconds
+      providerHealth.window_seconds ??
+        DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.live_provider_health.window_seconds,
     ),
     liveProviderHealthMinErrors: String(
-      providerHealth.min_errors ?? DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.live_provider_health.min_errors
+      providerHealth.min_errors ??
+        DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.live_provider_health.min_errors,
     ),
     liveProviderHealthBlockSeconds: String(
-      providerHealth.block_seconds ?? DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.live_provider_health.block_seconds
+      providerHealth.block_seconds ??
+        DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.live_provider_health.block_seconds,
     ),
-    traderCycleTimeoutSeconds: runtime.trader_cycle_timeout_seconds === null
-      ? ''
-      : String(runtime.trader_cycle_timeout_seconds),
-    runtimeTriggerCycleTimeoutSeconds: runtime.runtime_trigger_cycle_timeout_seconds == null
-      ? ''
-      : String(runtime.runtime_trigger_cycle_timeout_seconds),
+    traderCycleTimeoutSeconds:
+      runtime.trader_cycle_timeout_seconds === null
+        ? ''
+        : String(runtime.trader_cycle_timeout_seconds),
+    runtimeTriggerCycleTimeoutSeconds:
+      runtime.runtime_trigger_cycle_timeout_seconds == null
+        ? ''
+        : String(runtime.runtime_trigger_cycle_timeout_seconds),
   }
 }
 
@@ -1032,7 +1154,9 @@ function toStringList(value: unknown): string[] {
 }
 
 function normalizeCryptoTimeframe(value: unknown): string | null {
-  const tf = String(value || '').trim().toLowerCase()
+  const tf = String(value || '')
+    .trim()
+    .toLowerCase()
   if (!tf) return null
   if (tf === '5m' || tf === '5min' || tf === '5') return '5m'
   if (tf === '15m' || tf === '15min' || tf === '15') return '15m'
@@ -1042,7 +1166,9 @@ function normalizeCryptoTimeframe(value: unknown): string | null {
 }
 
 function normalizeStatus(value: string | null | undefined): string {
-  return String(value || 'unknown').trim().toLowerCase()
+  return String(value || 'unknown')
+    .trim()
+    .toLowerCase()
 }
 
 function toTs(value: string | null | undefined): number {
@@ -1133,10 +1259,12 @@ const BOT_MODAL_SERIES_COLORS_DARK = ['#38bdf8', '#a78bfa', '#f59e0b', '#22d3ee'
 const BOT_MODAL_SERIES_COLORS_LIGHT = ['#0284c7', '#7c3aed', '#d97706', '#0e7490', '#c2410c']
 
 function formatSeriesLabel(value: string): string {
-  return String(value || '')
-    .trim()
-    .replace(/[_-]+/g, ' ')
-    .replace(/\b\w/g, (char) => char.toUpperCase()) || 'Series'
+  return (
+    String(value || '')
+      .trim()
+      .replace(/[_-]+/g, ' ')
+      .replace(/\b\w/g, (char) => char.toUpperCase()) || 'Series'
+  )
 }
 
 function buildFlatLivelineSeries(
@@ -1158,7 +1286,14 @@ function historyPointTimestampSeconds(point: Record<string, unknown> | unknown[]
     if (rawTime === null) return null
     return Math.max(1, toUnixSeconds(rawTime))
   }
-  const raw = point.t ?? point.ts ?? point.time ?? point.timestamp ?? point.date ?? point.created_at ?? point.updated_at
+  const raw =
+    point.t ??
+    point.ts ??
+    point.time ??
+    point.timestamp ??
+    point.date ??
+    point.created_at ??
+    point.updated_at
   const numeric = toFiniteNumber(raw)
   if (numeric !== null) return Math.max(1, toUnixSeconds(numeric))
   const isoTs = toTs(typeof raw === 'string' ? raw : null)
@@ -1168,13 +1303,15 @@ function historyPointTimestampSeconds(point: Record<string, unknown> | unknown[]
 
 function historyPointBinaryPrice(
   point: Record<string, unknown> | unknown[],
-  directionSide: DirectionSide | null
+  directionSide: DirectionSide | null,
 ): number | null {
   if (Array.isArray(point)) {
     const yes = toFiniteNumber(point[1] ?? point[0])
     const no = toFiniteNumber(point[2])
-    if (directionSide === 'YES') return yes ?? (no !== null ? Math.max(0, Math.min(1, 1 - no)) : null)
-    if (directionSide === 'NO') return no ?? (yes !== null ? Math.max(0, Math.min(1, 1 - yes)) : null)
+    if (directionSide === 'YES')
+      return yes ?? (no !== null ? Math.max(0, Math.min(1, 1 - no)) : null)
+    if (directionSide === 'NO')
+      return no ?? (yes !== null ? Math.max(0, Math.min(1, 1 - yes)) : null)
     return yes ?? no
   }
 
@@ -1182,8 +1319,10 @@ function historyPointBinaryPrice(
   const no = toFiniteNumber(point.no ?? point.n ?? point.idx_1 ?? point.down ?? point.down_price)
   const mid = toFiniteNumber(point.p ?? point.price ?? point.mid ?? point.value)
 
-  if (directionSide === 'YES') return yes ?? mid ?? (no !== null ? Math.max(0, Math.min(1, 1 - no)) : null)
-  if (directionSide === 'NO') return no ?? mid ?? (yes !== null ? Math.max(0, Math.min(1, 1 - yes)) : null)
+  if (directionSide === 'YES')
+    return yes ?? mid ?? (no !== null ? Math.max(0, Math.min(1, 1 - no)) : null)
+  if (directionSide === 'NO')
+    return no ?? mid ?? (yes !== null ? Math.max(0, Math.min(1, 1 - yes)) : null)
   return yes ?? mid ?? no
 }
 
@@ -1212,17 +1351,16 @@ function extractLivelinePointsFromOrders(
     const orderSide = resolveOrderDirectionPresentation(order).side || directionSide
     const payload = isRecord(order.payload) ? order.payload : {}
     const liveMarket = isRecord(payload.live_market) ? payload.live_market : {}
-    const historyCandidates = [
-      liveMarket.history_tail,
-      payload.history_tail,
-      payload.price_history,
-    ]
+    const historyCandidates = [liveMarket.history_tail, payload.history_tail, payload.price_history]
     for (const history of historyCandidates) {
       if (!Array.isArray(history)) continue
       for (const entry of history) {
         if (!Array.isArray(entry) && !isRecord(entry)) continue
         const ts = historyPointTimestampSeconds(entry as Record<string, unknown> | unknown[])
-        const value = historyPointBinaryPrice(entry as Record<string, unknown> | unknown[], orderSide)
+        const value = historyPointBinaryPrice(
+          entry as Record<string, unknown> | unknown[],
+          orderSide,
+        )
         if (ts === null || value === null) continue
         points.push({ time: ts, value })
       }
@@ -1236,7 +1374,7 @@ function extractLivelinePointsFromOrders(
       snapshot.updatedAt,
       order.updated_at,
       order.executed_at,
-      order.created_at
+      order.created_at,
     )
     const tsMs = toTs(tsRaw)
     if (tsMs <= 0) continue
@@ -1296,7 +1434,8 @@ function buildBotMarketLivelineSeries(params: {
 
   const livePrice = toFiniteNumber(markPrice ?? entryPrice)
   const nowSec = Math.floor(Date.now() / 1000)
-  const openedSec = toTs(openedAt) > 0 ? Math.floor(toTs(openedAt) / 1000) : Math.max(1, nowSec - 120)
+  const openedSec =
+    toTs(openedAt) > 0 ? Math.floor(toTs(openedAt) / 1000) : Math.max(1, nowSec - 120)
   const updatedSec = toTs(updatedAt) > 0 ? Math.floor(toTs(updatedAt) / 1000) : nowSec
 
   if (deduped.length === 0) {
@@ -1321,16 +1460,25 @@ function buildBotMarketLivelineSeries(params: {
     }
   }
 
-  const cap = (arr: LivelinePoint[]) => arr.length <= 800 ? arr : arr.slice(arr.length - 800)
+  const cap = (arr: LivelinePoint[]) => (arr.length <= 800 ? arr : arr.slice(arr.length - 800))
   return { primary: cap(deduped), complement: cap(complement) }
 }
 
-function marketMatchesCryptoIdentity(value: string | null | undefined, market: CryptoMarket | null): boolean {
+function marketMatchesCryptoIdentity(
+  value: string | null | undefined,
+  market: CryptoMarket | null,
+): boolean {
   if (!market) return false
-  const key = String(value || '').trim().toLowerCase()
+  const key = String(value || '')
+    .trim()
+    .toLowerCase()
   if (!key) return false
   const candidates = [market.id, market.condition_id, market.slug, market.event_slug]
-    .map((candidate) => String(candidate || '').trim().toLowerCase())
+    .map((candidate) =>
+      String(candidate || '')
+        .trim()
+        .toLowerCase(),
+    )
     .filter(Boolean)
   return candidates.includes(key)
 }
@@ -1354,54 +1502,59 @@ type OrderModalSnapshot = {
 
 function resolveOrderModalSnapshot(order: TraderOrder): OrderModalSnapshot {
   const payload = isRecord(order.payload) ? order.payload : {}
-  const providerReconciliation = isRecord(payload.provider_reconciliation) ? payload.provider_reconciliation : {}
-  const providerSnapshot = isRecord(providerReconciliation.snapshot) ? providerReconciliation.snapshot : {}
+  const providerReconciliation = isRecord(payload.provider_reconciliation)
+    ? payload.provider_reconciliation
+    : {}
+  const providerSnapshot = isRecord(providerReconciliation.snapshot)
+    ? providerReconciliation.snapshot
+    : {}
   const positionState = isRecord(payload.position_state) ? payload.position_state : {}
   const status = normalizeStatus(order.status)
   const notionalUsd = Math.abs(toNumber(order.notional_usd))
   const filledNotionalUsd = Math.abs(
     toNumber(
-      order.filled_notional_usd
-      ?? providerReconciliation.filled_notional_usd
-      ?? providerSnapshot.filled_notional_usd
-      ?? order.notional_usd
-    )
+      order.filled_notional_usd ??
+        providerReconciliation.filled_notional_usd ??
+        providerSnapshot.filled_notional_usd ??
+        order.notional_usd,
+    ),
   )
   const filledShares = Math.max(
     0,
     toNumber(
-      order.filled_shares
-      ?? providerReconciliation.filled_size
-      ?? providerSnapshot.filled_size
-      ?? payload.filled_size
-    )
+      order.filled_shares ??
+        providerReconciliation.filled_size ??
+        providerSnapshot.filled_size ??
+        payload.filled_size,
+    ),
   )
   // Prefer real fill/entry over a tick-floor effective_price (e.g. 0.001 vs 0.545).
   const avgFill = toFiniteNumber(
-    order.average_fill_price
-    ?? providerReconciliation.average_fill_price
-    ?? providerSnapshot.average_fill_price
+    order.average_fill_price ??
+      providerReconciliation.average_fill_price ??
+      providerSnapshot.average_fill_price,
   )
   const rawEntry = toFiniteNumber(order.entry_price)
   const rawEffective = toFiniteNumber(order.effective_price)
   let entryPrice = avgFill
   if (entryPrice === null || entryPrice < 0.01) {
     if (rawEntry !== null && rawEntry > 0 && rawEffective !== null && rawEffective > 0) {
-      const ratio = Math.max(rawEntry, rawEffective) / Math.max(Math.min(rawEntry, rawEffective), 1e-9)
-      entryPrice = (ratio <= 3 && rawEffective >= 0.01) ? rawEffective : rawEntry
+      const ratio =
+        Math.max(rawEntry, rawEffective) / Math.max(Math.min(rawEntry, rawEffective), 1e-9)
+      entryPrice = ratio <= 3 && rawEffective >= 0.01 ? rawEffective : rawEntry
     } else {
       entryPrice = rawEntry ?? rawEffective
     }
   }
   const markPrice = toFiniteNumber(
-    order.current_price
-    ?? positionState.last_mark_price
-    ?? payload.market_price
-    ?? payload.resolved_price
+    order.current_price ??
+      positionState.last_mark_price ??
+      payload.market_price ??
+      payload.resolved_price,
   )
   let unrealizedPnl = toFiniteNumber(order.unrealized_pnl)
   if (unrealizedPnl === null && markPrice !== null && filledShares > 0 && filledNotionalUsd > 0) {
-    unrealizedPnl = (markPrice * filledShares) - filledNotionalUsd
+    unrealizedPnl = markPrice * filledShares - filledNotionalUsd
   }
   // Realized: prefer stored actual_profit; recompute from entry/close when
   // the stored value is outside feasible binary bounds (tick-floor bugs).
@@ -1409,18 +1562,18 @@ function resolveOrderModalSnapshot(order: TraderOrder): OrderModalSnapshot {
   const closePx = toFiniteNumber(positionClose.close_price)
   let realizedPnl = toNumber(order.actual_profit)
   if (
-    RESOLVED_ORDER_STATUSES.has(status)
-    && entryPrice !== null
-    && entryPrice >= 0.01
-    && closePx !== null
-    && closePx >= 0
-    && filledNotionalUsd > 0
+    RESOLVED_ORDER_STATUSES.has(status) &&
+    entryPrice !== null &&
+    entryPrice >= 0.01 &&
+    closePx !== null &&
+    closePx >= 0 &&
+    filledNotionalUsd > 0
   ) {
-    const shares = filledShares > 0 ? filledShares : (filledNotionalUsd / entryPrice)
+    const shares = filledShares > 0 ? filledShares : filledNotionalUsd / entryPrice
     const lo = -filledNotionalUsd
     const hi = shares - filledNotionalUsd
     if (realizedPnl < lo - 0.05 || realizedPnl > hi + 0.05) {
-      realizedPnl = (shares * closePx) - filledNotionalUsd
+      realizedPnl = shares * closePx - filledNotionalUsd
     }
   }
   return {
@@ -1434,8 +1587,14 @@ function resolveOrderModalSnapshot(order: TraderOrder): OrderModalSnapshot {
     realizedPnl,
     edgePercent: toFiniteNumber(order.edge_percent),
     confidencePercent: toFiniteNumber(order.confidence),
-    source: String(order.source || '').trim().toUpperCase() || 'UNKNOWN',
-    mode: String(order.mode || '').trim().toUpperCase() || 'N/A',
+    source:
+      String(order.source || '')
+        .trim()
+        .toUpperCase() || 'UNKNOWN',
+    mode:
+      String(order.mode || '')
+        .trim()
+        .toUpperCase() || 'N/A',
     updatedAt: resolveOrderMarketUpdateTimestamp(order, payload),
     createdAt: cleanText(order.created_at) || cleanText(order.executed_at),
   }
@@ -1485,13 +1644,7 @@ function computeOrderDynamicEdgePercent(params: {
   realizedPnl: number
   filledNotional: number
 }): number {
-  const {
-    status,
-    edgePercent,
-    unrealizedPnl,
-    realizedPnl,
-    filledNotional,
-  } = params
+  const { status, edgePercent, unrealizedPnl, realizedPnl, filledNotional } = params
   if (OPEN_ORDER_STATUSES.has(status) && unrealizedPnl !== null && filledNotional > 0) {
     return (unrealizedPnl / filledNotional) * 100
   }
@@ -1507,26 +1660,20 @@ function computeOrderFillProgressPercent(
     filledSize: number
     filledNotional: number
     requestedNotionalFallback: number
-  }
+  },
 ): number | null {
-  const {
-    filledSize,
-    filledNotional,
-    requestedNotionalFallback,
-  } = params
-  const requestedSize = (
-    toFiniteNumber(payload.requested_shares)
-    ?? toFiniteNumber(payload.requested_size)
-    ?? toFiniteNumber(payload.shares)
-  )
+  const { filledSize, filledNotional, requestedNotionalFallback } = params
+  const requestedSize =
+    toFiniteNumber(payload.requested_shares) ??
+    toFiniteNumber(payload.requested_size) ??
+    toFiniteNumber(payload.shares)
   if (requestedSize !== null && requestedSize > 0) {
     return clamp((Math.max(0, filledSize) / requestedSize) * 100, 0, 100)
   }
-  const requestedNotional = (
-    toFiniteNumber(payload.requested_notional_usd)
-    ?? toFiniteNumber(payload.effective_notional_usd)
-    ?? (requestedNotionalFallback > 0 ? requestedNotionalFallback : null)
-  )
+  const requestedNotional =
+    toFiniteNumber(payload.requested_notional_usd) ??
+    toFiniteNumber(payload.effective_notional_usd) ??
+    (requestedNotionalFallback > 0 ? requestedNotionalFallback : null)
   if (requestedNotional !== null && requestedNotional > 0) {
     return clamp((Math.max(0, filledNotional) / requestedNotional) * 100, 0, 100)
   }
@@ -1552,7 +1699,9 @@ function shortId(value: string | null | undefined): string {
 }
 
 function normalizeMarketAlias(value: unknown): string {
-  return String(value || '').trim().toLowerCase()
+  return String(value || '')
+    .trim()
+    .toLowerCase()
 }
 
 function collectMarketAliases(values: unknown[]): string[] {
@@ -1631,7 +1780,7 @@ function compactText(value: string | null | undefined, maxChars = 96): string {
 function buildOrderMarketLinks(
   order: TraderOrder,
   payload: Record<string, unknown>,
-  signalPayload: Record<string, unknown> | null = null
+  signalPayload: Record<string, unknown> | null = null,
 ): { polymarket: string | null; kalshi: string | null } {
   const mergedPayload = signalPayload ? { ...signalPayload, ...payload } : payload
   const links = getTraderOrderPlatformLinks({
@@ -1647,9 +1796,10 @@ function buildOrderMarketLinks(
   }
 }
 
-function resolveTradeDisplayRowLinks(
-  displayRow: TradeTableDisplayRow,
-): { polymarket: string | null; kalshi: string | null } {
+function resolveTradeDisplayRowLinks(displayRow: TradeTableDisplayRow): {
+  polymarket: string | null
+  kalshi: string | null
+} {
   if (displayRow.kind === 'single') {
     return displayRow.row.links
   }
@@ -1675,33 +1825,32 @@ function collectTradeDisplayRowMarketAliasIds(displayRow: TradeTableDisplayRow):
 
 function buildTradeDisplayRowModalTitle(displayRow: TradeTableDisplayRow): string {
   if (displayRow.kind === 'single') {
-    return String(displayRow.row.order.market_question || displayRow.row.order.market_id || 'Unknown market')
+    return String(
+      displayRow.row.order.market_question || displayRow.row.order.market_id || 'Unknown market',
+    )
   }
-  const primaryLabel = (
-    cleanText(displayRow.bundle.legs[0]?.market_question)
-    || cleanText(displayRow.primaryRow.order.market_question)
-    || shortId(displayRow.primaryRow.order.market_id)
-  )
+  const primaryLabel =
+    cleanText(displayRow.bundle.legs[0]?.market_question) ||
+    cleanText(displayRow.primaryRow.order.market_question) ||
+    shortId(displayRow.primaryRow.order.market_id)
   return displayRow.bundle.leg_count > 1
     ? `${primaryLabel} +${displayRow.bundle.leg_count - 1} more`
     : primaryLabel
 }
 
 function isTraderExecutionEnabled(
-  trader: Pick<Trader, 'is_enabled' | 'is_paused'> | null | undefined
+  trader: Pick<Trader, 'is_enabled' | 'is_paused'> | null | undefined,
 ): boolean {
-  return Boolean(trader?.is_enabled) && !Boolean(trader?.is_paused)
+  return Boolean(trader?.is_enabled) && !trader?.is_paused
 }
 
-function isTraderActive(
-  trader: Pick<Trader, 'is_enabled'> | null | undefined
-): boolean {
+function isTraderActive(trader: Pick<Trader, 'is_enabled'> | null | undefined): boolean {
   return Boolean(trader?.is_enabled)
 }
 
 function resolveTraderStatusPresentation(
   trader: Pick<Trader, 'is_enabled' | 'is_paused'> | null | undefined,
-  orchestratorExecutionActive: boolean
+  orchestratorExecutionActive: boolean,
 ): TraderStatusPresentation {
   if (!isTraderActive(trader)) {
     return {
@@ -1713,7 +1862,7 @@ function resolveTraderStatusPresentation(
     }
   }
 
-  if (Boolean(trader?.is_paused)) {
+  if (trader?.is_paused) {
     return {
       key: 'bot_stopped',
       label: 'Bot Stopped',
@@ -1743,7 +1892,9 @@ function resolveTraderStatusPresentation(
 }
 
 function titleCaseStatusLabel(value: string): string {
-  const normalized = String(value || '').trim().toLowerCase()
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase()
   if (!normalized) return 'Unknown'
   return normalized
     .split('_')
@@ -1768,7 +1919,10 @@ function resolveOrderLifecycleLabel(status: string): string {
   return titleCaseStatusLabel(status)
 }
 
-function resolveVenueStatusPresentation(order: TraderOrder, providerSnapshotStatus: string): {
+function resolveVenueStatusPresentation(
+  order: TraderOrder,
+  providerSnapshotStatus: string,
+): {
   label: string
   detail: string
   className: string
@@ -1781,43 +1935,65 @@ function resolveVenueStatusPresentation(order: TraderOrder, providerSnapshotStat
   if (verificationStatus === 'disputed') {
     return {
       label: 'Disputed',
-      detail: verificationReason || 'Venue history is inconsistent and this row is excluded from normal trading truth.',
-      className: 'border-red-300 bg-red-100 text-red-900 dark:border-red-400/60 dark:bg-red-500/25 dark:text-red-200',
+      detail:
+        verificationReason ||
+        'Venue history is inconsistent and this row is excluded from normal trading truth.',
+      className:
+        'border-red-300 bg-red-100 text-red-900 dark:border-red-400/60 dark:bg-red-500/25 dark:text-red-200',
     }
   }
   if (verificationStatus === 'summary_only') {
     return {
       label: 'Summary',
-      detail: verificationReason || 'Recovered only from closed-position summary data, not direct order/trade lineage.',
-      className: 'border-amber-300 bg-amber-100 text-amber-900 dark:border-amber-400/60 dark:bg-amber-500/25 dark:text-amber-200',
+      detail:
+        verificationReason ||
+        'Recovered only from closed-position summary data, not direct order/trade lineage.',
+      className:
+        'border-amber-300 bg-amber-100 text-amber-900 dark:border-amber-400/60 dark:bg-amber-500/25 dark:text-amber-200',
     }
   }
   if (verificationStatus === 'wallet_activity') {
     return {
       label: 'Wallet',
-      detail: verificationReason || verificationSource || 'Verified from wallet trade/activity authority.',
-      className: 'border-emerald-300 bg-emerald-100 text-emerald-900 dark:border-emerald-400/60 dark:bg-emerald-500/25 dark:text-emerald-200',
+      detail:
+        verificationReason ||
+        verificationSource ||
+        'Verified from wallet trade/activity authority.',
+      className:
+        'border-emerald-300 bg-emerald-100 text-emerald-900 dark:border-emerald-400/60 dark:bg-emerald-500/25 dark:text-emerald-200',
     }
   }
   if (verificationStatus === 'wallet_position') {
     return {
       label: 'Wallet',
-      detail: verificationReason || verificationSource || 'Verified from current execution wallet holdings.',
-      className: 'border-sky-300 bg-sky-100 text-sky-900 dark:border-sky-400/60 dark:bg-sky-500/25 dark:text-sky-200',
+      detail:
+        verificationReason ||
+        verificationSource ||
+        'Verified from current execution wallet holdings.',
+      className:
+        'border-sky-300 bg-sky-100 text-sky-900 dark:border-sky-400/60 dark:bg-sky-500/25 dark:text-sky-200',
     }
   }
   if (verificationStatus === 'venue_order' && !key) {
     return {
       label: 'Acked',
-      detail: verificationReason || verificationSource || 'Venue order acknowledgement exists, but no current fill snapshot was preserved.',
-      className: 'border-sky-300 bg-sky-100 text-sky-900 dark:border-sky-400/60 dark:bg-sky-500/25 dark:text-sky-200',
+      detail:
+        verificationReason ||
+        verificationSource ||
+        'Venue order acknowledgement exists, but no current fill snapshot was preserved.',
+      className:
+        'border-sky-300 bg-sky-100 text-sky-900 dark:border-sky-400/60 dark:bg-sky-500/25 dark:text-sky-200',
     }
   }
   if (verificationStatus === 'venue_fill' && !key) {
     return {
       label: 'Verified',
-      detail: verificationReason || verificationSource || 'Venue fill authority exists without a current snapshot status.',
-      className: 'border-emerald-300 bg-emerald-100 text-emerald-900 dark:border-emerald-400/60 dark:bg-emerald-500/25 dark:text-emerald-200',
+      detail:
+        verificationReason ||
+        verificationSource ||
+        'Venue fill authority exists without a current snapshot status.',
+      className:
+        'border-emerald-300 bg-emerald-100 text-emerald-900 dark:border-emerald-400/60 dark:bg-emerald-500/25 dark:text-emerald-200',
     }
   }
   if (verificationStatus === 'local' && !key) {
@@ -1831,42 +2007,48 @@ function resolveVenueStatusPresentation(order: TraderOrder, providerSnapshotStat
     return {
       label: 'Filled',
       detail: 'Venue reports the order as filled.',
-      className: 'border-emerald-300 bg-emerald-100 text-emerald-900 dark:border-emerald-400/60 dark:bg-emerald-500/25 dark:text-emerald-200',
+      className:
+        'border-emerald-300 bg-emerald-100 text-emerald-900 dark:border-emerald-400/60 dark:bg-emerald-500/25 dark:text-emerald-200',
     }
   }
   if (key === 'partially_filled') {
     return {
       label: 'Partial',
       detail: 'Venue reports a partial fill.',
-      className: 'border-sky-300 bg-sky-100 text-sky-900 dark:border-sky-400/60 dark:bg-sky-500/25 dark:text-sky-200',
+      className:
+        'border-sky-300 bg-sky-100 text-sky-900 dark:border-sky-400/60 dark:bg-sky-500/25 dark:text-sky-200',
     }
   }
   if (key === 'open') {
     return {
       label: 'Working',
       detail: 'Venue order remains working on book.',
-      className: 'border-sky-300 bg-sky-100 text-sky-900 dark:border-sky-400/60 dark:bg-sky-500/25 dark:text-sky-200',
+      className:
+        'border-sky-300 bg-sky-100 text-sky-900 dark:border-sky-400/60 dark:bg-sky-500/25 dark:text-sky-200',
     }
   }
   if (key === 'pending') {
     return {
       label: 'Pending',
       detail: 'Venue has accepted but not yet worked the order.',
-      className: 'border-amber-300 bg-amber-100 text-amber-900 dark:border-amber-400/60 dark:bg-amber-500/25 dark:text-amber-200',
+      className:
+        'border-amber-300 bg-amber-100 text-amber-900 dark:border-amber-400/60 dark:bg-amber-500/25 dark:text-amber-200',
     }
   }
   if (key === 'cancelled' || key === 'expired') {
     return {
       label: 'Canceled',
       detail: 'Venue confirms cancellation/expiry.',
-      className: 'border-zinc-300 bg-zinc-100 text-zinc-900 dark:border-zinc-400/45 dark:bg-zinc-500/12 dark:text-zinc-200',
+      className:
+        'border-zinc-300 bg-zinc-100 text-zinc-900 dark:border-zinc-400/45 dark:bg-zinc-500/12 dark:text-zinc-200',
     }
   }
   if (key === 'failed' || key === 'rejected') {
     return {
       label: 'Rejected',
       detail: 'Venue reports failed/rejected execution.',
-      className: 'border-red-300 bg-red-100 text-red-900 dark:border-red-400/60 dark:bg-red-500/25 dark:text-red-200',
+      className:
+        'border-red-300 bg-red-100 text-red-900 dark:border-red-400/60 dark:bg-red-500/25 dark:text-red-200',
     }
   }
   return {
@@ -1890,8 +2072,12 @@ function resolveOrderMarketUpdateTimestamp(
   payloadInput?: Record<string, unknown>,
 ): string {
   const payload = payloadInput ?? (isRecord(order.payload) ? order.payload : {})
-  const providerReconciliation = isRecord(payload.provider_reconciliation) ? payload.provider_reconciliation : {}
-  const providerSnapshot = isRecord(providerReconciliation.snapshot) ? providerReconciliation.snapshot : {}
+  const providerReconciliation = isRecord(payload.provider_reconciliation)
+    ? payload.provider_reconciliation
+    : {}
+  const providerSnapshot = isRecord(providerReconciliation.snapshot)
+    ? providerReconciliation.snapshot
+    : {}
   const positionState = isRecord(payload.position_state) ? payload.position_state : {}
   const liveMarket = isRecord(payload.live_market) ? payload.live_market : {}
   return latestTimestampValue(
@@ -1900,7 +2086,7 @@ function resolveOrderMarketUpdateTimestamp(
     cleanText(providerSnapshot.updated_at),
     cleanText(providerSnapshot.updatedAt),
     cleanText(liveMarket.live_market_fetched_at),
-    cleanText(liveMarket.fetched_at)
+    cleanText(liveMarket.fetched_at),
   )
 }
 
@@ -1914,12 +2100,14 @@ function resolveOrderExitEvaluationTimestamp(
   return latestTimestampValue(
     cleanText(positionState.last_exit_evaluated_at),
     cleanText(pendingExit.last_attempt_at),
-    cleanText(pendingExit.triggered_at)
+    cleanText(pendingExit.triggered_at),
   )
 }
 
 function normalizeDecisionOutcome(value: unknown): Exclude<DecisionOutcomeFilter, 'all'> {
-  const outcome = String(value || '').trim().toLowerCase()
+  const outcome = String(value || '')
+    .trim()
+    .toLowerCase()
   if (outcome === 'selected') return 'selected'
   if (outcome === 'blocked') return 'blocked'
   return 'skipped'
@@ -1969,25 +2157,27 @@ function toFiniteNumber(value: unknown): number | null {
 }
 
 function normalizeTradeAction(value: unknown): TradeAction | null {
-  const key = String(value || '').trim().toLowerCase()
+  const key = String(value || '')
+    .trim()
+    .toLowerCase()
   if (!key) return null
   if (
-    key === 'sell'
-    || key.startsWith('sell_')
-    || key.endsWith('_sell')
-    || key === 'short'
-    || key === 'close'
-    || key === 'exit'
+    key === 'sell' ||
+    key.startsWith('sell_') ||
+    key.endsWith('_sell') ||
+    key === 'short' ||
+    key === 'close' ||
+    key === 'exit'
   ) {
     return 'SELL'
   }
   if (
-    key === 'buy'
-    || key.startsWith('buy')
-    || key === 'long'
-    || key === 'open'
-    || key === 'yes'
-    || key === 'no'
+    key === 'buy' ||
+    key.startsWith('buy') ||
+    key === 'long' ||
+    key === 'open' ||
+    key === 'yes' ||
+    key === 'no'
   ) {
     return 'BUY'
   }
@@ -1995,27 +2185,29 @@ function normalizeTradeAction(value: unknown): TradeAction | null {
 }
 
 function normalizeOutcome(value: unknown): 'YES' | 'NO' | null {
-  const key = String(value || '').trim().toLowerCase()
+  const key = String(value || '')
+    .trim()
+    .toLowerCase()
   if (!key) return null
   if (
-    key === 'yes'
-    || key === 'buy_yes'
-    || key === 'sell_yes'
-    || key.endsWith('_yes')
-    || key.startsWith('yes_')
-    || key === 'long'
-    || key === 'up'
+    key === 'yes' ||
+    key === 'buy_yes' ||
+    key === 'sell_yes' ||
+    key.endsWith('_yes') ||
+    key.startsWith('yes_') ||
+    key === 'long' ||
+    key === 'up'
   ) {
     return 'YES'
   }
   if (
-    key === 'no'
-    || key === 'buy_no'
-    || key === 'sell_no'
-    || key.endsWith('_no')
-    || key.startsWith('no_')
-    || key === 'short'
-    || key === 'down'
+    key === 'no' ||
+    key === 'buy_no' ||
+    key === 'sell_no' ||
+    key.endsWith('_no') ||
+    key.startsWith('no_') ||
+    key === 'short' ||
+    key === 'down'
   ) {
     return 'NO'
   }
@@ -2023,25 +2215,45 @@ function normalizeOutcome(value: unknown): 'YES' | 'NO' | null {
 }
 
 function normalizeDirectionSide(value: unknown): DirectionSide | null {
-  const key = String(value || '').trim().toUpperCase().replace(/[\s-]+/g, '_')
+  const key = String(value || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, '_')
   if (!key) return null
-  if (key === 'YES' || key === 'BUY_YES' || key === 'SELL_YES' || key === 'BUY' || key === 'LONG' || key === 'UP') {
+  if (
+    key === 'YES' ||
+    key === 'BUY_YES' ||
+    key === 'SELL_YES' ||
+    key === 'BUY' ||
+    key === 'LONG' ||
+    key === 'UP'
+  ) {
     return 'YES'
   }
-  if (key === 'NO' || key === 'BUY_NO' || key === 'SELL_NO' || key === 'SELL' || key === 'SHORT' || key === 'DOWN') {
+  if (
+    key === 'NO' ||
+    key === 'BUY_NO' ||
+    key === 'SELL_NO' ||
+    key === 'SELL' ||
+    key === 'SHORT' ||
+    key === 'DOWN'
+  ) {
     return 'NO'
   }
   return null
 }
 
 function isGenericDirectionLabel(value: string | null | undefined): boolean {
-  const key = String(value || '').trim().toUpperCase()
+  const key = String(value || '')
+    .trim()
+    .toUpperCase()
   return key === 'YES' || key === 'NO'
 }
 
-function resolveOrderBinaryOutcomeLabels(
-  order: TraderOrder,
-): { yesLabel: string | null; noLabel: string | null } {
+function resolveOrderBinaryOutcomeLabels(order: TraderOrder): {
+  yesLabel: string | null
+  noLabel: string | null
+} {
   let yesLabel = cleanText(order.yes_label)
   let noLabel = cleanText(order.no_label)
   const side = normalizeDirectionSide(order.direction_side ?? order.direction)
@@ -2057,9 +2269,7 @@ function resolveOrderBinaryOutcomeLabels(
   }
 }
 
-function resolveOrderDirectionPresentation(
-  order: TraderOrder,
-): {
+function resolveOrderDirectionPresentation(order: TraderOrder): {
   side: DirectionSide | null
   label: string
   yesLabel: string | null
@@ -2086,21 +2296,21 @@ function resolveOrderDirectionPresentation(
   const stableSideLabel = stableSideKey
     ? STABLE_OUTCOME_LABELS_BY_MARKET_SIDE.get(stableSideKey) || null
     : null
-  const sideLabel = (
+  const sideLabel =
     side === 'YES'
-      ? (binaryLabels.yesLabel || stableSideLabel)
+      ? binaryLabels.yesLabel || stableSideLabel
       : side === 'NO'
-        ? (binaryLabels.noLabel || stableSideLabel)
+        ? binaryLabels.noLabel || stableSideLabel
         : null
-  )
-  const label = (
-    sideLabel
-    || (explicitLabel && !isGenericDirectionLabel(explicitLabel) ? explicitLabel : null)
-    || explicitLabel
-    || side
-    || String(order.direction || '').trim().toUpperCase()
-    || 'N/A'
-  )
+  const label =
+    sideLabel ||
+    (explicitLabel && !isGenericDirectionLabel(explicitLabel) ? explicitLabel : null) ||
+    explicitLabel ||
+    side ||
+    String(order.direction || '')
+      .trim()
+      .toUpperCase() ||
+    'N/A'
   return {
     side,
     label,
@@ -2115,7 +2325,13 @@ function resolveDecisionDirectionPresentation(decision: {
   direction_label?: string | null
 }): { side: DirectionSide | null; label: string } {
   const side = normalizeDirectionSide(decision.direction_side ?? decision.direction)
-  const label = cleanText(decision.direction_label) || side || String(decision.direction || '').trim().toUpperCase() || 'N/A'
+  const label =
+    cleanText(decision.direction_label) ||
+    side ||
+    String(decision.direction || '')
+      .trim()
+      .toUpperCase() ||
+    'N/A'
   return {
     side,
     label,
@@ -2154,10 +2370,12 @@ function collectExecutionPlanLegs(payload: Record<string, unknown> | null): Term
 
 function collectSignalPositionLegs(
   signalPayload: Record<string, unknown> | null,
-  fallbackDirection: unknown
+  fallbackDirection: unknown,
 ): TerminalLeg[] {
   if (!signalPayload) return []
-  const positions = Array.isArray(signalPayload.positions_to_take) ? signalPayload.positions_to_take : []
+  const positions = Array.isArray(signalPayload.positions_to_take)
+    ? signalPayload.positions_to_take
+    : []
   if (positions.length === 0) return []
   const marketById = new Map<string, string>()
   const markets = Array.isArray(signalPayload.markets) ? signalPayload.markets : []
@@ -2173,7 +2391,8 @@ function collectSignalPositionLegs(
   for (const rawPosition of positions) {
     if (!isRecord(rawPosition)) continue
     const marketId = cleanText(rawPosition.market_id ?? rawPosition.id ?? rawPosition.market)
-    const marketQuestion = cleanText(rawPosition.market_question) || (marketId ? marketById.get(marketId) || null : null)
+    const marketQuestion =
+      cleanText(rawPosition.market_question) || (marketId ? marketById.get(marketId) || null : null)
     const action = normalizeTradeAction(rawPosition.action ?? rawPosition.side ?? fallbackDirection)
     const outcome = normalizeOutcome(rawPosition.outcome ?? fallbackDirection)
     const price = toFiniteNumber(rawPosition.price)
@@ -2197,9 +2416,10 @@ function collectDecisionLegs(decision: {
   signal_payload?: Record<string, unknown>
 }): TerminalLeg[] {
   const decisionPayload = isRecord(decision.payload) ? decision.payload : null
-  const strategyPayload = decisionPayload && isRecord(decisionPayload.strategy_payload)
-    ? decisionPayload.strategy_payload
-    : null
+  const strategyPayload =
+    decisionPayload && isRecord(decisionPayload.strategy_payload)
+      ? decisionPayload.strategy_payload
+      : null
   const signalPayload = isRecord(decision.signal_payload) ? decision.signal_payload : null
 
   const candidates = [decisionPayload, strategyPayload, signalPayload]
@@ -2230,19 +2450,23 @@ function collectOrderLeg(order: TraderOrder): TerminalLeg {
   const legPayload = orderPayload && isRecord(orderPayload.leg) ? orderPayload.leg : null
   return {
     action: normalizeTradeAction(
-      (legPayload ? legPayload.side : null)
-      ?? (orderPayload ? orderPayload.side : null)
-      ?? (orderPayload ? orderPayload.action : null)
-      ?? order.direction
+      (legPayload ? legPayload.side : null) ??
+        (orderPayload ? orderPayload.side : null) ??
+        (orderPayload ? orderPayload.action : null) ??
+        order.direction,
     ),
     outcome: normalizeOutcome(
-      (legPayload ? legPayload.outcome : null)
-      ?? (orderPayload ? orderPayload.outcome : null)
-      ?? order.direction
+      (legPayload ? legPayload.outcome : null) ??
+        (orderPayload ? orderPayload.outcome : null) ??
+        order.direction,
     ),
     marketId: cleanText((legPayload ? legPayload.market_id : null) ?? order.market_id),
-    marketQuestion: cleanText((legPayload ? legPayload.market_question : null) ?? order.market_question ?? order.market_id),
-    price: toFiniteNumber(order.effective_price ?? (legPayload ? legPayload.limit_price : null) ?? order.entry_price),
+    marketQuestion: cleanText(
+      (legPayload ? legPayload.market_question : null) ?? order.market_question ?? order.market_id,
+    ),
+    price: toFiniteNumber(
+      order.effective_price ?? (legPayload ? legPayload.limit_price : null) ?? order.entry_price,
+    ),
   }
 }
 
@@ -2276,7 +2500,10 @@ function renderMarketsDetail(legs: TerminalLeg[], fallback: string | null): stri
 }
 
 function normalizeActivityText(value: string | null): string {
-  return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ')
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
 }
 
 function activityDuplicateFingerprint(
@@ -2304,7 +2531,9 @@ function areReasonsEquivalent(left: string, right: string): boolean {
 function isGenericDecisionReason(reason: string | null): boolean {
   const normalized = normalizeActivityText(reason)
   if (!normalized) return false
-  return normalized.includes('crypto worker filters not met') || normalized.includes('filters not met')
+  return (
+    normalized.includes('crypto worker filters not met') || normalized.includes('filters not met')
+  )
 }
 
 function decisionReasonDetail(decision: {
@@ -2313,8 +2542,10 @@ function decisionReasonDetail(decision: {
   failed_checks?: Array<unknown>
 }): string {
   const payload = isRecord(decision.payload) ? decision.payload : null
-  const strategyDecision = payload && isRecord(payload.strategy_decision) ? payload.strategy_decision : null
-  const platformGates = payload && Array.isArray(payload.platform_gates) ? payload.platform_gates : []
+  const strategyDecision =
+    payload && isRecord(payload.strategy_decision) ? payload.strategy_decision : null
+  const platformGates =
+    payload && Array.isArray(payload.platform_gates) ? payload.platform_gates : []
   const failedChecks = Array.isArray(decision.failed_checks) ? decision.failed_checks : []
   let failedGateReason: string | null = null
   for (const rawGate of platformGates) {
@@ -2339,9 +2570,7 @@ function decisionReasonDetail(decision: {
   return reason || strategyReason || failedCheckReason || failedGateReason || 'No reason provided'
 }
 
-function decisionFailedChecksDetail(decision: {
-  failed_checks?: Array<unknown>
-}): string | null {
+function decisionFailedChecksDetail(decision: { failed_checks?: Array<unknown> }): string | null {
   const failedChecks = Array.isArray(decision.failed_checks) ? decision.failed_checks : []
   if (failedChecks.length === 0) return null
   const rendered: string[] = []
@@ -2365,17 +2594,19 @@ function orderCloseLifecycleReason(order: TraderOrder): string | null {
   if (!payload) return null
   const positionClose = isRecord(payload.position_close) ? payload.position_close : null
   const pendingExit = isRecord(payload.pending_live_exit) ? payload.pending_live_exit : null
-  const closeTrigger = cleanText(order.close_trigger) || cleanText(positionClose ? positionClose.close_trigger : null)
-  const closeReason = cleanText(order.close_reason) || cleanText(positionClose ? positionClose.reason : null)
+  const closeTrigger =
+    cleanText(order.close_trigger) || cleanText(positionClose ? positionClose.close_trigger : null)
+  const closeReason =
+    cleanText(order.close_reason) || cleanText(positionClose ? positionClose.reason : null)
   const pendingTrigger = cleanText(pendingExit ? pendingExit.close_trigger : null)
   const pendingReason = cleanText(pendingExit ? pendingExit.reason : null)
   const primary = closeTrigger || pendingTrigger || closeReason || pendingReason
   if (!primary) return null
   const secondary = closeReason || pendingReason
   if (
-    secondary
-    && primary.toLowerCase() !== secondary.toLowerCase()
-    && !primary.toLowerCase().includes(secondary.toLowerCase())
+    secondary &&
+    primary.toLowerCase() !== secondary.toLowerCase() &&
+    !primary.toLowerCase().includes(secondary.toLowerCase())
   ) {
     return `${primary} • ${secondary}`
   }
@@ -2385,20 +2616,23 @@ function orderCloseLifecycleReason(order: TraderOrder): string | null {
 function orderReasonDetail(order: TraderOrder): string {
   const status = normalizeStatus(order.status)
   const closeLifecycleReason = orderCloseLifecycleReason(order)
-  if ((RESOLVED_ORDER_STATUSES.has(status) || FAILED_ORDER_STATUSES.has(status)) && closeLifecycleReason) {
+  if (
+    (RESOLVED_ORDER_STATUSES.has(status) || FAILED_ORDER_STATUSES.has(status)) &&
+    closeLifecycleReason
+  ) {
     return closeLifecycleReason
   }
   const payload = isRecord(order.payload) ? order.payload : null
   const legPayload = payload && isRecord(payload.leg) ? payload.leg : null
   return (
-    cleanText(order.error_message)
-    || cleanText(order.reason)
-    || (payload ? cleanText(payload.error_message) : null)
-    || (payload ? cleanText(payload.reason) : null)
-    || (payload ? cleanText(payload.message) : null)
-    || (legPayload ? cleanText(legPayload.reason) : null)
-    || closeLifecycleReason
-    || (status === 'executed' ? 'Execution filled' : 'No reason provided')
+    cleanText(order.error_message) ||
+    cleanText(order.reason) ||
+    (payload ? cleanText(payload.error_message) : null) ||
+    (payload ? cleanText(payload.reason) : null) ||
+    (payload ? cleanText(payload.message) : null) ||
+    (legPayload ? cleanText(legPayload.reason) : null) ||
+    closeLifecycleReason ||
+    (status === 'executed' ? 'Execution filled' : 'No reason provided')
   )
 }
 
@@ -2409,7 +2643,11 @@ function orderCloseHeadlineFromReason(reason: string): string {
   if (normalizedReason.includes('trailing stop')) return 'Trailing stop'
   if (normalizedReason.includes('max hold')) return 'Max hold'
   if (normalizedReason.includes('market inactive')) return 'Market inactive'
-  if (normalizedReason.includes('external_wallet_flatten') || normalizedReason.includes('external wallet')) return 'External flatten'
+  if (
+    normalizedReason.includes('external_wallet_flatten') ||
+    normalizedReason.includes('external wallet')
+  )
+    return 'External flatten'
   if (normalizedReason.includes('resolution')) return 'Resolution'
   return 'Closed'
 }
@@ -2418,10 +2656,10 @@ function isAllowanceErrorText(raw: string): boolean {
   const text = String(raw || '').toLowerCase()
   if (!text) return false
   return (
-    text.includes('not enough balance / allowance')
-    || text.includes('balance/allowance')
-    || text.includes('conditional token balance/allowance')
-    || (text.includes('allowance') && text.includes('not enough'))
+    text.includes('not enough balance / allowance') ||
+    text.includes('balance/allowance') ||
+    text.includes('conditional token balance/allowance') ||
+    (text.includes('allowance') && text.includes('not enough'))
   )
 }
 
@@ -2434,7 +2672,11 @@ function isGasErrorText(raw: string): boolean {
   if (text.includes('intrinsic gas too low')) return true
   if (text.includes('base fee') && text.includes('gas')) return true
   if (text.includes('gas required exceeds allowance')) return true
-  if (text.includes('insufficient') && (text.includes('matic') || text.includes('polygon') || text.includes('native token'))) return true
+  if (
+    text.includes('insufficient') &&
+    (text.includes('matic') || text.includes('polygon') || text.includes('native token'))
+  )
+    return true
   if (text.includes('insufficient') && text.includes('gas')) return true
   return false
 }
@@ -2452,7 +2694,10 @@ function orderFailureHeadline(order: TraderOrder): string {
     if (normalizedReason.includes('cleanup:max_open_order_timeout')) {
       return 'Unfilled timeout cancel'
     }
-    if (normalizedReason.includes('session:expired') || normalizedReason.includes('session timed out')) {
+    if (
+      normalizedReason.includes('session:expired') ||
+      normalizedReason.includes('session timed out')
+    ) {
       return 'Session expired'
     }
     if (normalizedReason.includes('cleanup:')) {
@@ -2462,13 +2707,11 @@ function orderFailureHeadline(order: TraderOrder): string {
   }
 
   if (
-    normalizedReason.includes('could not resolve a valid live price')
-    || (
-      submission === 'rejected'
-      && priceResolution === 'live_quote'
-      && resolvedPrice !== null
-      && resolvedPrice <= 0
-    )
+    normalizedReason.includes('could not resolve a valid live price') ||
+    (submission === 'rejected' &&
+      priceResolution === 'live_quote' &&
+      resolvedPrice !== null &&
+      resolvedPrice <= 0)
   ) {
     return 'No live quote'
   }
@@ -2485,9 +2728,9 @@ function orderFailureHeadline(order: TraderOrder): string {
     return 'Signature invalid'
   }
   if (
-    normalizedReason.includes('below minimum')
-    || normalizedReason.includes('min order')
-    || normalizedReason.includes('exit_notional_below_min')
+    normalizedReason.includes('below minimum') ||
+    normalizedReason.includes('min order') ||
+    normalizedReason.includes('exit_notional_below_min')
   ) {
     return 'Below minimum size'
   }
@@ -2545,7 +2788,9 @@ function buildTradeLifecycleStages(args: {
 }): TradeLifecycleStage[] {
   const status = normalizeStatus(args.status)
   const reason = String(args.reasonDetail || '').toLowerCase()
-  const closeTriggerLabel = args.closeTrigger ? `Exit (${compactText(args.closeTrigger, 20)})` : 'Exit'
+  const closeTriggerLabel = args.closeTrigger
+    ? `Exit (${compactText(args.closeTrigger, 20)})`
+    : 'Exit'
   const finalLabel = compactText(args.outcomeHeadline || resolveOrderLifecycleLabel(status), 28)
   const stages: TradeLifecycleStage[] = [
     { key: 'signal', label: 'Signal', tone: 'neutral', state: 'done' },
@@ -2615,8 +2860,12 @@ function buildTradeLifecycleStages(args: {
   return stages
 }
 
-function tradeLifecycleStageClassName(stage: TradeLifecycleStage, pulseCurrentStage: boolean): string {
-  const base = 'inline-flex h-4 items-center rounded-full border px-1.5 text-[8px] font-semibold whitespace-nowrap'
+function tradeLifecycleStageClassName(
+  stage: TradeLifecycleStage,
+  pulseCurrentStage: boolean,
+): string {
+  const base =
+    'inline-flex h-4 items-center rounded-full border px-1.5 text-[8px] font-semibold whitespace-nowrap'
   if (stage.state === 'future') {
     return `${base} border-border/60 bg-background/50 text-muted-foreground/65`
   }
@@ -2680,12 +2929,19 @@ function renderTradeLifecycleFlow(args: {
       <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
         {stages.map((stage, index) => (
           <div key={stage.key} className="flex items-center gap-1">
-            <span className={tradeLifecycleStageClassName(stage, pulseCurrentStage)}>{stage.label}</span>
-            {index < stages.length - 1 && <ChevronRight className="h-3 w-3 text-muted-foreground/65" />}
+            <span className={tradeLifecycleStageClassName(stage, pulseCurrentStage)}>
+              {stage.label}
+            </span>
+            {index < stages.length - 1 && (
+              <ChevronRight className="h-3 w-3 text-muted-foreground/65" />
+            )}
           </div>
         ))}
         <span className="h-3 w-px shrink-0 bg-border/50" />
-        <span className="min-w-0 flex-1 truncate text-[9px] text-foreground/90" title={args.outcomeDetail || 'No reason provided'}>
+        <span
+          className="min-w-0 flex-1 truncate text-[9px] text-foreground/90"
+          title={args.outcomeDetail || 'No reason provided'}
+        >
           <span className="mr-1 text-muted-foreground">Reason:</span>
           {compactReason}
         </span>
@@ -2693,7 +2949,7 @@ function renderTradeLifecycleFlow(args: {
           <span
             className={cn(
               'shrink-0 truncate text-[8px] text-muted-foreground',
-              args.pendingExitTone === 'warning' && 'text-amber-700 dark:text-amber-300'
+              args.pendingExitTone === 'warning' && 'text-amber-700 dark:text-amber-300',
             )}
             title={metaParts.join(' • ')}
           >
@@ -2714,24 +2970,25 @@ function normalizeExecutionToken(value: unknown): string | null {
 function orderExecutionTypeSummary(order: TraderOrder): string {
   const payload = isRecord(order.payload) ? order.payload : null
   const legPayload = payload && isRecord(payload.leg) ? payload.leg : null
-  const paperSimulation = payload && isRecord(payload.paper_simulation) ? payload.paper_simulation : null
+  const paperSimulation =
+    payload && isRecord(payload.paper_simulation) ? payload.paper_simulation : null
 
   const pricePolicy = normalizeExecutionToken(
-    (legPayload ? legPayload.price_policy : null)
-    ?? (paperSimulation ? paperSimulation.price_policy : null)
-    ?? (payload ? payload.price_policy : null)
+    (legPayload ? legPayload.price_policy : null) ??
+      (paperSimulation ? paperSimulation.price_policy : null) ??
+      (payload ? payload.price_policy : null),
   )
   const timeInForceRaw = cleanText(
-    (legPayload ? legPayload.time_in_force : null)
-    ?? (paperSimulation ? paperSimulation.time_in_force : null)
-    ?? (payload ? payload.time_in_force : null)
-    ?? (payload ? payload.order_type : null)
+    (legPayload ? legPayload.time_in_force : null) ??
+      (paperSimulation ? paperSimulation.time_in_force : null) ??
+      (payload ? payload.time_in_force : null) ??
+      (payload ? payload.order_type : null),
   )
   const timeInForce = timeInForceRaw ? timeInForceRaw.replace(/\s+/g, '').toUpperCase() : null
   const postOnly = Boolean(
-    (legPayload ? legPayload.post_only : null)
-    ?? (paperSimulation ? paperSimulation.post_only : null)
-    ?? (payload ? payload.post_only : null)
+    (legPayload ? legPayload.post_only : null) ??
+    (paperSimulation ? paperSimulation.post_only : null) ??
+    (payload ? payload.post_only : null),
   )
   const priceResolution = normalizeExecutionToken(payload ? payload.price_resolution : null)
 
@@ -2744,7 +3001,11 @@ function orderExecutionTypeSummary(order: TraderOrder): string {
   } else if (pricePolicy === 'taker_limit' || pricePolicy === 'taker') {
     executionMode = 'LIMIT'
     liquidityRole = 'TAKER'
-  } else if (pricePolicy === 'maker_limit' || pricePolicy === 'maker' || pricePolicy === 'post_only') {
+  } else if (
+    pricePolicy === 'maker_limit' ||
+    pricePolicy === 'maker' ||
+    pricePolicy === 'post_only'
+  ) {
     executionMode = 'LIMIT'
     liquidityRole = 'MAKER'
   } else if (pricePolicy) {
@@ -2764,7 +3025,7 @@ function orderExecutionTypeSummary(order: TraderOrder): string {
 
 function summarizeExecutionTypes(labels: Iterable<string>): string {
   const unique = Array.from(
-    new Set(Array.from(labels).filter((label) => Boolean(label) && label !== '—'))
+    new Set(Array.from(labels).filter((label) => Boolean(label) && label !== '—')),
   )
   if (unique.length === 0) return '—'
   if (unique.length <= 2) return unique.join(' | ')
@@ -2802,10 +3063,10 @@ function extractTradeOrderTokenId(order: TraderOrder): string | null {
   const payload = isRecord(order.payload) ? order.payload : null
   const legPayload = payload && isRecord(payload.leg) ? payload.leg : null
   return (
-    cleanText(order.trade_bundle?.current_leg_token_id)
-    || cleanText(legPayload ? legPayload.token_id : null)
-    || cleanText(payload ? payload.token_id : null)
-    || null
+    cleanText(order.trade_bundle?.current_leg_token_id) ||
+    cleanText(legPayload ? legPayload.token_id : null) ||
+    cleanText(payload ? payload.token_id : null) ||
+    null
   )
 }
 
@@ -2847,22 +3108,31 @@ function buildTradeBundleDirectionLabel(bundle: TraderOrderTradeBundle): string 
   return `${Math.max(2, bundle.leg_count)}L`
 }
 
-function buildTradeBundleLabel(bundle: TraderOrderTradeBundle, effectiveGuaranteed = bundle.is_guaranteed): string {
+function buildTradeBundleLabel(
+  bundle: TraderOrderTradeBundle,
+  effectiveGuaranteed = bundle.is_guaranteed,
+): string {
   if (bundle.kind === 'paired_binary') {
     return effectiveGuaranteed ? 'Guaranteed paired settlement trade' : 'Paired binary trade'
   }
   if (bundle.kind === 'multi_outcome_yes') {
-    return effectiveGuaranteed ? 'Guaranteed mutually exclusive YES bundle' : 'Mutually exclusive YES bundle'
+    return effectiveGuaranteed
+      ? 'Guaranteed mutually exclusive YES bundle'
+      : 'Mutually exclusive YES bundle'
   }
-  return effectiveGuaranteed ? `Guaranteed ${bundle.leg_count}-leg bundle` : `${bundle.leg_count}-leg linked trade`
+  return effectiveGuaranteed
+    ? `Guaranteed ${bundle.leg_count}-leg bundle`
+    : `${bundle.leg_count}-leg linked trade`
 }
 
 function buildTradeBundleLegSummaryLabel(leg: TradeTableBundleLegRow): string {
   const marketLabel = compactText(
     cleanText(leg.leg.market_question) || cleanText(leg.leg.market_id) || 'Unknown market',
-    44
+    44,
   )
-  const outcome = normalizeOutcome(leg.leg.outcome) || normalizeOutcome(leg.row?.order.direction_side ?? leg.row?.order.direction)
+  const outcome =
+    normalizeOutcome(leg.leg.outcome) ||
+    normalizeOutcome(leg.row?.order.direction_side ?? leg.row?.order.direction)
   const outcomeLabel = outcome ? ` ${outcome}` : ''
   return `${marketLabel}${outcomeLabel}`
 }
@@ -2930,14 +3200,20 @@ function buildBundleResolutionRange(args: {
   }
 }
 
-function bundleHasCompleteFilledCoverage(bundle: TraderOrderTradeBundle, legs: TradeTableBundleLegRow[]): boolean {
+function bundleHasCompleteFilledCoverage(
+  bundle: TraderOrderTradeBundle,
+  legs: TradeTableBundleLegRow[],
+): boolean {
   if (bundle.leg_count <= 0) return false
   const plannedLegs = legs.slice(0, bundle.leg_count)
   if (plannedLegs.length < bundle.leg_count) return false
   return plannedLegs.every((leg) => leg.filledSize > 0 && leg.filledNotional > 0)
 }
 
-function buildTradeBundleGuaranteeBadgeLabel(bundle: TraderOrderTradeBundle, effectiveGuaranteed: boolean): string {
+function buildTradeBundleGuaranteeBadgeLabel(
+  bundle: TraderOrderTradeBundle,
+  effectiveGuaranteed: boolean,
+): string {
   if (effectiveGuaranteed) return 'Guaranteed'
   if (bundle.is_guaranteed) return 'Incomplete'
   if (bundle.signal_is_guaranteed) return 'Unproven'
@@ -2945,10 +3221,12 @@ function buildTradeBundleGuaranteeBadgeLabel(bundle: TraderOrderTradeBundle, eff
 }
 
 function buildTradeDisplayRows(orderRows: TradeTableOrderRow[]): TradeTableDisplayRow[] {
-  const bundleGroups = new Map<string, { bundle: TraderOrderTradeBundle; rows: TradeTableOrderRow[] }>()
+  const bundleGroups = new Map<
+    string,
+    { bundle: TraderOrderTradeBundle; rows: TradeTableOrderRow[] }
+  >()
   const orderedItems: Array<
-    | { kind: 'single'; row: TradeTableOrderRow }
-    | { kind: 'bundle'; key: string }
+    { kind: 'single'; row: TradeTableOrderRow } | { kind: 'bundle'; key: string }
   > = []
 
   for (const row of orderRows) {
@@ -2988,7 +3266,9 @@ function buildTradeDisplayRows(orderRows: TradeTableOrderRow[]): TradeTableDispl
     const group = bundleGroups.get(item.key)
     if (!group || group.rows.length === 0) continue
 
-    const bundleLegs = [...group.bundle.legs].sort((left, right) => left.leg_index - right.leg_index)
+    const bundleLegs = [...group.bundle.legs].sort(
+      (left, right) => left.leg_index - right.leg_index,
+    )
     const rowsByLegKey = new Map<string, TradeTableOrderRow[]>()
     const unmatchedRows: TradeTableOrderRow[] = []
 
@@ -3011,12 +3291,14 @@ function buildTradeDisplayRows(orderRows: TradeTableOrderRow[]): TradeTableDispl
       const currentValue = matchedRows.reduce((sum, row) => sum + row.currentValue, 0)
       const unrealized = matchedRows.reduce((sum, row) => sum + row.unrealized, 0)
       const pnl = matchedRows.reduce((sum, row) => sum + row.pnl, 0)
-      const fillPx = filledSize > 0 && filledNotional > 0
-        ? filledNotional / filledSize
-        : (primaryRow?.fillPx ?? (leg.limit_price ?? null))
-      const markPx = filledSize > 0 && currentValue > 0
-        ? currentValue / filledSize
-        : (primaryRow?.markPx ?? null)
+      const fillPx =
+        filledSize > 0 && filledNotional > 0
+          ? filledNotional / filledSize
+          : (primaryRow?.fillPx ?? leg.limit_price ?? null)
+      const markPx =
+        filledSize > 0 && currentValue > 0
+          ? currentValue / filledSize
+          : (primaryRow?.markPx ?? null)
 
       return {
         leg,
@@ -3082,28 +3364,29 @@ function buildTradeDisplayRows(orderRows: TradeTableOrderRow[]): TradeTableDispl
     const markPxValues = bundleLegRows
       .map((leg) => leg.markPx)
       .filter((value): value is number => typeof value === 'number' && value > 0)
-    const fillPx = fillPxValues.length > 0 ? fillPxValues.reduce((sum, value) => sum + value, 0) : null
-    const markPx = markPxValues.length > 0 ? markPxValues.reduce((sum, value) => sum + value, 0) : null
-    const fillProgressPercent = requestedNotional > 0
-      ? Math.min(100, (filledNotional / requestedNotional) * 100)
-      : null
+    const fillPx =
+      fillPxValues.length > 0 ? fillPxValues.reduce((sum, value) => sum + value, 0) : null
+    const markPx =
+      markPxValues.length > 0 ? markPxValues.reduce((sum, value) => sum + value, 0) : null
+    const fillProgressPercent =
+      requestedNotional > 0 ? Math.min(100, (filledNotional / requestedNotional) * 100) : null
     const bundleSettlementReady = bundleHasCompleteFilledCoverage(group.bundle, bundleLegRows)
     const effectiveGuaranteed = group.bundle.is_guaranteed && bundleSettlementReady
     const exitProgressValues = group.rows
       .map((row) => row.exitProgressPercent)
       .filter((value): value is number => value !== null)
-    const exitProgressPercent = exitProgressValues.length > 0
-      ? exitProgressValues.reduce((sum, value) => sum + value, 0) / exitProgressValues.length
-      : null
-    const dynamicEdgePercent = filledNotional > 0
-      ? ((realizedPnl + unrealized) / filledNotional) * 100
-      : 0
+    const exitProgressPercent =
+      exitProgressValues.length > 0
+        ? exitProgressValues.reduce((sum, value) => sum + value, 0) / exitProgressValues.length
+        : null
+    const dynamicEdgePercent =
+      filledNotional > 0 ? ((realizedPnl + unrealized) / filledNotional) * 100 : 0
     const providerSnapshotStatuses = Array.from(
-      new Set(group.rows.map((row) => normalizeStatus(row.providerSnapshotStatus)).filter(Boolean))
+      new Set(group.rows.map((row) => normalizeStatus(row.providerSnapshotStatus)).filter(Boolean)),
     )
     const providerSnapshotStatus = providerSnapshotStatuses[0] || ''
     const pendingExitStatuses = Array.from(
-      new Set(group.rows.map((row) => normalizeStatus(row.pendingExitStatus)).filter(Boolean))
+      new Set(group.rows.map((row) => normalizeStatus(row.pendingExitStatus)).filter(Boolean)),
     )
     const pendingExitStatus = pendingExitStatuses.includes('failed')
       ? 'failed'
@@ -3112,18 +3395,26 @@ function buildTradeDisplayRows(orderRows: TradeTableOrderRow[]): TradeTableDispl
     const markUpdatedAt = latestTimestampValue(...group.rows.map((row) => row.markUpdatedAt))
     const exitEvaluatedAt = latestTimestampValue(...group.rows.map((row) => row.exitEvaluatedAt))
     const executionSummary = summarizeExecutionTypes(group.rows.map((row) => row.executionSummary))
-    const venueLabels = Array.from(new Set(group.rows.map((row) => row.venuePresentation.label).filter(Boolean)))
-    const venuePresentation = venueLabels.length === 1
-      ? primaryRow.venuePresentation
-      : {
-          label: 'Bundle',
-          detail: venueLabels.join(' | '),
-          className: 'border-cyan-300 bg-cyan-100 text-cyan-900 dark:border-cyan-400/45 dark:bg-cyan-500/12 dark:text-cyan-200',
-        }
+    const venueLabels = Array.from(
+      new Set(group.rows.map((row) => row.venuePresentation.label).filter(Boolean)),
+    )
+    const venuePresentation =
+      venueLabels.length === 1
+        ? primaryRow.venuePresentation
+        : {
+            label: 'Bundle',
+            detail: venueLabels.join(' | '),
+            className:
+              'border-cyan-300 bg-cyan-100 text-cyan-900 dark:border-cyan-400/45 dark:bg-cyan-500/12 dark:text-cyan-200',
+          }
 
     const hasOpen = group.rows.some((row) => OPEN_ORDER_STATUSES.has(normalizeStatus(row.status)))
-    const hasResolved = group.rows.some((row) => RESOLVED_ORDER_STATUSES.has(normalizeStatus(row.status)))
-    const hasFailed = group.rows.some((row) => FAILED_ORDER_STATUSES.has(normalizeStatus(row.status)))
+    const hasResolved = group.rows.some((row) =>
+      RESOLVED_ORDER_STATUSES.has(normalizeStatus(row.status)),
+    )
+    const hasFailed = group.rows.some((row) =>
+      FAILED_ORDER_STATUSES.has(normalizeStatus(row.status)),
+    )
     let status = normalizeStatus(primaryRow.status)
     if (hasOpen) {
       status = 'open'
@@ -3138,9 +3429,14 @@ function buildTradeDisplayRows(orderRows: TradeTableOrderRow[]): TradeTableDispl
       legs: bundleLegRows,
       effectiveGuaranteed,
     })
-    const guaranteedAnomaly = Boolean(effectiveGuaranteed && profitLow !== null && profitLow < -0.01)
+    const guaranteedAnomaly = Boolean(
+      effectiveGuaranteed && profitLow !== null && profitLow < -0.01,
+    )
     const bundleLabel = buildTradeBundleLabel(group.bundle, effectiveGuaranteed)
-    const guaranteeBadgeLabel = buildTradeBundleGuaranteeBadgeLabel(group.bundle, effectiveGuaranteed)
+    const guaranteeBadgeLabel = buildTradeBundleGuaranteeBadgeLabel(
+      group.bundle,
+      effectiveGuaranteed,
+    )
     let outcomeHeadline = bundleLabel
     let outcomeDetail = `${bundleLabel}.`
     if (status === 'open' && profitLow !== null && profitHigh !== null) {
@@ -3155,17 +3451,18 @@ function buildTradeDisplayRows(orderRows: TradeTableOrderRow[]): TradeTableDispl
       } else {
         outcomeHeadline = 'Bundle working'
       }
-      outcomeDetail = (
-        `Resolution P&L ${formatSignedCurrencyRange(profitLow, profitHigh)} `
-        + `on ${formatCurrency(filledNotional, true)} cost basis `
-        + `(${formatCurrency(payoutLow || 0, true)}-${formatCurrency(payoutHigh || 0, true)} payout).`
-      )
+      outcomeDetail =
+        `Resolution P&L ${formatSignedCurrencyRange(profitLow, profitHigh)} ` +
+        `on ${formatCurrency(filledNotional, true)} cost basis ` +
+        `(${formatCurrency(payoutLow || 0, true)}-${formatCurrency(payoutHigh || 0, true)} payout).`
     } else if (RESOLVED_ORDER_STATUSES.has(status)) {
       outcomeHeadline = realizedPnl >= 0 ? 'Bundle resolved green' : 'Bundle resolved red'
       outcomeDetail = `Realized ${formatSignedCurrency(realizedPnl)} across ${group.rows.length} linked legs.`
     } else if (FAILED_ORDER_STATUSES.has(status)) {
       outcomeHeadline = 'Bundle failed'
-      const reasons = Array.from(new Set(group.rows.map((row) => cleanText(row.outcomeDetail)).filter(Boolean)))
+      const reasons = Array.from(
+        new Set(group.rows.map((row) => cleanText(row.outcomeDetail)).filter(Boolean)),
+      )
       outcomeDetail = reasons[0] || 'One or more linked legs failed.'
     }
 
@@ -3227,7 +3524,8 @@ function summarizeTradeDisplayRows(rows: TradeTableDisplayRow[]): TradeSummarySn
     total += 1
     const status = normalizeStatus(row.kind === 'single' ? row.row.status : row.status)
     if (row.kind === 'single') {
-      totalNotional += row.row.filledNotional > 0 ? row.row.filledNotional : row.row.requestedNotional
+      totalNotional +=
+        row.row.filledNotional > 0 ? row.row.filledNotional : row.row.requestedNotional
       if (OPEN_ORDER_STATUSES.has(status)) {
         open += 1
         unrealizedPnl += row.row.unrealized
@@ -3270,18 +3568,20 @@ function summarizeTradeDisplayRows(rows: TradeTableDisplayRow[]): TradeSummarySn
     totalNotional,
     realizedPnl,
     unrealizedPnl,
-    winRate: (wins + losses) > 0 ? (wins / (wins + losses)) * 100 : 0,
+    winRate: wins + losses > 0 ? (wins / (wins + losses)) * 100 : 0,
   }
 }
 
 function matchesTradeStatusFilter(status: string, filter: TradeStatusFilter): boolean {
   const normalizedStatus = normalizeStatus(status)
   return (
-    filter === 'all'
-    || (filter === 'open_resolved' && (OPEN_ORDER_STATUSES.has(normalizedStatus) || RESOLVED_ORDER_STATUSES.has(normalizedStatus)))
-    || (filter === 'open' && OPEN_ORDER_STATUSES.has(normalizedStatus))
-    || (filter === 'resolved' && RESOLVED_ORDER_STATUSES.has(normalizedStatus))
-    || (filter === 'failed' && FAILED_ORDER_STATUSES.has(normalizedStatus))
+    filter === 'all' ||
+    (filter === 'open_resolved' &&
+      (OPEN_ORDER_STATUSES.has(normalizedStatus) ||
+        RESOLVED_ORDER_STATUSES.has(normalizedStatus))) ||
+    (filter === 'open' && OPEN_ORDER_STATUSES.has(normalizedStatus)) ||
+    (filter === 'resolved' && RESOLVED_ORDER_STATUSES.has(normalizedStatus)) ||
+    (filter === 'failed' && FAILED_ORDER_STATUSES.has(normalizedStatus))
   )
 }
 
@@ -3325,11 +3625,11 @@ function tradeDisplayRowSearchText(row: TradeTableDisplayRow, traderLabel?: stri
 function eventReasonDetail(event: TraderEvent): string {
   const payload = isRecord(event.payload) ? event.payload : null
   return (
-    cleanText(event.message)
-    || (payload ? cleanText(payload.reason) : null)
-    || (payload ? cleanText(payload.error_message) : null)
-    || (payload ? cleanText(payload.message) : null)
-    || 'No message provided'
+    cleanText(event.message) ||
+    (payload ? cleanText(payload.reason) : null) ||
+    (payload ? cleanText(payload.error_message) : null) ||
+    (payload ? cleanText(payload.message) : null) ||
+    'No message provided'
   )
 }
 
@@ -3339,7 +3639,12 @@ function formatLatencyMs(value: unknown): string | null {
 }
 
 function eventLatencyDetail(event: TraderEvent): string | null {
-  if (String(event.event_type || '').trim().toLowerCase() !== 'execution_latency') return null
+  if (
+    String(event.event_type || '')
+      .trim()
+      .toLowerCase() !== 'execution_latency'
+  )
+    return null
   const payload = isRecord(event.payload) ? event.payload : null
   const latency = payload && isRecord(payload.latency) ? payload.latency : null
   if (!latency) return null
@@ -3357,7 +3662,7 @@ function eventLatencyDetail(event: TraderEvent): string | null {
 
 function latencyStagePercentiles(
   bucket: unknown,
-  stageKey: ExecutionLatencyStageKey
+  stageKey: ExecutionLatencyStageKey,
 ): { p95: number | null; p99: number | null } {
   const stage = isRecord(bucket) && isRecord(bucket[stageKey]) ? bucket[stageKey] : null
   if (!stage) return { p95: null, p99: null }
@@ -3387,7 +3692,7 @@ function formatLatencyWindow(seconds: number | null | undefined): string {
 function worstLatencyGroup(
   summary: ExecutionLatencySummary | null | undefined,
   groupKey: 'by_source' | 'by_strategy' | 'by_trader',
-  stageKey: ExecutionLatencyStageKey
+  stageKey: ExecutionLatencyStageKey,
 ): { label: string | null; p95: number | null; p99: number | null } {
   const groups = summary?.[groupKey]
   if (!groups || typeof groups !== 'object') {
@@ -3439,12 +3744,15 @@ function buildLatencyGroupRows(
   return Object.entries(groups)
     .map(([key, bucket]) => {
       const { p95 } = latencyStagePercentiles(bucket, stageKey)
-      const sourceLabel = sourceCatalog.find((item) => normalizeSourceKey(item.key) === normalizeSourceKey(key))?.label
+      const sourceLabel = sourceCatalog.find(
+        (item) => normalizeSourceKey(item.key) === normalizeSourceKey(key),
+      )?.label
       return {
         key,
-        label: groupKey === 'by_strategy'
-          ? strategyLabelForKey(key, sourceCatalog)
-          : sourceLabel || key.toUpperCase(),
+        label:
+          groupKey === 'by_strategy'
+            ? strategyLabelForKey(key, sourceCatalog)
+            : sourceLabel || key.toUpperCase(),
         count: Math.max(0, Math.trunc(toNumber(isRecord(bucket) ? bucket.count : 0))),
         latencyLabel: formatLatencyPercentilePair(bucket, stageKey),
         p95: p95 ?? -1,
@@ -3458,7 +3766,10 @@ function buildLatencyGroupRows(
     .map(({ p95: _p95, ...row }) => row)
 }
 
-function parseJsonObject(text: string): { value: Record<string, unknown> | null; error: string | null } {
+function parseJsonObject(text: string): {
+  value: Record<string, unknown> | null
+  error: string | null
+} {
   try {
     const parsed: unknown = JSON.parse(text || '{}')
     if (!isRecord(parsed)) {
@@ -3473,7 +3784,9 @@ function parseJsonObject(text: string): { value: Record<string, unknown> | null;
   }
 }
 
-function parseTraderDeleteLiveExposure(error: unknown): { message: string; summary: string } | null {
+function parseTraderDeleteLiveExposure(
+  error: unknown,
+): { message: string; summary: string } | null {
   if (typeof error !== 'object' || error === null || !('response' in error)) return null
   const maybeResponse = (error as { response?: { data?: unknown } }).response
   if (!maybeResponse || typeof maybeResponse !== 'object') return null
@@ -3558,9 +3871,10 @@ function upsertTraderRows(rows: Trader[] | undefined, trader: Trader): Trader[] 
   return next
 }
 
-
 function normalizeSourceKey(value: string): string {
-  const key = String(value || '').trim().toLowerCase()
+  const key = String(value || '')
+    .trim()
+    .toLowerCase()
   return key
 }
 
@@ -3583,12 +3897,17 @@ function normalizeStrategyKeyForSource(sourceKey: string, value: unknown): strin
   return key || DEFAULT_STRATEGY_BY_SOURCE[normalizedSource] || DEFAULT_STRATEGY_KEY
 }
 
-
 function strategyLabelForKey(key: string, sourceCatalog: TraderSource[] = []): string {
-  const normalized = String(key || '').trim().toLowerCase()
+  const normalized = String(key || '')
+    .trim()
+    .toLowerCase()
   for (const source of sourceCatalog) {
-    const option = (source.strategy_options || [])
-      .find((item) => String(item.key || '').trim().toLowerCase() === normalized)
+    const option = (source.strategy_options || []).find(
+      (item) =>
+        String(item.key || '')
+          .trim()
+          .toLowerCase() === normalized,
+    )
     if (option?.label) {
       return String(option.label)
     }
@@ -3600,7 +3919,9 @@ function sourceStrategyDetails(source: TraderSource): StrategyOptionDetail[] {
   const options = (source.strategy_options || [])
     .filter((item) => item && typeof item === 'object')
     .map((item) => {
-      const key = String(item.key || '').trim().toLowerCase()
+      const key = String(item.key || '')
+        .trim()
+        .toLowerCase()
       const version = normalizeStrategyVersion(item.version)
       const latestVersion = normalizeStrategyVersion(item.latest_version) ?? version
       const versions = normalizeVersionList(item.versions)
@@ -3622,19 +3943,20 @@ function sourceStrategyDetails(source: TraderSource): StrategyOptionDetail[] {
     .filter((item) => item.key)
   if (options.length > 0) return options
   const fallback =
-    source.default_strategy_key ||
-    DEFAULT_STRATEGY_BY_SOURCE[normalizeSourceKey(source.key)]
+    source.default_strategy_key || DEFAULT_STRATEGY_BY_SOURCE[normalizeSourceKey(source.key)]
   if (fallback) {
     const normalizedFallback = normalizeStrategyKeyForSource(source.key, fallback)
-    return [{
-      key: normalizedFallback,
-      label: strategyLabelForKey(normalizedFallback, [source]),
-      defaultParams: {},
-      paramFields: [],
-      version: 1,
-      latestVersion: 1,
-      versions: [1],
-    }]
+    return [
+      {
+        key: normalizedFallback,
+        label: strategyLabelForKey(normalizedFallback, [source]),
+        defaultParams: {},
+        paramFields: [],
+        version: 1,
+        latestVersion: 1,
+        versions: [1],
+      },
+    ]
   }
   return []
 }
@@ -3647,7 +3969,9 @@ function defaultStrategyForSource(sourceKey: string, sourceCatalog: TraderSource
   const normalized = normalizeSourceKey(sourceKey)
   const source = sourceCatalog.find((item) => normalizeSourceKey(item.key) === normalized)
   const options = source ? sourceStrategyOptions(source) : []
-  const preferred = source ? normalizeStrategyKeyForSource(normalized, source.default_strategy_key) : ''
+  const preferred = source
+    ? normalizeStrategyKeyForSource(normalized, source.default_strategy_key)
+    : ''
   if (preferred && options.some((option) => option.key === preferred)) {
     return preferred
   }
@@ -3664,7 +3988,9 @@ function normalizeTradersScopeConfig(value: unknown): {
   const modes: TradersScopeMode[] = []
   const seenModes = new Set<TradersScopeMode>()
   for (const rawMode of toStringList(raw.modes)) {
-    const mode = String(rawMode || '').trim().toLowerCase()
+    const mode = String(rawMode || '')
+      .trim()
+      .toLowerCase()
     if (mode !== 'tracked' && mode !== 'pool' && mode !== 'individual' && mode !== 'group') continue
     if (seenModes.has(mode)) continue
     seenModes.add(mode)
@@ -3673,7 +3999,9 @@ function normalizeTradersScopeConfig(value: unknown): {
   const individual_wallets: string[] = []
   const seenWallets = new Set<string>()
   for (const rawWallet of toStringList(raw.individual_wallets)) {
-    const wallet = String(rawWallet || '').trim().toLowerCase()
+    const wallet = String(rawWallet || '')
+      .trim()
+      .toLowerCase()
     if (!wallet || seenWallets.has(wallet)) continue
     seenWallets.add(wallet)
     individual_wallets.push(wallet)
@@ -3696,7 +4024,7 @@ function normalizeTradersScopeConfig(value: unknown): {
 function buildSourceStrategyParams(
   raw: Record<string, unknown>,
   sourceKey: string,
-  strategyDetail: StrategyOptionDetail | null
+  strategyDetail: StrategyOptionDetail | null,
 ): Record<string, unknown> {
   const strategyDefaults = isRecord(strategyDetail?.defaultParams)
     ? (strategyDetail.defaultParams as Record<string, unknown>)
@@ -3734,10 +4062,14 @@ function traderSourceKeys(trader: Trader): string[] {
   return []
 }
 
-function isTradersCopyTradeSourceConfig(sourceConfig: TraderSourceConfig | null | undefined): boolean {
+function isTradersCopyTradeSourceConfig(
+  sourceConfig: TraderSourceConfig | null | undefined,
+): boolean {
   if (!sourceConfig) return false
   const sourceKey = normalizeSourceKey(String(sourceConfig.source_key || ''))
-  const strategyKey = String(sourceConfig.strategy_key || '').trim().toLowerCase()
+  const strategyKey = String(sourceConfig.strategy_key || '')
+    .trim()
+    .toLowerCase()
   return sourceKey === 'traders' && strategyKey === 'traders_copy_trade'
 }
 
@@ -3768,37 +4100,40 @@ function buildPositionBookRows(
   orders: TraderOrder[],
   traderNameById: Record<string, string>,
   decisionSignalPayloadByDecisionId: Map<string, Record<string, unknown>>,
-  liveMarksByOrderId?: Map<string, any>
+  liveMarksByOrderId?: Map<string, any>,
 ): PositionBookRow[] {
-  const buckets = new Map<string, {
-    traderId: string
-    traderName: string
-    marketId: string
-    marketAliases: Set<string>
-    marketQuestion: string
-    sources: Set<string>
-    executionTypes: Set<string>
-    direction: string
-    directionSide: DirectionSide | null
-    exposureUsd: number
-    weightedPrice: number
-    weightedMark: number
-    markWeight: number
-    weightedEdge: number
-    edgeWeight: number
-    weightedConfidence: number
-    confidenceWeight: number
-    unrealizedPnl: number
-    hasUnrealizedPnl: boolean
-    orderCount: number
-    liveOrderCount: number
-    shadowOrderCount: number
-    markUpdatedAt: string | null
-    lastUpdated: string | null
-    statuses: Set<string>
-    polymarketLink: string | null
-    kalshiLink: string | null
-  }>()
+  const buckets = new Map<
+    string,
+    {
+      traderId: string
+      traderName: string
+      marketId: string
+      marketAliases: Set<string>
+      marketQuestion: string
+      sources: Set<string>
+      executionTypes: Set<string>
+      direction: string
+      directionSide: DirectionSide | null
+      exposureUsd: number
+      weightedPrice: number
+      weightedMark: number
+      markWeight: number
+      weightedEdge: number
+      edgeWeight: number
+      weightedConfidence: number
+      confidenceWeight: number
+      unrealizedPnl: number
+      hasUnrealizedPnl: boolean
+      orderCount: number
+      liveOrderCount: number
+      shadowOrderCount: number
+      markUpdatedAt: string | null
+      lastUpdated: string | null
+      statuses: Set<string>
+      polymarketLink: string | null
+      kalshiLink: string | null
+    }
+  >()
 
   for (const order of orders) {
     const status = normalizeStatus(order.status)
@@ -3812,25 +4147,21 @@ function buildPositionBookRows(
       ? decisionSignalPayloadByDecisionId.get(linkedDecisionId) || null
       : null
     const directionPresentation = resolveOrderDirectionPresentation(order)
-    const directionKey = directionPresentation.side || directionPresentation.label.toUpperCase() || 'UNKNOWN'
+    const directionKey =
+      directionPresentation.side || directionPresentation.label.toUpperCase() || 'UNKNOWN'
     const key = `${traderId}:${marketId}:${directionKey}`
     const orderAliases = collectOrderMarketAliasIds(order)
     const positionState = isRecord(orderPayload.position_state) ? orderPayload.position_state : {}
     const markPrice = toNumber(
-      order.current_price
-      ?? positionState.last_mark_price
-      ?? orderPayload.market_price
-      ?? orderPayload.resolved_price
+      order.current_price ??
+        positionState.last_mark_price ??
+        orderPayload.market_price ??
+        orderPayload.resolved_price,
     )
     const filledSize = toNumber(
-      order.filled_shares
-      ?? orderPayload.filled_size
-      ?? positionState.filled_size
+      order.filled_shares ?? orderPayload.filled_size ?? positionState.filled_size,
     )
-    const filledNotional = toNumber(
-      order.filled_notional_usd
-      ?? order.notional_usd
-    )
+    const filledNotional = toNumber(order.filled_notional_usd ?? order.notional_usd)
     let unrealizedPnl: number | null = null
     const lm = liveMarksByOrderId?.get(String(order.id || ''))
     if (lm && typeof lm.unrealized_pnl === 'number' && lm.mark_price > 0) {
@@ -3838,7 +4169,7 @@ function buildPositionBookRows(
     } else if (order.unrealized_pnl !== null && order.unrealized_pnl !== undefined) {
       unrealizedPnl = toNumber(order.unrealized_pnl)
     } else if (markPrice > 0 && filledSize > 0 && filledNotional > 0) {
-      unrealizedPnl = (markPrice * filledSize) - filledNotional
+      unrealizedPnl = markPrice * filledSize - filledNotional
     }
     const notional = Math.abs(toNumber(order.notional_usd))
     const px = toNumber(order.effective_price ?? order.entry_price)
@@ -3918,20 +4249,18 @@ function buildPositionBookRows(
     if (executionSummary !== '—') {
       bucket.executionTypes.add(executionSummary)
     }
-    bucket.lastUpdated = toTs(markUpdatedAt) > toTs(bucket.lastUpdated)
-      ? markUpdatedAt
-      : bucket.lastUpdated
-    bucket.markUpdatedAt = toTs(markUpdatedAt) > toTs(bucket.markUpdatedAt)
-      ? markUpdatedAt
-      : bucket.markUpdatedAt
+    bucket.lastUpdated =
+      toTs(markUpdatedAt) > toTs(bucket.lastUpdated) ? markUpdatedAt : bucket.lastUpdated
+    bucket.markUpdatedAt =
+      toTs(markUpdatedAt) > toTs(bucket.markUpdatedAt) ? markUpdatedAt : bucket.markUpdatedAt
     bucket.statuses.add(status)
     if (!bucket.directionSide && directionPresentation.side) {
       bucket.directionSide = directionPresentation.side
     }
     if (
-      directionPresentation.label
-      && bucket.direction === (bucket.directionSide || '')
-      && directionPresentation.label !== (bucket.directionSide || '')
+      directionPresentation.label &&
+      bucket.direction === (bucket.directionSide || '') &&
+      directionPresentation.label !== (bucket.directionSide || '')
     ) {
       bucket.direction = directionPresentation.label
     }
@@ -3946,7 +4275,8 @@ function buildPositionBookRows(
   return Array.from(buckets.entries())
     .map((entry) => {
       const [key, bucket] = entry
-      const markFresh = toTs(bucket.markUpdatedAt) > 0 && (Date.now() - toTs(bucket.markUpdatedAt)) <= 15_000
+      const markFresh =
+        toTs(bucket.markUpdatedAt) > 0 && Date.now() - toTs(bucket.markUpdatedAt) <= 15_000
       return {
         key,
         traderId: bucket.traderId,
@@ -3965,7 +4295,8 @@ function buildPositionBookRows(
         markFresh,
         unrealizedPnl: bucket.hasUnrealizedPnl ? bucket.unrealizedPnl : null,
         weightedEdge: bucket.edgeWeight > 0 ? bucket.weightedEdge / bucket.edgeWeight : null,
-        weightedConfidence: bucket.confidenceWeight > 0 ? bucket.weightedConfidence / bucket.confidenceWeight : null,
+        weightedConfidence:
+          bucket.confidenceWeight > 0 ? bucket.weightedConfidence / bucket.confidenceWeight : null,
         orderCount: bucket.orderCount,
         liveOrderCount: bucket.liveOrderCount,
         shadowOrderCount: bucket.shadowOrderCount,
@@ -3991,7 +4322,7 @@ function isNoDirection(value: unknown): boolean {
 function compareNullableNumber(
   left: number | null,
   right: number | null,
-  sortDirection: PositionSortDirection
+  sortDirection: PositionSortDirection,
 ): number {
   if (left === null && right === null) return 0
   if (left === null) return 1
@@ -4002,7 +4333,7 @@ function compareNullableNumber(
 function sortPositionRows(
   rows: PositionBookRow[],
   sortField: PositionSortField,
-  sortDirection: PositionSortDirection
+  sortDirection: PositionSortDirection,
 ): PositionBookRow[] {
   const sorted = [...rows]
   sorted.sort((left, right) => {
@@ -4025,7 +4356,11 @@ function sortPositionRows(
     }
 
     if (sortField === 'confidence') {
-      const delta = compareNullableNumber(left.weightedConfidence, right.weightedConfidence, sortDirection)
+      const delta = compareNullableNumber(
+        left.weightedConfidence,
+        right.weightedConfidence,
+        sortDirection,
+      )
       if (delta !== 0) return delta
       return right.exposureUsd - left.exposureUsd
     }
@@ -4109,7 +4444,9 @@ function positionMetaLine(row: PositionBookRow): string {
   return `${sourceOrStatus} • ${row.executionSummary}`
 }
 
-function describeTradeBundleSettlement(displayRow: Extract<TradeTableDisplayRow, { kind: 'bundle' }>): string {
+function describeTradeBundleSettlement(
+  displayRow: Extract<TradeTableDisplayRow, { kind: 'bundle' }>,
+): string {
   const { bundle, effectiveGuaranteed } = displayRow
   if (bundle.kind === 'paired_binary') {
     return effectiveGuaranteed
@@ -4143,7 +4480,10 @@ function resolveBundleLegStatus(leg: TradeTableBundleLegRow): string {
   return normalizeStatus(leg.row?.status)
 }
 
-function resolveBundleLegLinks(leg: TradeTableBundleLegRow): { polymarket: string | null; kalshi: string | null } {
+function resolveBundleLegLinks(leg: TradeTableBundleLegRow): {
+  polymarket: string | null
+  kalshi: string | null
+} {
   for (const row of leg.rows) {
     if (row.links.polymarket || row.links.kalshi) {
       return row.links
@@ -4185,21 +4525,26 @@ function BotTradePositionModal({
   onClose: () => void
 }) {
   const { t } = useTranslation()
-  const bundleDisplayRow = scope.kind === 'trade' && scope.displayRow?.kind === 'bundle'
-    ? scope.displayRow
-    : null
+  const bundleDisplayRow =
+    scope.kind === 'trade' && scope.displayRow?.kind === 'bundle' ? scope.displayRow : null
   const scopeMarketIds = useMemo(
-    () => new Set(
-      collectMarketAliases([
-        scope.marketId,
-        ...(Array.isArray(scope.marketIds) ? scope.marketIds : []),
-      ])
-    ),
-    [scope.marketId, scope.marketIds]
+    () =>
+      new Set(
+        collectMarketAliases([
+          scope.marketId,
+          ...(Array.isArray(scope.marketIds) ? scope.marketIds : []),
+        ]),
+      ),
+    [scope.marketId, scope.marketIds],
   )
   const bundleOrderIds = useMemo(
-    () => new Set((bundleDisplayRow?.rows || []).map((row) => String(row.order.id || '').trim()).filter(Boolean)),
-    [bundleDisplayRow]
+    () =>
+      new Set(
+        (bundleDisplayRow?.rows || [])
+          .map((row) => String(row.order.id || '').trim())
+          .filter(Boolean),
+      ),
+    [bundleDisplayRow],
   )
 
   const relatedOrders = useMemo(() => {
@@ -4208,11 +4553,10 @@ function BotTradePositionModal({
       if (bundleDisplayRow) {
         return bundleOrderIds.has(String(order.id || '').trim())
       }
-      const matchesScopeIds = collectOrderMarketAliasIds(order).some((alias) => scopeMarketIds.has(alias))
-      if (
-        !marketMatchesCryptoIdentity(order.market_id, market)
-        && !matchesScopeIds
-      ) {
+      const matchesScopeIds = collectOrderMarketAliasIds(order).some((alias) =>
+        scopeMarketIds.has(alias),
+      )
+      if (!marketMatchesCryptoIdentity(order.market_id, market) && !matchesScopeIds) {
         return false
       }
       if (!scope.directionSide) return true
@@ -4221,7 +4565,11 @@ function BotTradePositionModal({
     })
     filtered.sort((left, right) => {
       const leftTs = Math.max(toTs(left.updated_at), toTs(left.executed_at), toTs(left.created_at))
-      const rightTs = Math.max(toTs(right.updated_at), toTs(right.executed_at), toTs(right.created_at))
+      const rightTs = Math.max(
+        toTs(right.updated_at),
+        toTs(right.executed_at),
+        toTs(right.created_at),
+      )
       return rightTs - leftTs
     })
     return filtered
@@ -4239,7 +4587,9 @@ function BotTradePositionModal({
 
   const anchorOrder = useMemo(() => {
     if (!scope.anchorOrderId) return relatedOrders[0] || null
-    return relatedOrders.find((order) => order.id === scope.anchorOrderId) || relatedOrders[0] || null
+    return (
+      relatedOrders.find((order) => order.id === scope.anchorOrderId) || relatedOrders[0] || null
+    )
   }, [relatedOrders, scope.anchorOrderId])
 
   const scopedOrders = bundleDisplayRow
@@ -4249,15 +4599,15 @@ function BotTradePositionModal({
       : relatedOrders
   const anchorSnapshot = useMemo(
     () => (anchorOrder ? resolveOrderModalSnapshot(anchorOrder) : null),
-    [anchorOrder]
+    [anchorOrder],
   )
   const canSellAnchorOrder = Boolean(
-    scope.kind === 'trade'
-    && !bundleDisplayRow
-    && anchorOrder
-    && scope.traderId
-    && anchorSnapshot
-    && OPEN_ORDER_STATUSES.has(anchorSnapshot.status)
+    scope.kind === 'trade' &&
+    !bundleDisplayRow &&
+    anchorOrder &&
+    scope.traderId &&
+    anchorSnapshot &&
+    OPEN_ORDER_STATUSES.has(anchorSnapshot.status),
   )
 
   const metrics = useMemo(() => {
@@ -4289,7 +4639,8 @@ function BotTradePositionModal({
     const statusSet = new Set<string>()
 
     for (const snapshot of snapshots) {
-      const basis = snapshot.filledNotionalUsd > 0 ? snapshot.filledNotionalUsd : snapshot.notionalUsd
+      const basis =
+        snapshot.filledNotionalUsd > 0 ? snapshot.filledNotionalUsd : snapshot.notionalUsd
       const status = snapshot.status
       totalExposure += snapshot.notionalUsd
       sourceSet.add(snapshot.source)
@@ -4341,15 +4692,16 @@ function BotTradePositionModal({
     }
 
     const hasLiveExposure = openCount > 0
-    const activePnl = hasLiveExposure
-      ? livePnl
-      : (resolvedCount > 0 ? realizedPnl : null)
+    const activePnl = hasLiveExposure ? livePnl : resolvedCount > 0 ? realizedPnl : null
     const returnBasis = hasLiveExposure
-      ? (openFilledNotional > 0 ? openFilledNotional : openExposure)
-      : (resolvedFilledNotional > 0 ? resolvedFilledNotional : resolvedExposure)
-    const returnPercent = activePnl !== null && returnBasis > 0
-      ? (activePnl / returnBasis) * 100
-      : null
+      ? openFilledNotional > 0
+        ? openFilledNotional
+        : openExposure
+      : resolvedFilledNotional > 0
+        ? resolvedFilledNotional
+        : resolvedExposure
+    const returnPercent =
+      activePnl !== null && returnBasis > 0 ? (activePnl / returnBasis) * 100 : null
 
     return {
       orderCount: snapshots.length,
@@ -4364,30 +4716,29 @@ function BotTradePositionModal({
       activePnl,
       returnPercent,
       avgEdgePercent: edgeWeight > 0 ? normalizeEdgePercent(weightedEdge / edgeWeight) : null,
-      avgConfidencePercent: confidenceWeight > 0 ? normalizeConfidencePercent(weightedConfidence / confidenceWeight) : null,
+      avgConfidencePercent:
+        confidenceWeight > 0
+          ? normalizeConfidencePercent(weightedConfidence / confidenceWeight)
+          : null,
       sourceSummary: sourceSet.size > 0 ? Array.from(sourceSet).join(', ') : scope.sourceSummary,
       modeSummary: modeSet.size > 0 ? Array.from(modeSet).join(' / ') : scope.modeSummary,
       statusSummary: statusSet.size > 0 ? Array.from(statusSet).join(', ') : scope.statusSummary,
       openedAt,
       updatedAt,
     }
-  }, [
-    scope.modeSummary,
-    scope.sourceSummary,
-    scope.statusSummary,
-    scopedOrders,
-  ])
+  }, [scope.modeSummary, scope.sourceSummary, scope.statusSummary, scopedOrders])
 
   const livelineResult = useMemo(
-    () => buildBotMarketLivelineSeries({
-      sharedHistory,
-      historyOrders: relatedOrders,
-      directionSide: scope.directionSide,
-      markPrice: metrics.markPrice,
-      entryPrice: metrics.entryPrice,
-      openedAt: metrics.openedAt,
-      updatedAt: metrics.updatedAt,
-    }),
+    () =>
+      buildBotMarketLivelineSeries({
+        sharedHistory,
+        historyOrders: relatedOrders,
+        directionSide: scope.directionSide,
+        markPrice: metrics.markPrice,
+        entryPrice: metrics.entryPrice,
+        openedAt: metrics.openedAt,
+        updatedAt: metrics.updatedAt,
+      }),
     [
       metrics.entryPrice,
       metrics.markPrice,
@@ -4396,7 +4747,7 @@ function BotTradePositionModal({
       relatedOrders,
       scope.directionSide,
       sharedHistory,
-    ]
+    ],
   )
   const oracleHistoryData = useMemo<LivelinePoint[]>(() => {
     const raw = Array.isArray(market?.oracle_history) ? market.oracle_history : []
@@ -4428,7 +4779,8 @@ function BotTradePositionModal({
     const oracleValue = toFiniteNumber(market?.oracle_price)
     if (oracleValue !== null) {
       const currentRawTime = toFiniteNumber(market?.oracle_updated_at_ms)
-      const fallbackTime = currentRawTime !== null ? toUnixSeconds(currentRawTime) : Math.floor(Date.now() / 1000)
+      const fallbackTime =
+        currentRawTime !== null ? toUnixSeconds(currentRawTime) : Math.floor(Date.now() / 1000)
       if (deduped.length === 0) {
         deduped.push({ time: Math.max(1, fallbackTime - 1), value: oracleValue })
         deduped.push({ time: Math.max(2, fallbackTime), value: oracleValue })
@@ -4450,39 +4802,36 @@ function BotTradePositionModal({
   const livelineData = useOracleSeries ? oracleHistoryData : livelineResult.primary
   const oracleValue = toFiniteNumber(market?.oracle_price)
   const livelineValue = useOracleSeries
-    ? (
-      oracleValue
-      ?? oracleHistoryData[oracleHistoryData.length - 1]?.value
-      ?? 0
-    )
-    : (
-      toFiniteNumber(metrics.markPrice ?? metrics.entryPrice)
-      ?? livelineData[livelineData.length - 1]?.value
-      ?? 0
-    )
+    ? (oracleValue ?? oracleHistoryData[oracleHistoryData.length - 1]?.value ?? 0)
+    : (toFiniteNumber(metrics.markPrice ?? metrics.entryPrice) ??
+      livelineData[livelineData.length - 1]?.value ??
+      0)
   const isDark = themeMode === 'dark'
   const yesSeriesLabel = scope.yesLabel || 'Yes'
   const noSeriesLabel = scope.noLabel || 'No'
   const priceToBeat = toFiniteNumber(market?.price_to_beat)
   const pnlPositive = (metrics.activePnl ?? 0) >= 0
   const colorByPriceToBeat = priceToBeat !== null && oracleValue !== null
-  const lineColor = (
-    colorByPriceToBeat
-      ? (
-        oracleValue >= priceToBeat
-          ? (isDark ? '#22c55e' : '#16a34a')
-          : (isDark ? '#f87171' : '#dc2626')
-      )
-      : (
-        pnlPositive
-          ? (isDark ? '#22c55e' : '#16a34a')
-          : (isDark ? '#f87171' : '#dc2626')
-      )
-  )
+  const lineColor = colorByPriceToBeat
+    ? oracleValue >= priceToBeat
+      ? isDark
+        ? '#22c55e'
+        : '#16a34a'
+      : isDark
+        ? '#f87171'
+        : '#dc2626'
+    : pnlPositive
+      ? isDark
+        ? '#22c55e'
+        : '#16a34a'
+      : isDark
+        ? '#f87171'
+        : '#dc2626'
   const complementColor = isDark ? '#64748b' : '#94a3b8'
-  const complementValue = livelineResult.complement.length > 0
-    ? livelineResult.complement[livelineResult.complement.length - 1].value
-    : 0
+  const complementValue =
+    livelineResult.complement.length > 0
+      ? livelineResult.complement[livelineResult.complement.length - 1].value
+      : 0
   const oracleSourceSeries = useMemo<LivelineSeries[]>(() => {
     if (!useOracleSeries) return []
     const sourceMap = market?.oracle_prices_by_source
@@ -4505,7 +4854,9 @@ function BotTradePositionModal({
 
     if (entries.length < 2) return []
 
-    const primarySourceKey = String(market?.oracle_source || '').trim().toLowerCase()
+    const primarySourceKey = String(market?.oracle_source || '')
+      .trim()
+      .toLowerCase()
     const filteredEntries = entries
       .filter((entry) => !primarySourceKey || entry.key !== primarySourceKey)
       .sort((left, right) => left.label.localeCompare(right.label))
@@ -4534,15 +4885,13 @@ function BotTradePositionModal({
   const livelineSeries = useMemo<LivelineSeries[]>(() => {
     const series: LivelineSeries[] = []
     if (livelineData.length >= 2) {
-      const primaryLabel = (
-        useOracleSeries
-          ? formatSeriesLabel(String(market?.oracle_source || 'oracle'))
-          : scope.directionSide === 'YES'
-            ? yesSeriesLabel
-            : scope.directionSide === 'NO'
-              ? noSeriesLabel
-              : 'Primary'
-      )
+      const primaryLabel = useOracleSeries
+        ? formatSeriesLabel(String(market?.oracle_source || 'oracle'))
+        : scope.directionSide === 'YES'
+          ? yesSeriesLabel
+          : scope.directionSide === 'NO'
+            ? noSeriesLabel
+            : 'Primary'
       series.push({
         id: 'primary',
         data: livelineData,
@@ -4580,51 +4929,59 @@ function BotTradePositionModal({
     useOracleSeries,
   ])
   const referencePrice = priceToBeat ?? metrics.entryPrice
-  const referenceLabel = (
+  const referenceLabel =
     priceToBeat !== null
       ? t('tradingPanel.modal.priceToBeat')
       : metrics.entryPrice !== null
         ? t('tradingPanel.modal.entry')
         : null
-  )
   const livelineWindow = Math.max(
     timeframeChartWindowSeconds(market?.timeframe),
-    livelineData.length > 1
-      ? livelineData[livelineData.length - 1].time - livelineData[0].time
-      : 0
+    livelineData.length > 1 ? livelineData[livelineData.length - 1].time - livelineData[0].time : 0,
   )
-  const entryMarkLabel = useOracleSeries ? t('tradingPanel.modal.oraclePriceToBeat') : t('tradingPanel.modal.entryMark')
+  const entryMarkLabel = useOracleSeries
+    ? t('tradingPanel.modal.oraclePriceToBeat')
+    : t('tradingPanel.modal.entryMark')
   const entryValue = useOracleSeries ? oracleValue : metrics.entryPrice
   const markValue = useOracleSeries ? priceToBeat : metrics.markPrice
-  const markUpdateLabel = useOracleSeries ? t('tradingPanel.modal.oracleUpdate') : t('tradingPanel.modal.markUpdate')
-  const pnlLabel = metrics.openCount > 0 ? t('tradingPanel.modal.livePnl') : metrics.resolvedCount > 0 ? t('tradingPanel.modal.realizedPnl') : t('tradingPanel.modal.pnl')
-  const returnLabel = metrics.openCount > 0 ? t('tradingPanel.modal.liveReturn') : t('tradingPanel.modal.return')
+  const markUpdateLabel = useOracleSeries
+    ? t('tradingPanel.modal.oracleUpdate')
+    : t('tradingPanel.modal.markUpdate')
+  const pnlLabel =
+    metrics.openCount > 0
+      ? t('tradingPanel.modal.livePnl')
+      : metrics.resolvedCount > 0
+        ? t('tradingPanel.modal.realizedPnl')
+        : t('tradingPanel.modal.pnl')
+  const returnLabel =
+    metrics.openCount > 0 ? t('tradingPanel.modal.liveReturn') : t('tradingPanel.modal.return')
   const oracleAgeSeconds = toFiniteNumber(market?.oracle_age_seconds)
   const markUpdatedAge = formatRelativeAge(metrics.updatedAt)
   const bundleResolutionLabel = bundleDisplayRow
-    ? formatSignedCurrencyRange(bundleDisplayRow.resolutionProfitLow, bundleDisplayRow.resolutionProfitHigh)
+    ? formatSignedCurrencyRange(
+        bundleDisplayRow.resolutionProfitLow,
+        bundleDisplayRow.resolutionProfitHigh,
+      )
     : 'â€”'
   const bundlePayoutLabel = bundleDisplayRow
-    ? (
-      bundleDisplayRow.resolutionPayoutLow !== null && bundleDisplayRow.resolutionPayoutHigh !== null
-        ? `${formatCurrency(bundleDisplayRow.resolutionPayoutLow, true)}-${formatCurrency(bundleDisplayRow.resolutionPayoutHigh, true)}`
-        : 'â€”'
-    )
+    ? bundleDisplayRow.resolutionPayoutLow !== null &&
+      bundleDisplayRow.resolutionPayoutHigh !== null
+      ? `${formatCurrency(bundleDisplayRow.resolutionPayoutLow, true)}-${formatCurrency(bundleDisplayRow.resolutionPayoutHigh, true)}`
+      : 'â€”'
     : 'â€”'
   const bundleRangeClassName = bundleDisplayRow
-    ? (
-      bundleDisplayRow.resolutionProfitLow !== null && bundleDisplayRow.resolutionProfitHigh !== null
-        ? (
-          bundleDisplayRow.resolutionProfitLow >= 0
-            ? 'text-emerald-500'
-            : bundleDisplayRow.resolutionProfitHigh <= 0
-              ? 'text-red-500'
-              : 'text-amber-600 dark:text-amber-300'
-        )
-        : ''
-    )
+    ? bundleDisplayRow.resolutionProfitLow !== null &&
+      bundleDisplayRow.resolutionProfitHigh !== null
+      ? bundleDisplayRow.resolutionProfitLow >= 0
+        ? 'text-emerald-500'
+        : bundleDisplayRow.resolutionProfitHigh <= 0
+          ? 'text-red-500'
+          : 'text-amber-600 dark:text-amber-300'
+      : ''
     : ''
-  const bundleSettlementDetail = bundleDisplayRow ? describeTradeBundleSettlement(bundleDisplayRow) : null
+  const bundleSettlementDetail = bundleDisplayRow
+    ? describeTradeBundleSettlement(bundleDisplayRow)
+    : null
 
   return (
     <Card className="w-[min(1150px,calc(100vw-2rem))] max-h-[90vh] overflow-hidden rounded-2xl border-border/70 bg-background shadow-[0_40px_120px_rgba(0,0,0,0.55)]">
@@ -4632,16 +4989,26 @@ function BotTradePositionModal({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-1.5">
-              <h3 className="text-sm font-semibold truncate max-w-[620px]" title={scope.marketQuestion}>
+              <h3
+                className="text-sm font-semibold truncate max-w-[620px]"
+                title={scope.marketQuestion}
+              >
                 {scope.marketQuestion}
               </h3>
               <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
-                {bundleDisplayRow ? t('tradingPanel.modal.bundleTrade') : scope.kind === 'trade' ? t('tradingPanel.modal.trade') : t('tradingPanel.modal.position')}
+                {bundleDisplayRow
+                  ? t('tradingPanel.modal.bundleTrade')
+                  : scope.kind === 'trade'
+                    ? t('tradingPanel.modal.trade')
+                    : t('tradingPanel.modal.position')}
               </Badge>
               <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
                 {scope.directionLabel || t('tradingPanel.common.notAvailable')}
               </Badge>
-              <Badge variant="outline" className="h-5 px-1.5 text-[10px] border-border/80 bg-muted/60 text-muted-foreground">
+              <Badge
+                variant="outline"
+                className="h-5 px-1.5 text-[10px] border-border/80 bg-muted/60 text-muted-foreground"
+              >
                 {scope.traderName}
               </Badge>
             </div>
@@ -4667,7 +5034,9 @@ function BotTradePositionModal({
                   onClick={() => onReconcile(anchorOrder)}
                   disabled={reconcilePendingOrderId === String(anchorOrder.id || '')}
                 >
-                  {reconcilePendingOrderId === String(anchorOrder.id || '') ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
+                  {reconcilePendingOrderId === String(anchorOrder.id || '') ? (
+                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                  ) : null}
                   {t('tradingPanel.modal.reconcile')}
                 </Button>
                 <Button
@@ -4678,7 +5047,9 @@ function BotTradePositionModal({
                   onClick={() => onSell(anchorOrder)}
                   disabled={sellPendingOrderId === String(anchorOrder.id || '')}
                 >
-                  {sellPendingOrderId === String(anchorOrder.id || '') ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
+                  {sellPendingOrderId === String(anchorOrder.id || '') ? (
+                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                  ) : null}
                   {t('tradingPanel.modal.sellNow')}
                 </Button>
               </>
@@ -4705,7 +5076,13 @@ function BotTradePositionModal({
                 <ExternalLink className="h-3.5 w-3.5" />
               </a>
             )}
-            <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={onClose}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 px-2 text-[11px]"
+              onClick={onClose}
+            >
               {t('tradingPanel.common.close')}
             </Button>
           </div>
@@ -4716,33 +5093,63 @@ function BotTradePositionModal({
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-md border border-border/60 bg-card/80 px-2.5 py-2">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{pnlLabel}</p>
-            <p className={cn('text-sm font-mono', (metrics.activePnl ?? 0) > 0 ? 'text-emerald-500' : (metrics.activePnl ?? 0) < 0 ? 'text-red-500' : '')}>
+            <p
+              className={cn(
+                'text-sm font-mono',
+                (metrics.activePnl ?? 0) > 0
+                  ? 'text-emerald-500'
+                  : (metrics.activePnl ?? 0) < 0
+                    ? 'text-red-500'
+                    : '',
+              )}
+            >
               {formatSignedCurrency(metrics.activePnl)}
             </p>
-            <p className="text-[10px] text-muted-foreground">{returnLabel}: {formatSignedPercent(metrics.returnPercent, 2)}</p>
+            <p className="text-[10px] text-muted-foreground">
+              {returnLabel}: {formatSignedPercent(metrics.returnPercent, 2)}
+            </p>
           </div>
           <div className="rounded-md border border-border/60 bg-card/80 px-2.5 py-2">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{t('tradingPanel.modal.exposure')}</p>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              {t('tradingPanel.modal.exposure')}
+            </p>
             <p className="text-sm font-mono">{formatCurrency(metrics.exposureUsd, true)}</p>
-            <p className="text-[10px] text-muted-foreground">{t('tradingPanel.modal.openResolvedFailed', { open: metrics.openCount, resolved: metrics.resolvedCount, failed: metrics.failedCount })}</p>
+            <p className="text-[10px] text-muted-foreground">
+              {t('tradingPanel.modal.openResolvedFailed', {
+                open: metrics.openCount,
+                resolved: metrics.resolvedCount,
+                failed: metrics.failedCount,
+              })}
+            </p>
           </div>
           <div className="rounded-md border border-border/60 bg-card/80 px-2.5 py-2">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{entryMarkLabel}</p>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              {entryMarkLabel}
+            </p>
             <p className="text-sm font-mono">
               {entryValue !== null ? entryValue.toFixed(3) : '—'}
               <span className="mx-1 text-muted-foreground">→</span>
               {markValue !== null ? markValue.toFixed(3) : '—'}
             </p>
-            <p className="text-[10px] text-muted-foreground">{markUpdateLabel} {markUpdatedAge}</p>
+            <p className="text-[10px] text-muted-foreground">
+              {markUpdateLabel} {markUpdatedAge}
+            </p>
           </div>
           <div className="rounded-md border border-border/60 bg-card/80 px-2.5 py-2">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{t('tradingPanel.modal.edgeConfidence')}</p>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              {t('tradingPanel.modal.edgeConfidence')}
+            </p>
             <p className="text-sm font-mono">
               {formatSignedPercent(metrics.avgEdgePercent, 2)}
               <span className="mx-1 text-muted-foreground">·</span>
               {formatSignedPercent(metrics.avgConfidencePercent, 1)}
             </p>
-            <p className="text-[10px] text-muted-foreground">{t('tradingPanel.modal.liveShadow', { live: metrics.liveOrderCount, shadow: metrics.shadowOrderCount })}</p>
+            <p className="text-[10px] text-muted-foreground">
+              {t('tradingPanel.modal.liveShadow', {
+                live: metrics.liveOrderCount,
+                shadow: metrics.shadowOrderCount,
+              })}
+            </p>
           </div>
         </div>
 
@@ -4751,7 +5158,9 @@ function BotTradePositionModal({
             <div className="rounded-md border border-cyan-500/25 bg-cyan-500/5 px-2.5 py-2">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{t('tradingPanel.modal.bundleSettlement')}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    {t('tradingPanel.modal.bundleSettlement')}
+                  </p>
                   <p className={cn('mt-1 text-sm font-mono', bundleRangeClassName)}>
                     {RESOLVED_ORDER_STATUSES.has(normalizeStatus(bundleDisplayRow.status))
                       ? formatCurrency(bundleDisplayRow.realizedPnl, true)
@@ -4764,7 +5173,7 @@ function BotTradePositionModal({
                     'h-5 px-1.5 text-[10px]',
                     bundleDisplayRow.guaranteedAnomaly
                       ? 'border-red-300 bg-red-100 text-red-900 dark:border-red-400/60 dark:bg-red-500/25 dark:text-red-200'
-                      : 'border-cyan-300 bg-cyan-100 text-cyan-900 dark:border-cyan-400/45 dark:bg-cyan-500/12 dark:text-cyan-200'
+                      : 'border-cyan-300 bg-cyan-100 text-cyan-900 dark:border-cyan-400/45 dark:bg-cyan-500/12 dark:text-cyan-200',
                   )}
                 >
                   {bundleDisplayRow.guaranteeBadgeLabel}
@@ -4772,18 +5181,38 @@ function BotTradePositionModal({
               </div>
               <div className="mt-2 grid gap-2 sm:grid-cols-3">
                 <div className="rounded border border-border/50 bg-background/70 px-2 py-1.5">
-                  <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.modal.basis')}</p>
+                  <p className="text-[9px] uppercase text-muted-foreground">
+                    {t('tradingPanel.modal.basis')}
+                  </p>
                   <p className="text-xs font-mono">
-                    {formatCurrency(bundleDisplayRow.filledNotional > 0 ? bundleDisplayRow.filledNotional : bundleDisplayRow.requestedNotional, true)}
+                    {formatCurrency(
+                      bundleDisplayRow.filledNotional > 0
+                        ? bundleDisplayRow.filledNotional
+                        : bundleDisplayRow.requestedNotional,
+                      true,
+                    )}
                   </p>
                 </div>
                 <div className="rounded border border-border/50 bg-background/70 px-2 py-1.5">
-                  <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.modal.resolutionPayout')}</p>
+                  <p className="text-[9px] uppercase text-muted-foreground">
+                    {t('tradingPanel.modal.resolutionPayout')}
+                  </p>
                   <p className="text-xs font-mono">{bundlePayoutLabel}</p>
                 </div>
                 <div className="rounded border border-border/50 bg-background/70 px-2 py-1.5">
-                  <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.modal.markToMarket')}</p>
-                  <p className={cn('text-xs font-mono', bundleDisplayRow.unrealized > 0 ? 'text-emerald-500' : bundleDisplayRow.unrealized < 0 ? 'text-red-500' : '')}>
+                  <p className="text-[9px] uppercase text-muted-foreground">
+                    {t('tradingPanel.modal.markToMarket')}
+                  </p>
+                  <p
+                    className={cn(
+                      'text-xs font-mono',
+                      bundleDisplayRow.unrealized > 0
+                        ? 'text-emerald-500'
+                        : bundleDisplayRow.unrealized < 0
+                          ? 'text-red-500'
+                          : '',
+                    )}
+                  >
                     {formatCurrency(bundleDisplayRow.unrealized, true)}
                   </p>
                 </div>
@@ -4795,20 +5224,38 @@ function BotTradePositionModal({
 
             <div className="rounded-md border border-border/60 bg-card/80">
               <div className="border-b border-border/50 px-2.5 py-2">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{t('tradingPanel.modal.legBreakdown')}</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {t('tradingPanel.modal.legBreakdown')}
+                </p>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-border/40 text-[10px] text-muted-foreground">
-                      <th className="px-2.5 py-2 text-left font-medium">{t('tradingPanel.tableHeaders.market')}</th>
-                      <th className="px-2 py-2 text-left font-medium">{t('tradingPanel.modal.leg')}</th>
-                      <th className="px-2 py-2 text-right font-medium">{t('tradingPanel.modal.shares')}</th>
-                      <th className="px-2 py-2 text-right font-medium">{t('tradingPanel.tableHeaders.fill')}</th>
-                      <th className="px-2 py-2 text-right font-medium">{t('tradingPanel.tableHeaders.mark')}</th>
-                      <th className="px-2 py-2 text-right font-medium">{t('tradingPanel.tableHeaders.value')}</th>
-                      <th className="px-2 py-2 text-right font-medium">{t('tradingPanel.modal.winPayout')}</th>
-                      <th className="px-2 py-2 text-left font-medium">{t('tradingPanel.modal.state')}</th>
+                      <th className="px-2.5 py-2 text-left font-medium">
+                        {t('tradingPanel.tableHeaders.market')}
+                      </th>
+                      <th className="px-2 py-2 text-left font-medium">
+                        {t('tradingPanel.modal.leg')}
+                      </th>
+                      <th className="px-2 py-2 text-right font-medium">
+                        {t('tradingPanel.modal.shares')}
+                      </th>
+                      <th className="px-2 py-2 text-right font-medium">
+                        {t('tradingPanel.tableHeaders.fill')}
+                      </th>
+                      <th className="px-2 py-2 text-right font-medium">
+                        {t('tradingPanel.tableHeaders.mark')}
+                      </th>
+                      <th className="px-2 py-2 text-right font-medium">
+                        {t('tradingPanel.tableHeaders.value')}
+                      </th>
+                      <th className="px-2 py-2 text-right font-medium">
+                        {t('tradingPanel.modal.winPayout')}
+                      </th>
+                      <th className="px-2 py-2 text-left font-medium">
+                        {t('tradingPanel.modal.state')}
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -4817,7 +5264,10 @@ function BotTradePositionModal({
                       const legPrimaryLink = legLinks.polymarket || legLinks.kalshi
                       const legStatus = resolveBundleLegStatus(leg)
                       return (
-                        <tr key={`bundle-leg-${bundleDisplayRow.key}-${leg.leg.leg_index}`} className="border-b border-border/30 last:border-b-0">
+                        <tr
+                          key={`bundle-leg-${bundleDisplayRow.key}-${leg.leg.leg_index}`}
+                          className="border-b border-border/30 last:border-b-0"
+                        >
                           <td className="px-2.5 py-2">
                             {legPrimaryLink ? (
                               <a
@@ -4833,13 +5283,25 @@ function BotTradePositionModal({
                             )}
                           </td>
                           <td className="px-2 py-2">
-                            <span className="font-mono">{normalizeOutcome(leg.leg.outcome) || 'n/a'}</span>
+                            <span className="font-mono">
+                              {normalizeOutcome(leg.leg.outcome) || 'n/a'}
+                            </span>
                           </td>
-                          <td className="px-2 py-2 text-right font-mono">{leg.filledSize > 0 ? leg.filledSize.toFixed(1) : 'n/a'}</td>
-                          <td className="px-2 py-2 text-right font-mono">{leg.fillPx !== null ? leg.fillPx.toFixed(3) : 'n/a'}</td>
-                          <td className="px-2 py-2 text-right font-mono">{leg.markPx !== null ? leg.markPx.toFixed(3) : 'n/a'}</td>
-                          <td className="px-2 py-2 text-right font-mono">{leg.currentValue > 0 ? formatCurrency(leg.currentValue, true) : 'n/a'}</td>
-                          <td className="px-2 py-2 text-right font-mono">{leg.filledSize > 0 ? formatCurrency(leg.filledSize, true) : 'n/a'}</td>
+                          <td className="px-2 py-2 text-right font-mono">
+                            {leg.filledSize > 0 ? leg.filledSize.toFixed(1) : 'n/a'}
+                          </td>
+                          <td className="px-2 py-2 text-right font-mono">
+                            {leg.fillPx !== null ? leg.fillPx.toFixed(3) : 'n/a'}
+                          </td>
+                          <td className="px-2 py-2 text-right font-mono">
+                            {leg.markPx !== null ? leg.markPx.toFixed(3) : 'n/a'}
+                          </td>
+                          <td className="px-2 py-2 text-right font-mono">
+                            {leg.currentValue > 0 ? formatCurrency(leg.currentValue, true) : 'n/a'}
+                          </td>
+                          <td className="px-2 py-2 text-right font-mono">
+                            {leg.filledSize > 0 ? formatCurrency(leg.filledSize, true) : 'n/a'}
+                          </td>
                           <td className="px-2 py-2">
                             <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
                               {resolveOrderLifecycleLabel(legStatus)}
@@ -4855,12 +5317,14 @@ function BotTradePositionModal({
           </div>
         ) : null}
 
-        <div className={cn(
-          'rounded-lg border overflow-hidden',
-          isDark
-            ? 'border-slate-700/40 bg-gradient-to-b from-slate-900/75 via-slate-950/80 to-black/90'
-            : 'border-slate-200/90 bg-gradient-to-b from-white via-slate-50 to-slate-100/70',
-        )}>
+        <div
+          className={cn(
+            'rounded-lg border overflow-hidden',
+            isDark
+              ? 'border-slate-700/40 bg-gradient-to-b from-slate-900/75 via-slate-950/80 to-black/90'
+              : 'border-slate-200/90 bg-gradient-to-b from-white via-slate-50 to-slate-100/70',
+          )}
+        >
           {sellError ? (
             <div className="border-b border-red-500/30 bg-red-500/10 px-3 py-2 text-[11px] text-red-700 dark:text-red-100">
               {sellError}
@@ -4889,32 +5353,52 @@ function BotTradePositionModal({
               lerpSpeed={0.1}
               padding={{ top: 8, right: 80, bottom: 24, left: 14 }}
               tooltipOutline={isDark}
-              formatValue={(value) => `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-              referenceLine={referencePrice !== null && referenceLabel ? { value: referencePrice, label: referenceLabel } : undefined}
+              formatValue={(value) =>
+                `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+              }
+              referenceLine={
+                referencePrice !== null && referenceLabel
+                  ? { value: referencePrice, label: referenceLabel }
+                  : undefined
+              }
               style={{ height: 280 }}
             />
           ) : (
             <div className="h-[280px] flex items-center justify-center text-xs text-muted-foreground">
-              {sharedHistoryLoading ? t('tradingPanel.modal.hydratingHistory') : t('tradingPanel.modal.waitingHistory')}
+              {sharedHistoryLoading
+                ? t('tradingPanel.modal.hydratingHistory')
+                : t('tradingPanel.modal.waitingHistory')}
             </div>
           )}
         </div>
 
         <div className="grid gap-2 lg:grid-cols-2">
           <div className="rounded-md border border-border/60 bg-card/80 px-2.5 py-2">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{t('tradingPanel.modal.lifecycle')}</p>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              {t('tradingPanel.modal.lifecycle')}
+            </p>
             <p className="text-xs mt-0.5">{scope.executionSummary || '—'}</p>
-            <p className="text-[10px] text-muted-foreground mt-1">{scope.outcomeSummary || scope.statusSummary || metrics.statusSummary || t('tradingPanel.common.notAvailableShort')}</p>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              {scope.outcomeSummary ||
+                scope.statusSummary ||
+                metrics.statusSummary ||
+                t('tradingPanel.common.notAvailableShort')}
+            </p>
           </div>
           <div className="rounded-md border border-border/60 bg-card/80 px-2.5 py-2">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{t('tradingPanel.modal.timingAndFeed')}</p>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              {t('tradingPanel.modal.timingAndFeed')}
+            </p>
             <p className="text-xs mt-0.5">
               {t('tradingPanel.modal.opened')}: {formatTimestamp(metrics.openedAt)}
               <span className="mx-1 text-muted-foreground">·</span>
               {t('tradingPanel.modal.updated')}: {formatTimestamp(metrics.updatedAt)}
             </p>
             <p className="text-[10px] text-muted-foreground mt-1">
-              {t('tradingPanel.modal.oracleAge')}: {oracleAgeSeconds !== null ? `${Math.round(oracleAgeSeconds)}s` : t('tradingPanel.common.notAvailableShort')}
+              {t('tradingPanel.modal.oracleAge')}:{' '}
+              {oracleAgeSeconds !== null
+                ? `${Math.round(oracleAgeSeconds)}s`
+                : t('tradingPanel.common.notAvailableShort')}
             </p>
           </div>
         </div>
@@ -4932,7 +5416,9 @@ function BotTradePositionModal({
 function normalizePerformanceTimeframe(value: unknown): string | null {
   const normalized = normalizeCryptoTimeframe(value)
   if (normalized) return normalized
-  const text = String(value || '').trim().toLowerCase()
+  const text = String(value || '')
+    .trim()
+    .toLowerCase()
   if (!text) return null
   if (text === '5min' || text === '5m' || text === '5') return '5m'
   if (text === '15min' || text === '15m' || text === '15') return '15m'
@@ -4942,7 +5428,10 @@ function normalizePerformanceTimeframe(value: unknown): string | null {
 }
 
 function normalizePerformanceMode(value: unknown): string | null {
-  const text = String(value || '').trim().toLowerCase().replace(/[\s-]+/g, '_')
+  const text = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_')
   if (!text) return null
   if (text === 'purearb') return 'pure_arb'
   if (text === 'dumphedge') return 'dump_hedge'
@@ -4955,7 +5444,9 @@ function humanizeStrategyParamLabel(key: string): string {
   return key
     .split('_')
     .filter(Boolean)
-    .map((part) => (part.length <= 3 ? part.toUpperCase() : `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`))
+    .map((part) =>
+      part.length <= 3 ? part.toUpperCase() : `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`,
+    )
     .join(' ')
 }
 
@@ -4981,7 +5472,9 @@ function inferStrategyParamField(key: string, value: unknown): Record<string, un
   }
 }
 
-function dedupeStrategyParamFields(fields: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
+function dedupeStrategyParamFields(
+  fields: Array<Record<string, unknown>>,
+): Array<Record<string, unknown>> {
   const out: Array<Record<string, unknown>> = []
   const seen = new Set<string>()
   for (const field of fields) {
@@ -5029,7 +5522,10 @@ function formatPerformanceParamValue(value: unknown): string {
   }
   if (Array.isArray(value)) {
     if (value.length === 0) return '[]'
-    const preview = value.slice(0, 3).map((item) => formatPerformanceParamValue(item)).join(', ')
+    const preview = value
+      .slice(0, 3)
+      .map((item) => formatPerformanceParamValue(item))
+      .join(', ')
     return value.length > 3 ? `${preview} +${value.length - 3}` : preview
   }
   if (isRecord(value)) {
@@ -5044,7 +5540,11 @@ function formatPerformanceParamValue(value: unknown): string {
   return String(value)
 }
 
-function performanceParamBucketMeta(value: unknown): { key: string; label: string; isMissing: boolean } {
+function performanceParamBucketMeta(value: unknown): {
+  key: string
+  label: string
+  isMissing: boolean
+} {
   if (value === undefined || value === null) {
     return {
       key: 'not_recorded',
@@ -5059,10 +5559,7 @@ function performanceParamBucketMeta(value: unknown): { key: string; label: strin
   }
 }
 
-function mergePerformanceParamRecord(
-  target: Record<string, unknown>,
-  value: unknown,
-): boolean {
+function mergePerformanceParamRecord(target: Record<string, unknown>, value: unknown): boolean {
   if (!isRecord(value)) return false
   let merged = false
   for (const [rawKey, rawValue] of Object.entries(value)) {
@@ -5074,13 +5571,17 @@ function mergePerformanceParamRecord(
   return merged
 }
 
-function mergePerformanceParamChildren(
-  target: Record<string, unknown>,
-  value: unknown,
-): boolean {
+function mergePerformanceParamChildren(target: Record<string, unknown>, value: unknown): boolean {
   if (!isRecord(value)) return false
   let merged = false
-  for (const nestedKey of ['strategy_params', 'sub_strategy_params', 'params', 'parameters', 'config', 'effective_strategy_params']) {
+  for (const nestedKey of [
+    'strategy_params',
+    'sub_strategy_params',
+    'params',
+    'parameters',
+    'config',
+    'effective_strategy_params',
+  ]) {
     merged = mergePerformanceParamRecord(target, value[nestedKey]) || merged
   }
   return merged
@@ -5125,10 +5626,7 @@ function extractOrderPerformanceParams(
   }
 }
 
-function _pushRecord(
-  target: Array<Record<string, unknown>>,
-  value: unknown,
-) {
+function _pushRecord(target: Array<Record<string, unknown>>, value: unknown) {
   if (isRecord(value)) target.push(value)
 }
 
@@ -5205,26 +5703,40 @@ function extractOrderPerformanceDimensions(
 } {
   const contexts = orderPerformanceContexts(order, decision)
   const strategyKey = (
-    cleanText(decision?.strategy_key)
-    || readPerformanceContextValue(contexts, ['strategy_key', 'strategy_slug', 'strategy_type', 'strategy'], cleanText)
-    || cleanText(order.source)
-    || 'unknown'
+    cleanText(decision?.strategy_key) ||
+    readPerformanceContextValue(
+      contexts,
+      ['strategy_key', 'strategy_slug', 'strategy_type', 'strategy'],
+      cleanText,
+    ) ||
+    cleanText(order.source) ||
+    'unknown'
   ).toLowerCase()
-  const timeframe = readPerformanceContextValue(
-    contexts,
-    ['timeframe', 'cadence', 'interval', 'window'],
-    normalizePerformanceTimeframe,
-  ) || 'unclassified'
-  const mode = readPerformanceContextValue(
-    contexts,
-    ['active_mode', 'requested_mode', 'strategy_mode', 'mode', 'dominant_mode', 'dominant_strategy'],
-    normalizePerformanceMode,
-  ) || 'unclassified'
-  const subStrategy = readPerformanceContextValue(
-    contexts,
-    ['sub_strategy', 'dominant_strategy', 'strategy_variant', 'variant'],
-    normalizePerformanceMode,
-  ) || 'unclassified'
+  const timeframe =
+    readPerformanceContextValue(
+      contexts,
+      ['timeframe', 'cadence', 'interval', 'window'],
+      normalizePerformanceTimeframe,
+    ) || 'unclassified'
+  const mode =
+    readPerformanceContextValue(
+      contexts,
+      [
+        'active_mode',
+        'requested_mode',
+        'strategy_mode',
+        'mode',
+        'dominant_mode',
+        'dominant_strategy',
+      ],
+      normalizePerformanceMode,
+    ) || 'unclassified'
+  const subStrategy =
+    readPerformanceContextValue(
+      contexts,
+      ['sub_strategy', 'dominant_strategy', 'strategy_variant', 'variant'],
+      normalizePerformanceMode,
+    ) || 'unclassified'
   return {
     strategyKey,
     timeframe,
@@ -5294,74 +5806,83 @@ function buildPerformanceBuckets(
   return rows
 }
 
-function classifyStrategyParamGroup(fieldKey: string, field?: Record<string, unknown>): StrategyParamGroupKey {
-  const phase = field ? String(field.phase || '').trim().toLowerCase() : ''
+function classifyStrategyParamGroup(
+  fieldKey: string,
+  field?: Record<string, unknown>,
+): StrategyParamGroupKey {
+  const phase = field
+    ? String(field.phase || '')
+        .trim()
+        .toLowerCase()
+    : ''
   if (phase === 'signal') return 'signal'
-  const key = String(fieldKey || '').trim().toLowerCase()
+  const key = String(fieldKey || '')
+    .trim()
+    .toLowerCase()
   if (!key) return 'advanced'
   if (
-    key.startsWith('strategy_mode')
-    || key === 'mode'
-    || key === 'traders_scope'
-    || key.startsWith('include_')
-    || key.startsWith('exclude_')
-    || key === 'enabled_sub_strategies'
-    || key.includes('sub_strategy')
+    key.startsWith('strategy_mode') ||
+    key === 'mode' ||
+    key === 'traders_scope' ||
+    key.startsWith('include_') ||
+    key.startsWith('exclude_') ||
+    key === 'enabled_sub_strategies' ||
+    key.includes('sub_strategy')
   ) {
     return 'scope'
   }
   if (
-    key.includes('signal_age')
-    || key.includes('market_data_age')
-    || key.includes('live_context_age')
-    || key.includes('oracle_age')
-    || key.includes('seconds_left')
-    || key.includes('reentry_cooldown')
-    || key.includes('freshness')
-    || key.includes('timeout')
+    key.includes('signal_age') ||
+    key.includes('market_data_age') ||
+    key.includes('live_context_age') ||
+    key.includes('oracle_age') ||
+    key.includes('seconds_left') ||
+    key.includes('reentry_cooldown') ||
+    key.includes('freshness') ||
+    key.includes('timeout')
   ) {
     return 'timing'
   }
   if (
-    key.includes('edge')
-    || key.includes('confidence')
-    || key.includes('liquidity')
-    || key.includes('spread')
-    || key.includes('imbalance')
-    || key.includes('entry_price')
-    || key.includes('entry_executable')
-    || key.includes('opening_')
-    || key.includes('guardrail')
-    || key.includes('require_oracle')
+    key.includes('edge') ||
+    key.includes('confidence') ||
+    key.includes('liquidity') ||
+    key.includes('spread') ||
+    key.includes('imbalance') ||
+    key.includes('entry_price') ||
+    key.includes('entry_executable') ||
+    key.includes('opening_') ||
+    key.includes('guardrail') ||
+    key.includes('require_oracle')
   ) {
     return 'entry'
   }
   if (
-    key.includes('take_profit')
-    || key.includes('stop_loss')
-    || key.includes('trailing')
-    || key.includes('min_exit')
-    || key.includes('exit_price')
-    || key.includes('min_hold')
-    || key.includes('max_hold')
-    || key.startsWith('rapid_')
-    || key.startsWith('reverse_')
-    || key.startsWith('underwater_')
-    || key.startsWith('force_flatten')
-    || key.includes('close_on_inactive')
-    || key.includes('resolve_only')
-    || key.includes('preplace_take_profit')
+    key.includes('take_profit') ||
+    key.includes('stop_loss') ||
+    key.includes('trailing') ||
+    key.includes('min_exit') ||
+    key.includes('exit_price') ||
+    key.includes('min_hold') ||
+    key.includes('max_hold') ||
+    key.startsWith('rapid_') ||
+    key.startsWith('reverse_') ||
+    key.startsWith('underwater_') ||
+    key.startsWith('force_flatten') ||
+    key.includes('close_on_inactive') ||
+    key.includes('resolve_only') ||
+    key.includes('preplace_take_profit')
   ) {
     return 'exit'
   }
   if (
-    key.includes('size')
-    || key.includes('sizing')
-    || key.includes('notional')
-    || key.includes('position')
-    || key.includes('multiplier')
-    || key.includes('kelly')
-    || key.includes('capital')
+    key.includes('size') ||
+    key.includes('sizing') ||
+    key.includes('notional') ||
+    key.includes('position') ||
+    key.includes('multiplier') ||
+    key.includes('kelly') ||
+    key.includes('capital')
   ) {
     return 'sizing'
   }
@@ -5435,19 +5956,24 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
   const [confirmTraderStartOpen, setConfirmTraderStartOpen] = useState(false)
   const [confirmTraderStopOpen, setConfirmTraderStopOpen] = useState(false)
   const [enableCopyExistingPositions, setEnableCopyExistingPositions] = useState(false)
-  const [stopLifecycleMode, setStopLifecycleMode] = useState<TraderStopLifecycleMode>('keep_positions')
+  const [stopLifecycleMode, setStopLifecycleMode] =
+    useState<TraderStopLifecycleMode>('keep_positions')
   const [stopConfirmLiveClose, setStopConfirmLiveClose] = useState(false)
   const [globalSettingsFlyoutOpen, setGlobalSettingsFlyoutOpen] = useState(false)
   const [globalSettingsSaveError, setGlobalSettingsSaveError] = useState<string | null>(null)
   const [cortexFlyoutOpen, setCortexFlyoutOpen] = useState(false)
   const [controlActionError, setControlActionError] = useState<string | null>(null)
-  const [globalSettingsDraft, setGlobalSettingsDraft] = useState<GlobalSettingsDraft>(() => buildGlobalSettingsDraft(null, null))
+  const [globalSettingsDraft, setGlobalSettingsDraft] = useState<GlobalSettingsDraft>(() =>
+    buildGlobalSettingsDraft(null, null),
+  )
   // Tune tab stays in TradingPanel — it's for *live* parameter
   // adjustments on a running bot. The autoresearch *experiment runner*
   // (separate feature, lives inside AutoresearchView too) was extracted
   // to Strategies → Research, but the live-tune UI is a per-bot operation
   // and belongs here.
-  const [workTab, setWorkTab] = useState<'trades' | 'terminal' | 'tune' | 'risk' | 'decisions' | 'performance'>('trades')
+  const [workTab, setWorkTab] = useState<
+    'trades' | 'terminal' | 'tune' | 'risk' | 'decisions' | 'performance'
+  >('trades')
   const [performanceSubview, setPerformanceSubview] = useState<PerformanceSubview>('performance')
   const [performanceSectionKey, setPerformanceSectionKey] = useState('')
   const [performanceParamKey, setPerformanceParamKey] = useState('')
@@ -5455,10 +5981,15 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
   const [allBotsTradeStatusFilter, setAllBotsTradeStatusFilter] = useState<TradeStatusFilter>('all')
   const [allBotsTradeSearch, setAllBotsTradeSearch] = useState('')
   const [allBotsPositionSearch, setAllBotsPositionSearch] = useState('')
-  const [allBotsPositionDirectionFilter, setAllBotsPositionDirectionFilter] = useState<PositionDirectionFilter>('all')
-  const [allBotsPositionSortField, setAllBotsPositionSortField] = useState<PositionSortField>('exposure')
-  const [allBotsPositionSortDirection, setAllBotsPositionSortDirection] = useState<PositionSortDirection>('desc')
-  const [allBotsOverviewSplitPct, setAllBotsOverviewSplitPct] = useState(readAllBotsOverviewSplitPct)
+  const [allBotsPositionDirectionFilter, setAllBotsPositionDirectionFilter] =
+    useState<PositionDirectionFilter>('all')
+  const [allBotsPositionSortField, setAllBotsPositionSortField] =
+    useState<PositionSortField>('exposure')
+  const [allBotsPositionSortDirection, setAllBotsPositionSortDirection] =
+    useState<PositionSortDirection>('desc')
+  const [allBotsOverviewSplitPct, setAllBotsOverviewSplitPct] = useState(
+    readAllBotsOverviewSplitPct,
+  )
   const [ordersPage, setOrdersPage] = useState(0)
   const [ordersPageSize, setOrdersPageSize] = useState(ORDERS_PAGE_SIZE)
   const terminalViewportRef = useRef<HTMLDivElement | null>(null)
@@ -5493,9 +6024,13 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     name: string
     mode: 'shadow' | 'live'
   } | null>(null)
-  const [traderTogglePendingById, setTraderTogglePendingById] = useState<Record<string, TraderToggleAction>>({})
+  const [traderTogglePendingById, setTraderTogglePendingById] = useState<
+    Record<string, TraderToggleAction>
+  >({})
   const [saveError, setSaveError] = useState<string | null>(null)
-  const [deleteAction, setDeleteAction] = useState<'block' | 'disable' | 'force_delete' | 'transfer_delete'>('disable')
+  const [deleteAction, setDeleteAction] = useState<
+    'block' | 'disable' | 'force_delete' | 'transfer_delete'
+  >('disable')
   const [deleteForceConfirm, setDeleteForceConfirm] = useState(false)
   const [deleteTransferTargetId, setDeleteTransferTargetId] = useState<string | null>(null)
   const [tuneDraftTraderId, setTuneDraftTraderId] = useState<string | null>(null)
@@ -5504,12 +6039,14 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
   const [riskDraftDirty, setRiskDraftDirty] = useState(false)
   const [riskSaveError, setRiskSaveError] = useState<string | null>(null)
   const [tuneIteratePrompt, setTuneIteratePrompt] = useState(
-    'Analyze recent trader performance and optimize source strategy parameters for higher risk-adjusted PnL. Apply only high-confidence parameter updates.'
+    'Analyze recent trader performance and optimize source strategy parameters for higher risk-adjusted PnL. Apply only high-confidence parameter updates.',
   )
   const [tuneIterateModel, setTuneIterateModel] = useState('')
   const [tuneIterateMaxIterations, setTuneIterateMaxIterations] = useState('12')
   const [_tuneIterateError, setTuneIterateError] = useState<string | null>(null)
-  const [_tuneIterateResponse, setTuneIterateResponse] = useState<TraderTuneAgentResponse | null>(null)
+  const [_tuneIterateResponse, setTuneIterateResponse] = useState<TraderTuneAgentResponse | null>(
+    null,
+  )
   const [tuneAutoEnabled, setTuneAutoEnabled] = useState(false)
   const [tuneAutoIntervalMinutes, _setTuneAutoIntervalMinutes] = useState('15')
   const [tuneAutoLastRunAt, setTuneAutoLastRunAt] = useState<number | null>(null)
@@ -5525,7 +6062,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
       const pct = ((event.clientX - rect.left) / rect.width) * 100
       const clamped = Math.min(
         ALL_BOTS_OVERVIEW_SPLIT_MAX,
-        Math.max(ALL_BOTS_OVERVIEW_SPLIT_MIN, pct)
+        Math.max(ALL_BOTS_OVERVIEW_SPLIT_MIN, pct),
       )
       setAllBotsOverviewSplitPct(clamped)
     }
@@ -5610,14 +6147,15 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
   })
   const tradersScopePoolMembersQuery = useQuery({
     queryKey: ['traders-scope-pool-members'],
-    queryFn: () => discoveryApi.getPoolMembers({
-      limit: 500,
-      offset: 0,
-      pool_only: true,
-      include_blacklisted: false,
-      sort_by: 'selection_score',
-      sort_dir: 'desc',
-    }),
+    queryFn: () =>
+      discoveryApi.getPoolMembers({
+        limit: 500,
+        offset: 0,
+        pool_only: true,
+        include_blacklisted: false,
+        sort_by: 'selection_score',
+        sort_dir: 'desc',
+      }),
     staleTime: 15000,
   })
   const tradersScopeGroupsQuery = useQuery({
@@ -5632,8 +6170,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     refetchInterval: isConnected ? 5000 : 20000,
   })
   const cryptoMarkets = useMemo(
-    () => (Array.isArray(cryptoMarketsQuery.data) ? (cryptoMarketsQuery.data as CryptoMarket[]) : []),
-    [cryptoMarketsQuery.data]
+    () =>
+      Array.isArray(cryptoMarketsQuery.data) ? (cryptoMarketsQuery.data as CryptoMarket[]) : [],
+    [cryptoMarketsQuery.data],
   )
   const cryptoMarketById = useMemo(() => {
     const map = new Map<string, CryptoMarket>()
@@ -5683,7 +6222,11 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
       for (const rawSnapshot of Object.values(sourceMap)) {
         if (!rawSnapshot || typeof rawSnapshot !== 'object') continue
         let sourceUpdatedMs = toFiniteNumber((rawSnapshot as Record<string, unknown>).updated_at_ms)
-        if (sourceUpdatedMs !== null && sourceUpdatedMs > 0 && sourceUpdatedMs < 1_000_000_000_000) {
+        if (
+          sourceUpdatedMs !== null &&
+          sourceUpdatedMs > 0 &&
+          sourceUpdatedMs < 1_000_000_000_000
+        ) {
           sourceUpdatedMs *= 1000
         }
         if (sourceUpdatedMs !== null && sourceUpdatedMs > (latestUpdateMs || 0)) {
@@ -5692,9 +6235,8 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
       }
     }
 
-    const updatedAt = latestUpdateMs && latestUpdateMs > 0
-      ? new Date(latestUpdateMs).toISOString()
-      : null
+    const updatedAt =
+      latestUpdateMs && latestUpdateMs > 0 ? new Date(latestUpdateMs).toISOString() : null
 
     const upPrice = toFiniteNumber(market.up_price)
     const downPrice = toFiniteNumber(market.down_price)
@@ -5703,15 +6245,17 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
 
     let markPrice: number | null = null
     if (side === 'YES') {
-      markPrice = upPrice
-        ?? (downPrice !== null ? Math.max(0, Math.min(1, 1 - downPrice)) : null)
-        ?? oraclePrice
-        ?? lastTradePrice
+      markPrice =
+        upPrice ??
+        (downPrice !== null ? Math.max(0, Math.min(1, 1 - downPrice)) : null) ??
+        oraclePrice ??
+        lastTradePrice
     } else if (side === 'NO') {
-      markPrice = downPrice
-        ?? (upPrice !== null ? Math.max(0, Math.min(1, 1 - upPrice)) : null)
-        ?? oraclePrice
-        ?? lastTradePrice
+      markPrice =
+        downPrice ??
+        (upPrice !== null ? Math.max(0, Math.min(1, 1 - upPrice)) : null) ??
+        oraclePrice ??
+        lastTradePrice
     } else {
       markPrice = lastTradePrice ?? oraclePrice ?? upPrice ?? downPrice
     }
@@ -5730,9 +6274,14 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
   useEffect(() => {
     if (!marketModalState) return
     document.body.style.overflow = 'hidden'
-    const handleEscape = (e: KeyboardEvent) => { if (e.key === 'Escape') setMarketModalState(null) }
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMarketModalState(null)
+    }
     window.addEventListener('keydown', handleEscape)
-    return () => { document.body.style.overflow = ''; window.removeEventListener('keydown', handleEscape) }
+    return () => {
+      document.body.style.overflow = ''
+      window.removeEventListener('keydown', handleEscape)
+    }
   }, [marketModalState])
 
   const traderConfigSchema: TraderConfigSchema | null = traderConfigSchemaQuery.data ?? null
@@ -5742,7 +6291,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
   const trackedWallets = trackedWalletsQuery.data || []
   const tradersScopePoolMembers = tradersScopePoolMembersQuery.data?.members || []
   const tradersScopeGroups = tradersScopeGroupsQuery.data || []
-  const selectedSandboxAccount = simulationAccounts.find((account) => account.id === selectedAccountId)
+  const selectedSandboxAccount = simulationAccounts.find(
+    (account) => account.id === selectedAccountId,
+  )
   const selectedAccountValid = selectedAccountIsLive || Boolean(selectedSandboxAccount)
   const sourceCatalog = traderConfigSchema?.sources?.length
     ? traderConfigSchema.sources
@@ -5751,7 +6302,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
       : FALLBACK_TRADER_SOURCES
   const defaultSourceKeys = useMemo(
     () => uniqueSourceList(sourceCatalog.map((source) => source.key)),
-    [sourceCatalog]
+    [sourceCatalog],
   )
 
   const traderIds = useMemo(() => traders.map((trader) => trader.id), [traders])
@@ -5780,10 +6331,11 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     refetchInterval: isConnected ? 30000 : 30000,
     staleTime: 0,
     refetchOnMount: 'always',
-    queryFn: () => getAllTraderDecisions(traderIds, {
-      limit: Math.min(5000, Math.max(200, traderIds.length * 160)),
-      per_trader_limit: 160,
-    }),
+    queryFn: () =>
+      getAllTraderDecisions(traderIds, {
+        limit: Math.min(5000, Math.max(200, traderIds.length * 160)),
+        per_trader_limit: 160,
+      }),
   })
 
   const allEventsQuery = useQuery({
@@ -5809,21 +6361,26 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
   })
 
   const allOrders = useMemo(
-    () => (allOrdersQuery.data || []).filter((order) => {
-      if (!traderIdSet.has(String(order.trader_id || ''))) return false
-      if (!selectedAccountId) return true
-      const orderMode = String(order.mode || '').trim().toLowerCase()
-      if (orderMode === 'live' || orderMode === 'shadow') return orderMode === selectedTraderDataMode
-      return selectedTraderDataMode === 'shadow'
-    }),
-    [allOrdersQuery.data, selectedAccountId, selectedTraderDataMode, traderIdSet]
+    () =>
+      (allOrdersQuery.data || []).filter((order) => {
+        if (!traderIdSet.has(String(order.trader_id || ''))) return false
+        if (!selectedAccountId) return true
+        const orderMode = String(order.mode || '')
+          .trim()
+          .toLowerCase()
+        if (orderMode === 'live' || orderMode === 'shadow')
+          return orderMode === selectedTraderDataMode
+        return selectedTraderDataMode === 'shadow'
+      }),
+    [allOrdersQuery.data, selectedAccountId, selectedTraderDataMode, traderIdSet],
   )
   const marketModalMarketIds = useMemo(
-    () => collectMarketAliases([
-      marketModalState?.scope.marketId,
-      ...(marketModalState?.scope.marketIds || []),
-    ]),
-    [marketModalState]
+    () =>
+      collectMarketAliases([
+        marketModalState?.scope.marketId,
+        ...(marketModalState?.scope.marketIds || []),
+      ]),
+    [marketModalState],
   )
   const marketModalMarketIdsKey = marketModalMarketIds.join('|')
   const marketHistoryQuery = useQuery({
@@ -5857,7 +6414,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
       setMarketModalSellSuccess(
         result.mode === 'live'
           ? 'Sell request submitted. Exit execution is now in-flight.'
-          : 'Trade sold and marked to market.'
+          : 'Trade sold and marked to market.',
       )
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['trader-orders-all'] }),
@@ -5885,7 +6442,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
       const before = result.before?.notional_usd ?? 0
       const after = result.after?.notional_usd ?? 0
       setMarketModalSellSuccess(
-        `Reconciled: $${before.toFixed(2)} -> $${after.toFixed(2)} (${result.polymarket?.size?.toFixed(2) ?? '?'} shares @ $${result.polymarket?.avg_price?.toFixed(3) ?? '?'})`
+        `Reconciled: $${before.toFixed(2)} -> $${after.toFixed(2)} (${result.polymarket?.size?.toFixed(2) ?? '?'} shares @ $${result.polymarket?.avg_price?.toFixed(3) ?? '?'})`,
       )
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['trader-orders-all'] }),
@@ -5899,20 +6456,17 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
       setMarketModalSellError(errorMessage(error, 'Failed to reconcile order'))
     },
   })
-  const modalSharedHistory = useMemo(
-    () => {
-      const byMarket = marketHistoryQuery.data || {}
-      let bestHistory: unknown[] = []
-      for (const marketId of marketModalMarketIds) {
-        const history = byMarket[marketId]
-        if (Array.isArray(history) && history.length >= 2 && history.length > bestHistory.length) {
-          bestHistory = history
-        }
+  const modalSharedHistory = useMemo(() => {
+    const byMarket = marketHistoryQuery.data || {}
+    let bestHistory: unknown[] = []
+    for (const marketId of marketModalMarketIds) {
+      const history = byMarket[marketId]
+      if (Array.isArray(history) && history.length >= 2 && history.length > bestHistory.length) {
+        bestHistory = history
       }
-      return bestHistory.length >= 2 ? bestHistory : []
-    },
-    [marketHistoryQuery.data, marketModalMarketIds]
-  )
+    }
+    return bestHistory.length >= 2 ? bestHistory : []
+  }, [marketHistoryQuery.data, marketModalMarketIds])
   const allDecisions = allDecisionsQuery.data || []
   // Merge persisted/business events (allEventsQuery, filtered by
   // trader_id) with the Redis firehose Stream replay
@@ -5950,21 +6504,27 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
 
   const selectedTrader = useMemo(
     () => traders.find((trader) => trader.id === selectedTraderId) || null,
-    [traders, selectedTraderId]
+    [traders, selectedTraderId],
   )
   const selectedTraderOrdersQuery = useQuery({
-    queryKey: ['trader-orders-selected', selectedTraderId, selectedAccountId ? selectedTraderDataMode : 'all-visible'],
-    queryFn: () => getTraderOrders(String(selectedTraderId), {
-      limit: SELECTED_TRADER_ORDERS_LIMIT,
-      mode: selectedAccountId ? selectedTraderDataMode : undefined,
-    }),
+    queryKey: [
+      'trader-orders-selected',
+      selectedTraderId,
+      selectedAccountId ? selectedTraderDataMode : 'all-visible',
+    ],
+    queryFn: () =>
+      getTraderOrders(String(selectedTraderId), {
+        limit: SELECTED_TRADER_ORDERS_LIMIT,
+        mode: selectedAccountId ? selectedTraderDataMode : undefined,
+      }),
     enabled: Boolean(selectedTraderId),
     refetchInterval: isConnected ? 8000 : 20000,
     staleTime: 2000,
   })
   const selectedTraderLiveWalletPositionsQuery = useQuery({
     queryKey: ['trader-live-wallet-positions', selectedTraderId],
-    queryFn: () => getTraderLiveWalletPositions(String(selectedTraderId), { include_managed: true }),
+    queryFn: () =>
+      getTraderLiveWalletPositions(String(selectedTraderId), { include_managed: true }),
     enabled: Boolean(selectedTraderId && selectedTrader?.mode === 'live'),
     refetchInterval: isConnected ? 8000 : 20000,
     staleTime: 2000,
@@ -5974,7 +6534,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
   }, [selectedTraderId])
   const selectedTraderSourceConfigs = useMemo(
     () => (Array.isArray(selectedTrader?.source_configs) ? selectedTrader.source_configs : []),
-    [selectedTrader]
+    [selectedTrader],
   )
 
   // Strategy health (validation guardrail) — surface a banner in the
@@ -5991,7 +6551,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
   const strategyHealthByType = useMemo(() => {
     const out: Record<string, StrategyHealthRow> = {}
     for (const row of strategyHealthRowsAll) {
-      const key = String(row.strategy_type || '').trim().toLowerCase()
+      const key = String(row.strategy_type || '')
+        .trim()
+        .toLowerCase()
       if (key) out[key] = row
     }
     return out
@@ -5999,7 +6561,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
   const selectedTraderStrategyHealth = useMemo(() => {
     const out: StrategyHealthRow[] = []
     for (const cfg of selectedTraderSourceConfigs) {
-      const key = String(cfg.strategy_key || '').trim().toLowerCase()
+      const key = String(cfg.strategy_key || '')
+        .trim()
+        .toLowerCase()
       const row = key ? strategyHealthByType[key] : undefined
       if (row) out.push(row)
     }
@@ -6007,11 +6571,16 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
   }, [selectedTraderSourceConfigs, strategyHealthByType])
   const selectedTraderDemotedStrategies = useMemo(
     () => selectedTraderStrategyHealth.filter((r) => r.status === 'demoted'),
-    [selectedTraderStrategyHealth]
+    [selectedTraderStrategyHealth],
   )
   const overrideStrategyHealthMutation = useMutation({
-    mutationFn: async ({ strategyType, status }: { strategyType: string; status: 'active' | 'demoted' }) =>
-      overrideValidationStrategy(strategyType, status),
+    mutationFn: async ({
+      strategyType,
+      status,
+    }: {
+      strategyType: string
+      status: 'active' | 'demoted'
+    }) => overrideValidationStrategy(strategyType, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['validation-strategy-health'] })
     },
@@ -6024,11 +6593,11 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
   })
   const selectedTraderHasCopySource = useMemo(
     () => traderHasCopyTradeSource(selectedTrader),
-    [selectedTrader]
+    [selectedTrader],
   )
   const selectedTraderCopyExistingOnStartDefault = useMemo(
     () => traderCopyExistingOnStartDefault(selectedTrader),
-    [selectedTrader]
+    [selectedTrader],
   )
 
   useEffect(() => {
@@ -6048,12 +6617,12 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
         const trader = tradersById.get(traderId)
         const settled =
           action === 'start'
-            ? Boolean(trader?.is_enabled) && !Boolean(trader?.is_paused)
+            ? Boolean(trader?.is_enabled) && !trader?.is_paused
             : action === 'stop'
-              ? !Boolean(trader?.is_enabled) || Boolean(trader?.is_paused)
+              ? !trader?.is_enabled || Boolean(trader?.is_paused)
               : action === 'activate'
                 ? Boolean(trader?.is_enabled)
-                : !Boolean(trader?.is_enabled)
+                : !trader?.is_enabled
         if (settled) {
           changed = true
           continue
@@ -6064,23 +6633,20 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     })
   }, [traderTogglePendingById, traders])
 
-  const selectedOrders = useMemo(
-    () => {
-      if (!selectedTraderId) return []
-      if (Array.isArray(selectedTraderOrdersQuery.data)) return selectedTraderOrdersQuery.data
-      return allOrders.filter((order) => order.trader_id === selectedTraderId)
-    },
-    [allOrders, selectedTraderId, selectedTraderOrdersQuery.data]
-  )
+  const selectedOrders = useMemo(() => {
+    if (!selectedTraderId) return []
+    if (Array.isArray(selectedTraderOrdersQuery.data)) return selectedTraderOrdersQuery.data
+    return allOrders.filter((order) => order.trader_id === selectedTraderId)
+  }, [allOrders, selectedTraderId, selectedTraderOrdersQuery.data])
 
   const selectedDecisions = useMemo(
     () => allDecisions.filter((decision) => decision.trader_id === selectedTraderId),
-    [allDecisions, selectedTraderId]
+    [allDecisions, selectedTraderId],
   )
 
   const selectedEvents = useMemo(
     () => allEvents.filter((event) => event.trader_id === selectedTraderId),
-    [allEvents, selectedTraderId]
+    [allEvents, selectedTraderId],
   )
   const selectedDecisionById = useMemo(() => {
     const byId = new Map<string, Record<string, unknown>>()
@@ -6094,7 +6660,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
 
   const sourceCards = useMemo(() => {
     return uniqueSourceList(sourceCatalog.map((source) => source.key))
-      .map((key) => sourceCatalog.find((source) => normalizeSourceKey(source.key) === normalizeSourceKey(key)))
+      .map((key) =>
+        sourceCatalog.find((source) => normalizeSourceKey(source.key) === normalizeSourceKey(key)),
+      )
       .filter((source): source is TraderSource => Boolean(source))
       .map((source) => ({
         ...source,
@@ -6103,11 +6671,12 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
   }, [sourceCatalog])
 
   const copySourceTraders = useMemo(
-    () => allTraders
-      .filter((trader) => trader.mode === draftCopyFromMode)
-      .slice()
-      .sort((left, right) => left.name.localeCompare(right.name)),
-    [allTraders, draftCopyFromMode]
+    () =>
+      allTraders
+        .filter((trader) => trader.mode === draftCopyFromMode)
+        .slice()
+        .sort((left, right) => left.name.localeCompare(right.name)),
+    [allTraders, draftCopyFromMode],
   )
 
   const sourceStrategyDetailsByKey = useMemo(() => {
@@ -6145,7 +6714,8 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
       }
     }
     return out.sort((left, right) => {
-      if (left.sourceLabel !== right.sourceLabel) return left.sourceLabel.localeCompare(right.sourceLabel)
+      if (left.sourceLabel !== right.sourceLabel)
+        return left.sourceLabel.localeCompare(right.sourceLabel)
       return left.label.localeCompare(right.label)
     })
   }, [sourceCards, sourceStrategyDetailsByKey])
@@ -6158,7 +6728,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
 
   const draftStrategyOption = useMemo(
     () => strategyOptionByKey.get(normalizeStrategyKey(draftStrategyKey)) || null,
-    [strategyOptionByKey, draftStrategyKey]
+    [strategyOptionByKey, draftStrategyKey],
   )
 
   const effectiveDraftSourceKey = draftStrategyOption?.sourceKey || ''
@@ -6175,15 +6745,19 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
 
   const riskFormSchema = useMemo(
     () => ({
-      param_fields: Array.isArray(traderConfigSchema?.shared_risk_fields) ? traderConfigSchema.shared_risk_fields : [],
+      param_fields: Array.isArray(traderConfigSchema?.shared_risk_fields)
+        ? traderConfigSchema.shared_risk_fields
+        : [],
     }),
-    [traderConfigSchema]
+    [traderConfigSchema],
   )
   const tradersScopeWalletOptions = useMemo(() => {
     const byAddress = new Map<string, { label: string; tags: Set<string> }>()
 
     const upsert = (rawAddress: unknown, rawLabel: unknown, tag: 'tracked' | 'pool') => {
-      const address = String(rawAddress || '').trim().toLowerCase()
+      const address = String(rawAddress || '')
+        .trim()
+        .toLowerCase()
       if (!address) return
       const fallback = shortId(address)
       const preferredLabel = String(rawLabel || '').trim() || fallback
@@ -6205,14 +6779,16 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
       upsert(
         wallet.address,
         String(wallet.username || '').trim() || String(wallet.label || '').trim() || wallet.address,
-        'tracked'
+        'tracked',
       )
     }
     for (const wallet of tradersScopePoolMembers) {
       upsert(
         wallet.address,
-        String(wallet.display_name || '').trim() || String(wallet.username || '').trim() || wallet.address,
-        'pool'
+        String(wallet.display_name || '').trim() ||
+          String(wallet.username || '').trim() ||
+          wallet.address,
+        'pool',
       )
     }
 
@@ -6242,7 +6818,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
         })
         .filter((option): option is { value: string; label: string } => Boolean(option))
         .sort((left, right) => left.label.localeCompare(right.label)),
-    [tradersScopeGroups]
+    [tradersScopeGroups],
   )
   const dynamicStrategyParamSections = useMemo(() => {
     const sections: DynamicStrategyParamSection[] = []
@@ -6283,16 +6859,16 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
       }
     })
 
-    const filteredFields = decoratedParamFields.filter((field): field is Record<string, unknown> => {
-      if (!isRecord(field)) return false
-      const key = String(field.key || '').trim()
-      return Boolean(key)
-    })
+    const filteredFields = decoratedParamFields.filter(
+      (field): field is Record<string, unknown> => {
+        if (!isRecord(field)) return false
+        const key = String(field.key || '').trim()
+        return Boolean(key)
+      },
+    )
     if (filteredFields.length === 0) return sections
 
-    const fieldKeys = filteredFields
-      .map((field) => String(field.key || '').trim())
-      .filter(Boolean)
+    const fieldKeys = filteredFields.map((field) => String(field.key || '').trim()).filter(Boolean)
     if (fieldKeys.length === 0) return sections
 
     const merged = buildSourceStrategyParams(
@@ -6307,7 +6883,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
       }
     }
 
-    const sourceLabel = sourceCards.find((source) => normalizeSourceKey(source.key) === sourceKey)?.label || sourceKey.toUpperCase()
+    const sourceLabel =
+      sourceCards.find((source) => normalizeSourceKey(source.key) === sourceKey)?.label ||
+      sourceKey.toUpperCase()
     sections.push({
       sectionKey: `${sourceKey}:${strategyKey}`,
       sourceKey,
@@ -6333,7 +6911,8 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
       if (tuneParamSectionTab !== '') setTuneParamSectionTab('')
       return
     }
-    if (dynamicStrategyParamSections.some((section) => section.sectionKey === tuneParamSectionTab)) return
+    if (dynamicStrategyParamSections.some((section) => section.sectionKey === tuneParamSectionTab))
+      return
     setTuneParamSectionTab(dynamicStrategyParamSections[0].sectionKey)
   }, [dynamicStrategyParamSections, tuneParamSectionTab])
   // Schedule lives in draftTradingScheduleAtom; only the flyout subscribes.
@@ -6345,9 +6924,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     const opt = strategyOptionByKey.get(normalized)
     setDraftStrategyKey(normalized)
     setDraftStrategyVersion(null)
-    setDraftStrategyParams(
-      opt ? buildSourceStrategyParams({}, opt.sourceKey, opt.detail) : {},
-    )
+    setDraftStrategyParams(opt ? buildSourceStrategyParams({}, opt.sourceKey, opt.detail) : {})
   }
 
   const setDraftStrategyVersionFromValue = (versionValue: string) => {
@@ -6398,8 +6975,12 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
   const upsertTraderInCache = (trader: Trader) => {
     const normalizedMode: 'shadow' | 'live' = trader.mode === 'live' ? 'live' : 'shadow'
     const otherMode: 'shadow' | 'live' = normalizedMode === 'live' ? 'shadow' : 'live'
-    queryClient.setQueryData<Trader[]>(['traders-list', 'all'], (current) => upsertTraderRows(current, trader))
-    queryClient.setQueryData<Trader[]>(['traders-list', normalizedMode], (current) => upsertTraderRows(current, trader))
+    queryClient.setQueryData<Trader[]>(['traders-list', 'all'], (current) =>
+      upsertTraderRows(current, trader),
+    )
+    queryClient.setQueryData<Trader[]>(['traders-list', normalizedMode], (current) =>
+      upsertTraderRows(current, trader),
+    )
     queryClient.setQueryData<Trader[]>(['traders-list', otherMode], (current) => {
       if (!Array.isArray(current)) return current
       return current.filter((row) => row.id !== trader.id)
@@ -6408,7 +6989,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
 
   const applyTraderDraftSettings = (
     trader: Trader,
-    options: { preserveName?: boolean; preserveCopyFrom?: boolean; preserveMode?: boolean } = {}
+    options: { preserveName?: boolean; preserveCopyFrom?: boolean; preserveMode?: boolean } = {},
   ) => {
     const traderSourceConfigs = Array.isArray(trader.source_configs) ? trader.source_configs : []
     const primaryConfig = traderSourceConfigs[0] || null
@@ -6442,7 +7023,11 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     if (!options.preserveMode) {
       setDraftMode(trader.mode === 'live' ? 'live' : 'shadow')
     }
-    setDraftLatencyClass((trader.latency_class === 'fast' || trader.latency_class === 'slow') ? trader.latency_class : 'normal')
+    setDraftLatencyClass(
+      trader.latency_class === 'fast' || trader.latency_class === 'slow'
+        ? trader.latency_class
+        : 'normal',
+    )
     setDraftStrategyKey(normalizeStrategyKey(primaryStrategyKey))
     setDraftStrategyVersion(primaryStrategyVersion)
     setDraftStrategyParams(primaryStrategyParams)
@@ -6479,13 +7064,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     setTuneSaveError(null)
     setTuneRevertError(null)
     setRiskSaveError(null)
-  }, [
-    creatingTraderPreview,
-    selectedTrader,
-    traderFlyoutOpen,
-    tuneDraftDirty,
-    tuneDraftTraderId,
-  ])
+  }, [creatingTraderPreview, selectedTrader, traderFlyoutOpen, tuneDraftDirty, tuneDraftTraderId])
 
   const applyCreateCopyFromSelection = (value: string) => {
     const sourceTraderId = value === '__none__' ? '' : String(value || '').trim()
@@ -6501,12 +7080,17 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
       return
     }
 
-    applyTraderDraftSettings(sourceTrader, { preserveName: true, preserveCopyFrom: true, preserveMode: true })
+    applyTraderDraftSettings(sourceTrader, {
+      preserveName: true,
+      preserveCopyFrom: true,
+      preserveMode: true,
+    })
     setSaveError(null)
   }
 
   const openCreateTraderFlyout = () => {
-    const fallbackSourceKey = defaultSourceKeys.length > 0 ? normalizeSourceKey(defaultSourceKeys[0]) : 'crypto'
+    const fallbackSourceKey =
+      defaultSourceKeys.length > 0 ? normalizeSourceKey(defaultSourceKeys[0]) : 'crypto'
     const fallbackStrategyKey = normalizeStrategyKey(
       defaultStrategyForSource(fallbackSourceKey, sourceCards) || DEFAULT_STRATEGY_KEY,
     )
@@ -6517,11 +7101,13 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     setDraftDescription('')
     setDraftStrategyKey(fallbackStrategyKey)
     setDraftStrategyVersion(null)
-    setDraftStrategyParams(
-      buildSourceStrategyParams({}, fallbackSourceKey, fallbackStrategyDetail),
-    )
+    setDraftStrategyParams(buildSourceStrategyParams({}, fallbackSourceKey, fallbackStrategyDetail))
     setDraftInterval('5')
-    setDraftRiskAtom(isRecord(traderConfigSchema?.shared_risk_defaults) ? traderConfigSchema.shared_risk_defaults : {})
+    setDraftRiskAtom(
+      isRecord(traderConfigSchema?.shared_risk_defaults)
+        ? traderConfigSchema.shared_risk_defaults
+        : {},
+    )
     setDraftMetadata('{}')
     setDraftTradingScheduleAtom({ ...DEFAULT_TRADING_SCHEDULE_DRAFT })
     setDraftMode(selectedAccountMode)
@@ -6535,7 +7121,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     setTuneDraftDirty(false)
     setTuneSaveError(null)
     setTuneIteratePrompt(
-      'Analyze recent trader performance and optimize source strategy parameters for higher risk-adjusted PnL. Apply only high-confidence parameter updates.'
+      'Analyze recent trader performance and optimize source strategy parameters for higher risk-adjusted PnL. Apply only high-confidence parameter updates.',
     )
     setTuneIterateModel('')
     setTuneIterateMaxIterations('12')
@@ -6560,7 +7146,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     setTuneDraftDirty(false)
     setTuneSaveError(null)
     setTuneIteratePrompt(
-      'Analyze this trader performance and optimize source strategy parameters for measurable, risk-adjusted PnL improvement.'
+      'Analyze this trader performance and optimize source strategy parameters for measurable, risk-adjusted PnL improvement.',
     )
     setTuneIterateModel('')
     setTuneIterateMaxIterations('12')
@@ -6605,23 +7191,28 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
   ): TraderSourceConfig[] => {
     const opt = strategyOptionByKey.get(normalizeStrategyKey(draftStrategyKey))
     if (!opt) return []
-    const params = overrideParams !== undefined
-      ? cloneStrategyParamsRecord(overrideParams)
-      : cloneStrategyParamsRecord(draftStrategyParams)
+    const params =
+      overrideParams !== undefined
+        ? cloneStrategyParamsRecord(overrideParams)
+        : cloneStrategyParamsRecord(draftStrategyParams)
     const strategyVersion = normalizeStrategyVersion(effectiveDraftStrategyVersion)
-    return [{
-      source_key: opt.sourceKey,
-      strategy_key: normalizeStrategyKey(opt.key),
-      strategy_version: strategyVersion,
-      strategy_params: buildSourceStrategyParams(params, opt.sourceKey, opt.detail),
-    }]
+    return [
+      {
+        source_key: opt.sourceKey,
+        strategy_key: normalizeStrategyKey(opt.key),
+        strategy_version: strategyVersion,
+        strategy_params: buildSourceStrategyParams(params, opt.sourceKey, opt.detail),
+      },
+    ]
   }
 
   const validateDraftSourceConfigs = (configs: TraderSourceConfig[]) => {
     if (configs.length === 0) {
       throw new Error('Choose a strategy.')
     }
-    const tradersConfig = configs.find((config) => normalizeSourceKey(String(config.source_key || '')) === 'traders') || null
+    const tradersConfig =
+      configs.find((config) => normalizeSourceKey(String(config.source_key || '')) === 'traders') ||
+      null
     if (!tradersConfig) return
     const tradersScope = normalizeTradersScopeConfig(tradersConfig.strategy_params?.traders_scope)
     if (tradersScope.modes.includes('individual') && tradersScope.individual_wallets.length === 0) {
@@ -6632,11 +7223,16 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     }
   }
 
-  const cloneSourceConfigsForTuneSnapshot = (configs: TraderSourceConfig[]): TraderSourceConfig[] => {
+  const cloneSourceConfigsForTuneSnapshot = (
+    configs: TraderSourceConfig[],
+  ): TraderSourceConfig[] => {
     return configs.map((config) => {
       let strategyParams: Record<string, unknown> = {}
       try {
-        strategyParams = JSON.parse(JSON.stringify(config.strategy_params || {})) as Record<string, unknown>
+        strategyParams = JSON.parse(JSON.stringify(config.strategy_params || {})) as Record<
+          string,
+          unknown
+        >
       } catch {
         strategyParams = {}
       }
@@ -6687,14 +7283,19 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
       setControlActionError(null)
     },
     onSuccess: (result: any) => {
-      const responseControl = result?.control && typeof result.control === 'object' ? result.control : {}
-      const startMode = String(responseControl.mode || '').trim().toLowerCase()
+      const responseControl =
+        result?.control && typeof result.control === 'object' ? result.control : {}
+      const startMode = String(responseControl.mode || '')
+        .trim()
+        .toLowerCase()
       queryClient.setQueryData(['trader-orchestrator-overview'], (current: any) => {
         if (!current || typeof current !== 'object') {
           return current
         }
-        const currentControl = current.control && typeof current.control === 'object' ? current.control : {}
-        const currentWorker = current.worker && typeof current.worker === 'object' ? current.worker : {}
+        const currentControl =
+          current.control && typeof current.control === 'object' ? current.control : {}
+        const currentWorker =
+          current.worker && typeof current.worker === 'object' ? current.worker : {}
         return {
           ...current,
           control: {
@@ -6705,11 +7306,10 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
             ...currentWorker,
             running: false,
             enabled: true,
-            current_activity: startMode === 'live' ? 'Live start command queued' : 'Start command queued',
+            current_activity:
+              startMode === 'live' ? 'Live start command queued' : 'Start command queued',
             interval_seconds: Number(
-              responseControl.run_interval_seconds
-              || currentWorker.interval_seconds
-              || 2
+              responseControl.run_interval_seconds || currentWorker.interval_seconds || 2,
             ),
             last_error: null,
           },
@@ -6734,15 +7334,18 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
       setControlActionError(null)
     },
     onSuccess: (result: { response: any; mode: string }) => {
-      const responseControl = result?.response?.control && typeof result.response.control === 'object'
-        ? result.response.control
-        : {}
+      const responseControl =
+        result?.response?.control && typeof result.response.control === 'object'
+          ? result.response.control
+          : {}
       queryClient.setQueryData(['trader-orchestrator-overview'], (current: any) => {
         if (!current || typeof current !== 'object') {
           return current
         }
-        const currentControl = current.control && typeof current.control === 'object' ? current.control : {}
-        const currentWorker = current.worker && typeof current.worker === 'object' ? current.worker : {}
+        const currentControl =
+          current.control && typeof current.control === 'object' ? current.control : {}
+        const currentWorker =
+          current.worker && typeof current.worker === 'object' ? current.worker : {}
         return {
           ...current,
           control: {
@@ -6753,11 +7356,10 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
             ...currentWorker,
             running: false,
             enabled: false,
-            current_activity: result.mode === 'live' ? 'Live stop requested' : 'Manual stop requested',
+            current_activity:
+              result.mode === 'live' ? 'Live stop requested' : 'Manual stop requested',
             interval_seconds: Number(
-              responseControl.run_interval_seconds
-              || currentWorker.interval_seconds
-              || 2
+              responseControl.run_interval_seconds || currentWorker.interval_seconds || 2,
             ),
             last_error: null,
           },
@@ -6780,8 +7382,10 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
         if (!current || typeof current !== 'object') {
           return current
         }
-        const currentControl = current.control && typeof current.control === 'object' ? current.control : {}
-        const currentConfig = current.config && typeof current.config === 'object' ? current.config : {}
+        const currentControl =
+          current.control && typeof current.control === 'object' ? current.control : {}
+        const currentConfig =
+          current.config && typeof current.config === 'object' ? current.config : {}
         return {
           ...current,
           control: {
@@ -6801,10 +7405,15 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
         if (!current || typeof current !== 'object') {
           return current
         }
-        const currentControl = current.control && typeof current.control === 'object' ? current.control : {}
-        const currentConfig = current.config && typeof current.config === 'object' ? current.config : {}
-        const responseControl = result?.control && typeof result.control === 'object' ? result.control : {}
-        const killSwitchValue = Boolean(result?.kill_switch ?? responseControl.kill_switch ?? enabled)
+        const currentControl =
+          current.control && typeof current.control === 'object' ? current.control : {}
+        const currentConfig =
+          current.config && typeof current.config === 'object' ? current.config : {}
+        const responseControl =
+          result?.control && typeof result.control === 'object' ? result.control : {}
+        const killSwitchValue = Boolean(
+          result?.kill_switch ?? responseControl.kill_switch ?? enabled,
+        )
         return {
           ...current,
           control: {
@@ -6820,7 +7429,11 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
       })
       refreshAll()
     },
-    onError: (error: unknown, _enabled: boolean, context: { previousOverview: unknown } | undefined) => {
+    onError: (
+      error: unknown,
+      _enabled: boolean,
+      context: { previousOverview: unknown } | undefined,
+    ) => {
       if (context) {
         queryClient.setQueryData(['trader-orchestrator-overview'], context.previousOverview)
       }
@@ -6830,7 +7443,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
 
   const updateGlobalSettingsMutation = useMutation({
     mutationFn: async () => {
-      const runIntervalSeconds = Math.trunc(clampNumber(toNumber(globalSettingsDraft.runIntervalSeconds), 1, 300, 5))
+      const runIntervalSeconds = Math.trunc(
+        clampNumber(toNumber(globalSettingsDraft.runIntervalSeconds), 1, 300, 5),
+      )
       const maxGrossExposureUsd = clampNumber(
         toNumber(globalSettingsDraft.maxGrossExposureUsd),
         1,
@@ -6849,7 +7464,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
           1,
           1000,
           DEFAULT_ORCHESTRATOR_GLOBAL_RISK.max_orders_per_cycle,
-        )
+        ),
       )
       const pendingExitMaxAllowed = Math.trunc(
         clampNumber(
@@ -6857,13 +7472,15 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
           0,
           1000,
           DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.pending_live_exit_guard.max_pending_exits,
-        )
+        ),
       )
       const minCooldownSeconds = globalSettingsDraft.minCooldownSeconds.trim()
         ? Math.trunc(clampNumber(toNumber(globalSettingsDraft.minCooldownSeconds), 0, 86400, 0))
         : null
       const maxConsecutiveLossesCap = globalSettingsDraft.maxConsecutiveLossesCap.trim()
-        ? Math.trunc(clampNumber(toNumber(globalSettingsDraft.maxConsecutiveLossesCap), 1, 1000, 1000))
+        ? Math.trunc(
+            clampNumber(toNumber(globalSettingsDraft.maxConsecutiveLossesCap), 1, 1000, 1000),
+          )
         : null
       const maxOpenOrdersCap = globalSettingsDraft.maxOpenOrdersCap.trim()
         ? Math.trunc(clampNumber(toNumber(globalSettingsDraft.maxOpenOrdersCap), 1, 1000, 1000))
@@ -6875,7 +7492,12 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
         ? Math.trunc(clampNumber(toNumber(globalSettingsDraft.maxOrdersPerCycleCap), 1, 1000, 1000))
         : null
       const maxDailySpendUsdCap = globalSettingsDraft.maxDailySpendUsdCap.trim()
-        ? clampNumber(toNumber(globalSettingsDraft.maxDailySpendUsdCap), 1, 100_000_000, 100_000_000)
+        ? clampNumber(
+            toNumber(globalSettingsDraft.maxDailySpendUsdCap),
+            1,
+            100_000_000,
+            100_000_000,
+          )
         : null
       const maxSpreadBpsCap = globalSettingsDraft.maxSpreadBpsCap.trim()
         ? clampNumber(toNumber(globalSettingsDraft.maxSpreadBpsCap), 0, 10_000, 10_000)
@@ -6887,10 +7509,14 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
         ? Math.trunc(clampNumber(toNumber(globalSettingsDraft.retryLimitCap), 0, 50, 50))
         : null
       const retryBackoffMsCap = globalSettingsDraft.retryBackoffMsCap.trim()
-        ? Math.trunc(clampNumber(toNumber(globalSettingsDraft.retryBackoffMsCap), 0, 60_000, 60_000))
+        ? Math.trunc(
+            clampNumber(toNumber(globalSettingsDraft.retryBackoffMsCap), 0, 60_000, 60_000),
+          )
         : null
       const orderTtlSecondsCap = globalSettingsDraft.orderTtlSecondsCap.trim()
-        ? Math.trunc(clampNumber(toNumber(globalSettingsDraft.orderTtlSecondsCap), 1, 86_400, 86_400))
+        ? Math.trunc(
+            clampNumber(toNumber(globalSettingsDraft.orderTtlSecondsCap), 1, 86_400, 86_400),
+          )
         : null
       const liveMarketHistoryWindowSeconds = Math.trunc(
         clampNumber(
@@ -6898,7 +7524,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
           300,
           21600,
           DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.live_market_context.history_window_seconds,
-        )
+        ),
       )
       const liveMarketHistoryFidelitySeconds = Math.trunc(
         clampNumber(
@@ -6906,7 +7532,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
           30,
           1800,
           DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.live_market_context.history_fidelity_seconds,
-        )
+        ),
       )
       const liveMarketHistoryMaxPoints = Math.trunc(
         clampNumber(
@@ -6914,7 +7540,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
           20,
           240,
           DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.live_market_context.max_history_points,
-        )
+        ),
       )
       const liveMarketContextTimeoutSeconds = clampNumber(
         toNumber(globalSettingsDraft.liveMarketContextTimeoutSeconds),
@@ -6928,7 +7554,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
           25,
           30000,
           DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.live_market_context.max_market_data_age_ms,
-        )
+        ),
       )
       const liveProviderHealthWindowSeconds = Math.trunc(
         clampNumber(
@@ -6936,7 +7562,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
           30,
           900,
           DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.live_provider_health.window_seconds,
-        )
+        ),
       )
       const liveProviderHealthMinErrors = Math.trunc(
         clampNumber(
@@ -6944,7 +7570,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
           1,
           20,
           DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.live_provider_health.min_errors,
-        )
+        ),
       )
       const liveProviderHealthBlockSeconds = Math.trunc(
         clampNumber(
@@ -6952,13 +7578,14 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
           15,
           3600,
           DEFAULT_ORCHESTRATOR_GLOBAL_RUNTIME.live_provider_health.block_seconds,
-        )
+        ),
       )
       const traderCycleTimeoutRaw = globalSettingsDraft.traderCycleTimeoutSeconds.trim()
       const traderCycleTimeoutSeconds = traderCycleTimeoutRaw
         ? clampNumber(toNumber(traderCycleTimeoutRaw), 3, 120, 0)
         : null
-      const runtimeTriggerCycleTimeoutRaw = globalSettingsDraft.runtimeTriggerCycleTimeoutSeconds.trim()
+      const runtimeTriggerCycleTimeoutRaw =
+        globalSettingsDraft.runtimeTriggerCycleTimeoutSeconds.trim()
       const runtimeTriggerCycleTimeoutSeconds = runtimeTriggerCycleTimeoutRaw
         ? clampNumber(toNumber(runtimeTriggerCycleTimeoutRaw), 3, 60, 0)
         : null
@@ -7001,7 +7628,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
           pending_live_exit_guard: {
             max_pending_exits: pendingExitMaxAllowed,
             identity_guard_enabled: globalSettingsDraft.pendingExitIdentityGuardEnabled,
-            terminal_statuses: normalizePendingExitTerminalStatusesCsv(globalSettingsDraft.pendingExitTerminalStatuses),
+            terminal_statuses: normalizePendingExitTerminalStatusesCsv(
+              globalSettingsDraft.pendingExitTerminalStatuses,
+            ),
           },
           live_risk_clamps: Object.fromEntries(
             Object.entries({
@@ -7012,14 +7641,15 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
               max_open_positions_cap: maxOpenPositions,
               max_trade_notional_usd_cap: maxTradeNotionalUsdCap,
               max_orders_per_cycle_cap: maxOrdersPerCycleCap,
-              enforce_halt_on_consecutive_losses: globalSettingsDraft.enforceHaltOnConsecutiveLosses,
+              enforce_halt_on_consecutive_losses:
+                globalSettingsDraft.enforceHaltOnConsecutiveLosses,
               max_daily_spend_usd_cap: maxDailySpendUsdCap,
               max_spread_bps_cap: maxSpreadBpsCap,
               slippage_bps_cap: slippageBpsCap,
               retry_limit_cap: retryLimitCap,
               retry_backoff_ms_cap: retryBackoffMsCap,
               order_ttl_seconds_cap: orderTtlSecondsCap,
-            }).filter(([, v]) => v != null)
+            }).filter(([, v]) => v != null),
           ),
           live_market_context: {
             enabled: globalSettingsDraft.liveMarketContextEnabled,
@@ -7060,13 +7690,20 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
       refreshAll()
     },
     onError: (error: unknown) => {
-      setGlobalSettingsSaveError(errorMessage(error, 'Failed to update global orchestrator settings'))
+      setGlobalSettingsSaveError(
+        errorMessage(error, 'Failed to update global orchestrator settings'),
+      )
     },
   })
 
   const traderStartMutation = useMutation({
-    mutationFn: ({ traderId, copyExistingPositions }: { traderId: string; copyExistingPositions?: boolean }) =>
-      startTrader(traderId, { copy_existing_positions: copyExistingPositions }),
+    mutationFn: ({
+      traderId,
+      copyExistingPositions,
+    }: {
+      traderId: string
+      copyExistingPositions?: boolean
+    }) => startTrader(traderId, { copy_existing_positions: copyExistingPositions }),
     onMutate: ({ traderId }: { traderId: string; copyExistingPositions?: boolean }) => {
       setSaveError(null)
       setTraderTogglePendingById((current) => ({
@@ -7335,7 +7972,10 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
       if (!prompt) {
         throw new Error('Enter an agent prompt.')
       }
-      const maxIterations = Math.max(1, Math.min(24, Math.trunc(toNumber(tuneIterateMaxIterations || 12))))
+      const maxIterations = Math.max(
+        1,
+        Math.min(24, Math.trunc(toNumber(tuneIterateMaxIterations || 12))),
+      )
       return runTraderTuneIteration(selectedTrader.id, {
         prompt,
         max_iterations: maxIterations,
@@ -7463,7 +8103,15 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
   })
 
   const deleteTraderMutation = useMutation({
-    mutationFn: async ({ traderId, action, transferToTraderId }: { traderId: string; action: 'block' | 'disable' | 'force_delete' | 'transfer_delete'; transferToTraderId?: string }) => {
+    mutationFn: async ({
+      traderId,
+      action,
+      transferToTraderId,
+    }: {
+      traderId: string
+      action: 'block' | 'disable' | 'force_delete' | 'transfer_delete'
+      transferToTraderId?: string
+    }) => {
       return deleteTrader(traderId, { action, transfer_to_trader_id: transferToTraderId })
     },
     onSuccess: (result, variables) => {
@@ -7494,7 +8142,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
             'Select Force Delete and confirm the override to permanently delete now.',
           ]
             .filter(Boolean)
-            .join(' ')
+            .join(' '),
         )
         return
       }
@@ -7513,64 +8161,91 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
   const executionLatencyOverall = executionLatency?.overall || null
   const executionLatencyOverallLabel = formatLatencyPercentilePair(
     executionLatencyOverall,
-    'ws_release_to_submit_start_ms'
+    'ws_release_to_submit_start_ms',
   )
   const executionLatencyTargetMs = toNumber(executionLatency?.internal_sla_target_ms)
   const executionLatencyOverallP95 = latencyStagePercentiles(
     executionLatencyOverall,
-    'ws_release_to_submit_start_ms'
+    'ws_release_to_submit_start_ms',
   ).p95
   const executionLatencySlaBreached = Boolean(
     executionLatencyTargetMs !== null &&
     executionLatencyOverallP95 !== null &&
-    executionLatencyOverallP95 > executionLatencyTargetMs
+    executionLatencyOverallP95 > executionLatencyTargetMs,
   )
-  const worstLatencySource = worstLatencyGroup(executionLatency, 'by_source', 'ws_release_to_submit_start_ms')
-  const worstLatencyStrategy = worstLatencyGroup(executionLatency, 'by_strategy', 'ws_release_to_submit_start_ms')
+  const worstLatencySource = worstLatencyGroup(
+    executionLatency,
+    'by_source',
+    'ws_release_to_submit_start_ms',
+  )
+  const worstLatencyStrategy = worstLatencyGroup(
+    executionLatency,
+    'by_strategy',
+    'ws_release_to_submit_start_ms',
+  )
   const worstLatencySourceLabel = worstLatencySource.label
     ? `${worstLatencySource.label} ${formatLatencyPercentilePair({ ws_release_to_submit_start_ms: worstLatencySource }, 'ws_release_to_submit_start_ms')}`
     : '—'
   const worstLatencyStrategyLabel = worstLatencyStrategy.label
     ? `${worstLatencyStrategy.label} ${formatLatencyPercentilePair({ ws_release_to_submit_start_ms: worstLatencyStrategy }, 'ws_release_to_submit_start_ms')}`
     : '—'
-  const selectedTraderLatencyBucket = selectedTrader ? executionLatency?.by_trader?.[selectedTrader.id] || null : null
+  const selectedTraderLatencyBucket = selectedTrader
+    ? executionLatency?.by_trader?.[selectedTrader.id] || null
+    : null
   const selectedTraderLatencyLabel = formatLatencyPercentilePair(
     selectedTraderLatencyBucket,
-    'ws_release_to_submit_start_ms'
+    'ws_release_to_submit_start_ms',
   )
   const selectedTraderLatencyP95 = latencyStagePercentiles(
     selectedTraderLatencyBucket,
-    'ws_release_to_submit_start_ms'
+    'ws_release_to_submit_start_ms',
   ).p95
   const selectedTraderArmedToReleaseLabel = formatLatencyPercentilePair(
     selectedTraderLatencyBucket,
-    'armed_to_ws_release_ms'
+    'armed_to_ws_release_ms',
   )
   const selectedTraderReleaseToDecisionLabel = formatLatencyPercentilePair(
     selectedTraderLatencyBucket,
-    'ws_release_to_decision_ms'
+    'ws_release_to_decision_ms',
   )
   const selectedTraderLatencySlaBreached = Boolean(
     executionLatencyTargetMs !== null &&
     selectedTraderLatencyP95 !== null &&
-    selectedTraderLatencyP95 > executionLatencyTargetMs
+    selectedTraderLatencyP95 > executionLatencyTargetMs,
   )
   const killSwitchOn = Boolean(orchestratorControl?.kill_switch)
-  const killSwitchSwitchValue = killSwitchMutation.isPending && typeof killSwitchMutation.variables === 'boolean'
-    ? killSwitchMutation.variables
-    : killSwitchOn
+  const killSwitchSwitchValue =
+    killSwitchMutation.isPending && typeof killSwitchMutation.variables === 'boolean'
+      ? killSwitchMutation.variables
+      : killSwitchOn
   const killSwitchStatusLabel = killSwitchMutation.isPending
-    ? killSwitchSwitchValue ? 'BLOCKING...' : 'OPENING...'
-    : killSwitchOn ? 'BLOCKED' : 'OPEN'
-  const orchestratorEnabled = Boolean(orchestratorControl?.is_enabled) && !Boolean(orchestratorControl?.is_paused)
-  const orchestratorBoundSelectedAccountId = typeof orchestratorControl?.settings?.selected_account_id === 'string'
-    ? orchestratorControl.settings.selected_account_id.trim()
-    : ''
-  const orchestratorBoundMode = String(orchestratorControl?.mode || '').trim().toLowerCase()
-  const workerActivity = String(worker?.current_activity || '').trim().toLowerCase()
-  const orchestratorStateKey = String(orchestratorRuntimeState?.state || '').trim().toLowerCase()
-  const orchestratorWorkerRunning = Boolean(orchestratorRuntimeState?.worker_running ?? worker?.running)
-  const orchestratorHeartbeatStale = Boolean(orchestratorRuntimeState?.worker_stale ?? worker?.is_stale)
+    ? killSwitchSwitchValue
+      ? 'BLOCKING...'
+      : 'OPENING...'
+    : killSwitchOn
+      ? 'BLOCKED'
+      : 'OPEN'
+  const orchestratorEnabled =
+    Boolean(orchestratorControl?.is_enabled) && !orchestratorControl?.is_paused
+  const orchestratorBoundSelectedAccountId =
+    typeof orchestratorControl?.settings?.selected_account_id === 'string'
+      ? orchestratorControl.settings.selected_account_id.trim()
+      : ''
+  const orchestratorBoundMode = String(orchestratorControl?.mode || '')
+    .trim()
+    .toLowerCase()
+  const workerActivity = String(worker?.current_activity || '')
+    .trim()
+    .toLowerCase()
+  const orchestratorStateKey = String(orchestratorRuntimeState?.state || '')
+    .trim()
+    .toLowerCase()
+  const orchestratorWorkerRunning = Boolean(
+    orchestratorRuntimeState?.worker_running ?? worker?.running,
+  )
+  const orchestratorHeartbeatStale = Boolean(
+    orchestratorRuntimeState?.worker_stale ?? worker?.is_stale,
+  )
   const orchestratorRunning = orchestratorStateKey
     ? orchestratorStateKey === 'running'
     : orchestratorEnabled && orchestratorWorkerRunning && !orchestratorHeartbeatStale
@@ -7581,13 +8256,12 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
   const orchestratorStartingFallback = Boolean(
     orchestratorEnabled &&
     !orchestratorWorkerRunning &&
-    (
-      workerActivity.includes('start command queued') ||
-      workerActivity.includes('live start command queued')
-    )
+    (workerActivity.includes('start command queued') ||
+      workerActivity.includes('live start command queued')),
   )
-  const orchestratorStatusLabel = orchestratorRuntimeState?.label || (
-    orchestratorBlocked
+  const orchestratorStatusLabel =
+    orchestratorRuntimeState?.label ||
+    (orchestratorBlocked
       ? 'BLOCKED'
       : orchestratorHeartbeatStale
         ? 'STALE'
@@ -7597,33 +8271,30 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
             ? 'STARTING'
             : Boolean(orchestratorControl?.is_enabled) && Boolean(orchestratorControl?.is_paused)
               ? 'PAUSED'
-              : 'STOPPED'
-  )
-  const orchestratorStatusDetail = String(orchestratorRuntimeState?.reason || worker?.current_activity || '').trim()
+              : 'STOPPED')
+  const orchestratorStatusDetail = String(
+    orchestratorRuntimeState?.reason || worker?.current_activity || '',
+  ).trim()
   const orchestratorManageOnly = orchestratorStatusLabel === 'MANAGE-ONLY'
-  const orchestratorStatusVariant: 'default' | 'secondary' | 'destructive' = orchestratorHeartbeatStale || orchestratorBlocked
-    ? 'destructive'
-    : orchestratorManageOnly
-      ? 'secondary'
-    : orchestratorRunning
-      ? 'default'
-      : 'secondary'
+  const orchestratorStatusVariant: 'default' | 'secondary' | 'destructive' =
+    orchestratorHeartbeatStale || orchestratorBlocked
+      ? 'destructive'
+      : orchestratorManageOnly
+        ? 'secondary'
+        : orchestratorRunning
+          ? 'default'
+          : 'secondary'
   const orchestratorStartRequestPending =
-    startBySelectedAccountMutation.isPending &&
-    !orchestratorEnabled &&
-    !orchestratorWorkerRunning
+    startBySelectedAccountMutation.isPending && !orchestratorEnabled && !orchestratorWorkerRunning
   const orchestratorStopRequestPending =
-    stopByModeMutation.isPending &&
-    (orchestratorEnabled || orchestratorWorkerRunning)
+    stopByModeMutation.isPending && (orchestratorEnabled || orchestratorWorkerRunning)
 
   const controlBusy =
     orchestratorStartRequestPending ||
     orchestratorStopRequestPending ||
     killSwitchMutation.isPending
   const traderFlyoutBusy =
-    createTraderMutation.isPending ||
-    saveTraderMutation.isPending ||
-    deleteTraderMutation.isPending
+    createTraderMutation.isPending || saveTraderMutation.isPending || deleteTraderMutation.isPending
 
   useEffect(() => {
     if (!orchestratorEnabled) return
@@ -7652,8 +8323,12 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
   }, [globalSettingsFlyoutOpen, orchestratorConfig, liveExecutionSettings])
 
   const traderNameById = useMemo(
-    () => Object.fromEntries(traders.map((trader) => [trader.id, trader.name])) as Record<string, string>,
-    [traders]
+    () =>
+      Object.fromEntries(traders.map((trader) => [trader.id, trader.name])) as Record<
+        string,
+        string
+      >,
+    [traders],
   )
   const closeMarketModal = () => {
     setMarketModalState(null)
@@ -7693,13 +8368,14 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     } = params
     const marketAliases = collectTradeDisplayRowMarketAliasIds(displayRow)
     const links = resolveTradeDisplayRowLinks(displayRow)
-    const resolvedMarket = market || resolveCryptoMarketFromAliases([
-      order.market_id,
-      ...marketAliases,
-    ])
+    const resolvedMarket =
+      market || resolveCryptoMarketFromAliases([order.market_id, ...marketAliases])
     const traderId = cleanText(order.trader_id) || null
-    const traderName = traderId ? (traderNameById[traderId] || shortId(traderId)) : 'All Bots'
-    const modeSummary = String(order.mode || '').trim().toUpperCase() || 'N/A'
+    const traderName = traderId ? traderNameById[traderId] || shortId(traderId) : 'All Bots'
+    const modeSummary =
+      String(order.mode || '')
+        .trim()
+        .toUpperCase() || 'N/A'
     setMarketModalState({
       market: resolvedMarket,
       scope: {
@@ -7714,7 +8390,10 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
         yesLabel,
         noLabel,
         anchorOrderId: String(order.id || ''),
-        sourceSummary: String(order.source || '').trim().toUpperCase() || 'UNKNOWN',
+        sourceSummary:
+          String(order.source || '')
+            .trim()
+            .toUpperCase() || 'UNKNOWN',
         statusSummary,
         modeSummary,
         executionSummary,
@@ -7734,10 +8413,15 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     setMarketModalSellError(null)
     setMarketModalSellSuccess(null)
     const { market, row } = params
-    const marketAliases = row.marketAliases.length > 0 ? row.marketAliases : [normalizeMarketAlias(row.marketId)]
-    const resolvedMarket = market || resolveCryptoMarketFromAliases([row.marketId, ...marketAliases])
+    const marketAliases =
+      row.marketAliases.length > 0 ? row.marketAliases : [normalizeMarketAlias(row.marketId)]
+    const resolvedMarket =
+      market || resolveCryptoMarketFromAliases([row.marketId, ...marketAliases])
     const traderId = params.traderId ?? row.traderId ?? null
-    const traderName = params.traderName || row.traderName || (traderId ? (traderNameById[traderId] || shortId(traderId)) : 'All Bots')
+    const traderName =
+      params.traderName ||
+      row.traderName ||
+      (traderId ? traderNameById[traderId] || shortId(traderId) : 'All Bots')
     setMarketModalState({
       market: resolvedMarket,
       scope: {
@@ -7749,8 +8433,14 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
         marketQuestion: row.marketQuestion,
         directionSide: row.directionSide,
         directionLabel: row.direction,
-        yesLabel: row.directionSide === 'YES' && !isGenericDirectionLabel(row.direction) ? row.direction : null,
-        noLabel: row.directionSide === 'NO' && !isGenericDirectionLabel(row.direction) ? row.direction : null,
+        yesLabel:
+          row.directionSide === 'YES' && !isGenericDirectionLabel(row.direction)
+            ? row.direction
+            : null,
+        noLabel:
+          row.directionSide === 'NO' && !isGenericDirectionLabel(row.direction)
+            ? row.direction
+            : null,
         anchorOrderId: null,
         sourceSummary: row.sourceSummary,
         statusSummary: row.statusSummary,
@@ -7765,7 +8455,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
 
   const handleSellModalOrder = (order: TraderOrder) => {
     if (!marketModalState?.scope.traderId) {
-      setMarketModalSellError('This trade is not attached to a specific bot and cannot be sold from this view.')
+      setMarketModalSellError(
+        'This trade is not attached to a specific bot and cannot be sold from this view.',
+      )
       return
     }
     const orderId = String(order.id || '').trim()
@@ -7781,7 +8473,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
 
   const handleReconcileModalOrder = (order: TraderOrder) => {
     if (!marketModalState?.scope.traderId) {
-      setMarketModalSellError('This trade is not attached to a specific bot and cannot be reconciled from this view.')
+      setMarketModalSellError(
+        'This trade is not attached to a specific bot and cannot be reconciled from this view.',
+      )
       return
     }
     const orderId = String(order.id || '').trim()
@@ -7830,7 +8524,12 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
       }
     }
     // Fallback: compute from current page of orders (during initial load before summary arrives)
-    let resolved = 0, wins = 0, losses = 0, failed = 0, open = 0, resolvedPnl = 0
+    let resolved = 0,
+      wins = 0,
+      losses = 0,
+      failed = 0,
+      open = 0,
+      resolvedPnl = 0
     for (const order of allOrders) {
       const status = normalizeStatus(order.status)
       const pnl = toNumber(order.actual_profit)
@@ -7844,9 +8543,16 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
       if (FAILED_ORDER_STATUSES.has(status)) failed += 1
     }
     return {
-      open, resolved, wins, losses, failed,
-      totalNotional: 0, resolvedPnl, winRate: (wins + losses) > 0 ? (wins / (wins + losses)) * 100 : 0,
-      avgEdge: 0, avgConfidence: 0,
+      open,
+      resolved,
+      wins,
+      losses,
+      failed,
+      totalNotional: 0,
+      resolvedPnl,
+      winRate: wins + losses > 0 ? (wins / (wins + losses)) * 100 : 0,
+      avgEdge: 0,
+      avgConfidence: 0,
       traderRows: [] as Array<{
         traderId: string
         traderName: string
@@ -7864,23 +8570,37 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
         losses: number
         latest_activity_ts: number
       }>,
-      sourceRows: [] as Array<{ source: string; orders: number; resolved: number; pnl: number; notional: number; wins: number; losses: number }>,
+      sourceRows: [] as Array<{
+        source: string
+        orders: number
+        resolved: number
+        pnl: number
+        notional: number
+        wins: number
+        losses: number
+      }>,
     }
   }, [ordersSummaryQuery.data, allOrders, traderNameById])
 
   const globalPositionBook = useMemo(
-    () => buildPositionBookRows(allOrders, traderNameById, decisionSignalPayloadByDecisionId, liveMarksByOrderId),
-    [allOrders, traderNameById, decisionSignalPayloadByDecisionId, liveMarksByOrderId]
+    () =>
+      buildPositionBookRows(
+        allOrders,
+        traderNameById,
+        decisionSignalPayloadByDecisionId,
+        liveMarksByOrderId,
+      ),
+    [allOrders, traderNameById, decisionSignalPayloadByDecisionId, liveMarksByOrderId],
   )
 
   const selectedPositionBook = useMemo(
     () => globalPositionBook.filter((row) => row.traderId === selectedTraderId),
-    [globalPositionBook, selectedTraderId]
+    [globalPositionBook, selectedTraderId],
   )
 
   const selectedTraderPerformanceRow = useMemo(
     () => globalSummary.traderRows.find((row) => row.traderId === selectedTraderId) || null,
-    [globalSummary.traderRows, selectedTraderId]
+    [globalSummary.traderRows, selectedTraderId],
   )
 
   const selectedTraderSummary = useMemo(() => {
@@ -7940,7 +8660,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
 
     const decisions = selectedDecisions.length
     const selectedDecisionsCount = selectedDecisions.filter(
-      (decision) => String(decision.decision).toLowerCase() === 'selected'
+      (decision) => String(decision.decision).toLowerCase() === 'selected',
     ).length
 
     return {
@@ -7951,11 +8671,14 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
       open,
       pnl,
       notional,
-      winRate: (wins + losses) > 0 ? (wins / (wins + losses)) * 100 : 0,
+      winRate: wins + losses > 0 ? (wins / (wins + losses)) * 100 : 0,
       decisions,
       selectedDecisions: selectedDecisionsCount,
       events: selectedEvents.length,
-      conversion: decisions > 0 ? ((selectedTraderPerformanceRow?.orders ?? selectedOrders.length) / decisions) * 100 : 0,
+      conversion:
+        decisions > 0
+          ? ((selectedTraderPerformanceRow?.orders ?? selectedOrders.length) / decisions) * 100
+          : 0,
       selectionRate: decisions > 0 ? (selectedDecisionsCount / decisions) * 100 : 0,
       avgEdge: edgeCount > 0 ? edgeSum / edgeCount : 0,
       avgConfidence: confidenceCount > 0 ? confidenceSum / confidenceCount : 0,
@@ -8013,7 +8736,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
 
     const sourceRows = buildPerformanceBuckets(selectedOrders, (order) => {
       const sourceKey = normalizeSourceKey(String(order.source || '')) || 'unknown'
-      const sourceLabel = sourceCatalog.find((item) => normalizeSourceKey(item.key) === sourceKey)?.label || sourceKey.toUpperCase()
+      const sourceLabel =
+        sourceCatalog.find((item) => normalizeSourceKey(item.key) === sourceKey)?.label ||
+        sourceKey.toUpperCase()
       return {
         key: sourceKey,
         label: sourceLabel,
@@ -8066,7 +8791,10 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
         .filter(Boolean)
         .join(' ')
         .toLowerCase()
-      if (isAllowanceErrorText(allowanceText) || allowanceText.includes('not enough balance / allowance')) {
+      if (
+        isAllowanceErrorText(allowanceText) ||
+        allowanceText.includes('not enough balance / allowance')
+      ) {
         allowanceErrorCount += 1
       }
       if (isGasErrorText(allowanceText)) {
@@ -8134,7 +8862,11 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
         strategyVersion,
         strategyVersionLabel,
         sectionKey: buildPerformanceSectionKey(sourceKey, strategyKey, strategyVersion),
-        sectionLabel: buildPerformanceSectionLabel(sourceLabel, strategyLabel, strategyVersionLabel),
+        sectionLabel: buildPerformanceSectionLabel(
+          sourceLabel,
+          strategyLabel,
+          strategyVersionLabel,
+        ),
         paramFields,
         values: currentValues,
       }
@@ -8173,9 +8905,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
         strategyVersionLabel: payload.strategyVersionLabel,
         paramFields: mergedFields,
         groups: groupStrategyParamFields(mergedFields),
-        fieldKeys: mergedFields
-          .map((field) => String(field.key || '').trim())
-          .filter(Boolean),
+        fieldKeys: mergedFields.map((field) => String(field.key || '').trim()).filter(Boolean),
         values: mergedValues,
         sortIndex: existing ? Math.min(existing.sortIndex, payload.sortIndex) : payload.sortIndex,
       })
@@ -8195,30 +8925,43 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
       const dimensionMeta = extractOrderPerformanceDimensions(order, decision)
       const strategyKey = normalizeStrategyKeyForSource(
         sourceKey,
-        cleanText(order.strategy_key) || cleanText(decision?.strategy_key) || dimensionMeta.strategyKey,
+        cleanText(order.strategy_key) ||
+          cleanText(decision?.strategy_key) ||
+          dimensionMeta.strategyKey,
       )
       const explicitVersion = normalizeStrategyVersion(order.strategy_version)
       const matchingCurrent =
-        currentConfigs.find((config) =>
-          config.sourceKey === sourceKey
-          && config.strategyKey === strategyKey
-          && config.strategyVersion === explicitVersion
-        )
-        || (explicitVersion === null
-          ? currentConfigs.find((config) => config.sourceKey === sourceKey && config.strategyKey === strategyKey)
-          : currentConfigs.find((config) =>
-            config.sourceKey === sourceKey
-            && config.strategyKey === strategyKey
-            && config.strategyVersion === null
-          ))
-        || null
+        currentConfigs.find(
+          (config) =>
+            config.sourceKey === sourceKey &&
+            config.strategyKey === strategyKey &&
+            config.strategyVersion === explicitVersion,
+        ) ||
+        (explicitVersion === null
+          ? currentConfigs.find(
+              (config) => config.sourceKey === sourceKey && config.strategyKey === strategyKey,
+            )
+          : currentConfigs.find(
+              (config) =>
+                config.sourceKey === sourceKey &&
+                config.strategyKey === strategyKey &&
+                config.strategyVersion === null,
+            )) ||
+        null
       const strategyVersion = explicitVersion ?? matchingCurrent?.strategyVersion ?? null
       const detail = sourceStrategyDetailsLookup[sourceKey]?.[strategyKey] || null
       const sourceLabel = sourceLabelByKey.get(sourceKey) || sourceKey.toUpperCase() || 'UNKNOWN'
-      const strategyLabel = detail?.label || matchingCurrent?.strategyLabel || strategyLabelForKey(strategyKey, sourceCards)
+      const strategyLabel =
+        detail?.label ||
+        matchingCurrent?.strategyLabel ||
+        strategyLabelForKey(strategyKey, sourceCards)
       const strategyVersionLabel = formatStrategyVersionLabel(strategyVersion)
       const sectionKey = buildPerformanceSectionKey(sourceKey, strategyKey, strategyVersion)
-      const sectionLabel = buildPerformanceSectionLabel(sourceLabel, strategyLabel, strategyVersionLabel)
+      const sectionLabel = buildPerformanceSectionLabel(
+        sourceLabel,
+        strategyLabel,
+        strategyVersionLabel,
+      )
       const extracted = extractOrderPerformanceParams(
         order,
         decision,
@@ -8302,7 +9045,8 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
         }
       })
       .sort((left, right) => {
-        if (Math.abs(left.pnl) !== Math.abs(right.pnl)) return Math.abs(right.pnl) - Math.abs(left.pnl)
+        if (Math.abs(left.pnl) !== Math.abs(right.pnl))
+          return Math.abs(right.pnl) - Math.abs(left.pnl)
         if (left.orders !== right.orders) return right.orders - left.orders
         return left.sectionLabel.localeCompare(right.sectionLabel)
       })
@@ -8311,7 +9055,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     const paramBucketsBySection: Record<string, Record<string, PerformanceParamValueRow[]>> = {}
 
     for (const section of sections) {
-      const sectionSnapshots = snapshots.filter((snapshot) => snapshot.sectionKey === section.sectionKey)
+      const sectionSnapshots = snapshots.filter(
+        (snapshot) => snapshot.sectionKey === section.sectionKey,
+      )
       const summaryRows: PerformanceParamSummaryRow[] = []
       const bucketsForSection: Record<string, PerformanceParamValueRow[]> = {}
 
@@ -8336,7 +9082,8 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
           })
 
         const currentBucket = bucketRows.find((row) => row.isCurrent) || null
-        const matchingField = section.paramFields.find((field) => String(field.key || '').trim() === fieldKey) || null
+        const matchingField =
+          section.paramFields.find((field) => String(field.key || '').trim() === fieldKey) || null
         summaryRows.push({
           key: fieldKey,
           label: String(matchingField?.label || humanizeStrategyParamLabel(fieldKey)),
@@ -8352,7 +9099,8 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
 
       summaryRows.sort((left, right) => {
         if (left.hasVariation !== right.hasVariation) return left.hasVariation ? -1 : 1
-        if (left.observedValueCount !== right.observedValueCount) return right.observedValueCount - left.observedValueCount
+        if (left.observedValueCount !== right.observedValueCount)
+          return right.observedValueCount - left.observedValueCount
         return left.label.localeCompare(right.label)
       })
       paramSummaryBySection[section.sectionKey] = summaryRows
@@ -8385,12 +9133,24 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
   }, [executionLatencyOverall, selectedTraderLatencyBucket])
 
   const latencySourceRows = useMemo(
-    () => buildLatencyGroupRows(executionLatency, 'by_source', 'ws_release_to_submit_start_ms', sourceCards).slice(0, 10),
-    [executionLatency, sourceCards]
+    () =>
+      buildLatencyGroupRows(
+        executionLatency,
+        'by_source',
+        'ws_release_to_submit_start_ms',
+        sourceCards,
+      ).slice(0, 10),
+    [executionLatency, sourceCards],
   )
   const latencyStrategyRows = useMemo(
-    () => buildLatencyGroupRows(executionLatency, 'by_strategy', 'ws_release_to_submit_start_ms', sourceCards).slice(0, 10),
-    [executionLatency, sourceCards]
+    () =>
+      buildLatencyGroupRows(
+        executionLatency,
+        'by_strategy',
+        'ws_release_to_submit_start_ms',
+        sourceCards,
+      ).slice(0, 10),
+    [executionLatency, sourceCards],
   )
 
   const performancePnlSeries = useMemo(() => {
@@ -8456,20 +9216,33 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
   }, [selectedOrders])
 
   const activePerformanceSection = useMemo(
-    () => selectedPerformanceConfig.sections.find((section) => section.sectionKey === performanceSectionKey) || selectedPerformanceConfig.sections[0] || null,
-    [performanceSectionKey, selectedPerformanceConfig.sections]
+    () =>
+      selectedPerformanceConfig.sections.find(
+        (section) => section.sectionKey === performanceSectionKey,
+      ) ||
+      selectedPerformanceConfig.sections[0] ||
+      null,
+    [performanceSectionKey, selectedPerformanceConfig.sections],
   )
   const activePerformanceParamSummaryRows = useMemo(
-    () => activePerformanceSection ? (selectedPerformanceConfig.paramSummaryBySection[activePerformanceSection.sectionKey] || []) : [],
-    [activePerformanceSection, selectedPerformanceConfig.paramSummaryBySection]
+    () =>
+      activePerformanceSection
+        ? selectedPerformanceConfig.paramSummaryBySection[activePerformanceSection.sectionKey] || []
+        : [],
+    [activePerformanceSection, selectedPerformanceConfig.paramSummaryBySection],
   )
-  const activePerformanceParamRows = useMemo(
-    () => {
-      if (!activePerformanceSection || !performanceParamKey) return []
-      return selectedPerformanceConfig.paramBucketsBySection[activePerformanceSection.sectionKey]?.[performanceParamKey] || []
-    },
-    [activePerformanceSection, performanceParamKey, selectedPerformanceConfig.paramBucketsBySection]
-  )
+  const activePerformanceParamRows = useMemo(() => {
+    if (!activePerformanceSection || !performanceParamKey) return []
+    return (
+      selectedPerformanceConfig.paramBucketsBySection[activePerformanceSection.sectionKey]?.[
+        performanceParamKey
+      ] || []
+    )
+  }, [
+    activePerformanceSection,
+    performanceParamKey,
+    selectedPerformanceConfig.paramBucketsBySection,
+  ])
   const activePerformanceParamSummaryByKey = useMemo(() => {
     const out = new Map<string, PerformanceParamSummaryRow>()
     for (const row of activePerformanceParamSummaryRows) {
@@ -8484,7 +9257,10 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
       return
     }
     setPerformanceSectionKey((current) => {
-      if (current && selectedPerformanceConfig.sections.some((section) => section.sectionKey === current)) {
+      if (
+        current &&
+        selectedPerformanceConfig.sections.some((section) => section.sectionKey === current)
+      ) {
         return current
       }
       return selectedPerformanceConfig.sections[0].sectionKey
@@ -8496,7 +9272,8 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
       setPerformanceParamKey('')
       return
     }
-    const summaryRows = selectedPerformanceConfig.paramSummaryBySection[activePerformanceSection.sectionKey] || []
+    const summaryRows =
+      selectedPerformanceConfig.paramSummaryBySection[activePerformanceSection.sectionKey] || []
     setPerformanceParamKey((current) => {
       if (current && summaryRows.some((row) => row.key === current)) {
         return current
@@ -8517,7 +9294,8 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
         if (decisionOutcomeFilter !== 'all' && outcome !== decisionOutcomeFilter) return false
         if (!q) return true
         const marketLabel = resolveDecisionMarketLabel(decision)
-        const haystack = `${marketLabel} ${decision.source} ${decision.strategy_key} ${decision.reason || ''} ${decision.decision}`.toLowerCase()
+        const haystack =
+          `${marketLabel} ${decision.source} ${decision.strategy_key} ${decision.reason || ''} ${decision.decision}`.toLowerCase()
         return haystack.includes(q)
       })
       .slice(0, 200)
@@ -8542,60 +9320,73 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     const pnl = toNumber(order.actual_profit)
     const directionPresentation = resolveOrderDirectionPresentation(order)
     const orderPayload = order.payload && typeof order.payload === 'object' ? order.payload : {}
-    const providerReconciliation = orderPayload.provider_reconciliation && typeof orderPayload.provider_reconciliation === 'object'
-      ? orderPayload.provider_reconciliation
-      : {}
-    const providerSnapshot = providerReconciliation.snapshot && typeof providerReconciliation.snapshot === 'object'
-      ? providerReconciliation.snapshot
-      : {}
-    const positionState = orderPayload.position_state && typeof orderPayload.position_state === 'object'
-      ? orderPayload.position_state
-      : {}
-    const pendingExit = orderPayload.pending_live_exit && typeof orderPayload.pending_live_exit === 'object'
-      ? orderPayload.pending_live_exit
-      : {}
-    const positionClose = orderPayload.position_close && typeof orderPayload.position_close === 'object'
-      ? orderPayload.position_close
-      : {}
-    const pendingExitStatus = normalizeStatus(String((pendingExit as Record<string, unknown>).status || ''))
+    const providerReconciliation =
+      orderPayload.provider_reconciliation &&
+      typeof orderPayload.provider_reconciliation === 'object'
+        ? orderPayload.provider_reconciliation
+        : {}
+    const providerSnapshot =
+      providerReconciliation.snapshot && typeof providerReconciliation.snapshot === 'object'
+        ? providerReconciliation.snapshot
+        : {}
+    const positionState =
+      orderPayload.position_state && typeof orderPayload.position_state === 'object'
+        ? orderPayload.position_state
+        : {}
+    const pendingExit =
+      orderPayload.pending_live_exit && typeof orderPayload.pending_live_exit === 'object'
+        ? orderPayload.pending_live_exit
+        : {}
+    const positionClose =
+      orderPayload.position_close && typeof orderPayload.position_close === 'object'
+        ? orderPayload.position_close
+        : {}
+    const pendingExitStatus = normalizeStatus(
+      String((pendingExit as Record<string, unknown>).status || ''),
+    )
     const closeTrigger = cleanText(
-      order.close_trigger
-      || (positionClose as Record<string, unknown>).close_trigger
-      || (pendingExit as Record<string, unknown>).close_trigger
+      order.close_trigger ||
+        (positionClose as Record<string, unknown>).close_trigger ||
+        (pendingExit as Record<string, unknown>).close_trigger,
     )
     const fillPx = toNumber(
-      order.average_fill_price
-      ?? providerReconciliation.average_fill_price
-      ?? providerSnapshot.average_fill_price
-      ?? order.effective_price
-      ?? order.entry_price
+      order.average_fill_price ??
+        providerReconciliation.average_fill_price ??
+        providerSnapshot.average_fill_price ??
+        order.effective_price ??
+        order.entry_price,
     )
     const realtimeCrypto = resolveOrderRealtimeCryptoSnapshot(order, directionPresentation.side)
     const liveMark = liveMarksByOrderId.get(String(order.id || ''))
     const markPx = toNumber(
-      liveMark?.mark_price
-      ?? realtimeCrypto.markPrice
-      ?? order.current_price
-      ?? positionState.last_mark_price
-      ?? orderPayload.market_price
-      ?? orderPayload.resolved_price
+      liveMark?.mark_price ??
+        realtimeCrypto.markPrice ??
+        order.current_price ??
+        positionState.last_mark_price ??
+        orderPayload.market_price ??
+        orderPayload.resolved_price,
     )
     const filledSize = toNumber(
-      order.filled_shares
-      ?? providerReconciliation.filled_size
-      ?? providerSnapshot.filled_size
-      ?? orderPayload.filled_size
+      order.filled_shares ??
+        providerReconciliation.filled_size ??
+        providerSnapshot.filled_size ??
+        orderPayload.filled_size,
     )
     const requestedNotional = Math.abs(toNumber(order.notional_usd))
     const filledNotional = toNumber(
-      order.filled_notional_usd
-      ?? providerReconciliation.filled_notional_usd
-      ?? providerSnapshot.filled_notional_usd
-      ?? order.notional_usd
+      order.filled_notional_usd ??
+        providerReconciliation.filled_notional_usd ??
+        providerSnapshot.filled_notional_usd ??
+        order.notional_usd,
     )
     let unrealized = toNumber(order.unrealized_pnl)
-    if ((order.unrealized_pnl === null || order.unrealized_pnl === undefined) && markPx > 0 && filledSize > 0 && filledNotional > 0) {
-      unrealized = (markPx * filledSize) - filledNotional
+    if (
+      (order.unrealized_pnl === null || order.unrealized_pnl === undefined) &&
+      markPx > 0 &&
+      filledSize > 0 &&
+      filledNotional > 0
+    ) {
+      unrealized = markPx * filledSize - filledNotional
     }
     if (liveMark && typeof liveMark.unrealized_pnl === 'number' && liveMark.mark_price > 0) {
       unrealized = liveMark.unrealized_pnl
@@ -8606,7 +9397,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
         filledSize,
         filledNotional,
         requestedNotionalFallback: requestedNotional,
-      }
+      },
     )
     const dynamicEdgePercent = computeOrderDynamicEdgePercent({
       status,
@@ -8615,11 +9406,14 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
       realizedPnl: pnl,
       filledNotional,
     })
-    const exitProgressPercent = computePendingExitProgressPercent(pendingExit as Record<string, unknown>)
+    const exitProgressPercent = computePendingExitProgressPercent(
+      pendingExit as Record<string, unknown>,
+    )
     const liveMarkTs = liveMark?.mark_updated_at
-    const liveMarkIso = typeof liveMarkTs === 'number' && liveMarkTs > 0
-      ? new Date(liveMarkTs * 1000).toISOString()
-      : null
+    const liveMarkIso =
+      typeof liveMarkTs === 'number' && liveMarkTs > 0
+        ? new Date(liveMarkTs * 1000).toISOString()
+        : null
     const markUpdatedAt = latestTimestampValue(
       liveMarkIso,
       realtimeCrypto.updatedAt,
@@ -8627,15 +9421,15 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     )
     const exitEvaluatedAt = resolveOrderExitEvaluationTimestamp(order, orderPayload)
     const markUpdatedTs = toTs(markUpdatedAt)
-    const markFresh = markUpdatedTs > 0 && (Date.now() - markUpdatedTs) <= 15_000
+    const markFresh = markUpdatedTs > 0 && Date.now() - markUpdatedTs <= 15_000
     const providerSnapshotStatus = normalizeStatus(
       String(
-        order.provider_snapshot_status
-        || providerReconciliation.snapshot_status
-        || providerSnapshot.normalized_status
-        || providerSnapshot.status
-        || ''
-      )
+        order.provider_snapshot_status ||
+          providerReconciliation.snapshot_status ||
+          providerSnapshot.normalized_status ||
+          providerSnapshot.status ||
+          '',
+      ),
     )
     const linkedDecisionId = String(order.decision_id || '').trim()
     const signalPayload = linkedDecisionId
@@ -8645,9 +9439,12 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     const outcome = orderOutcomeSummary(order)
     const executionSummary = orderExecutionTypeSummary(order)
     const venuePresentation = resolveVenueStatusPresentation(order, providerSnapshotStatus)
-    const currentValue = markPx > 0 && filledSize > 0
-      ? markPx * filledSize
-      : filledNotional > 0 ? filledNotional : requestedNotional
+    const currentValue =
+      markPx > 0 && filledSize > 0
+        ? markPx * filledSize
+        : filledNotional > 0
+          ? filledNotional
+          : requestedNotional
 
     return {
       order,
@@ -8685,7 +9482,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
 
   const selectedTradeOrderRows = useMemo(
     () => selectedOrders.map((order) => buildTradeTableOrderRow(order)),
-    [selectedOrders, cryptoMarkets, decisionSignalPayloadByDecisionId, liveMarksByOrderId]
+    [selectedOrders, cryptoMarkets, decisionSignalPayloadByDecisionId, liveMarksByOrderId],
   )
 
   const deferredTradeSearch = useDeferredValue(tradeSearch)
@@ -8701,17 +9498,17 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
 
   const selectedTradeRows = useMemo(
     () => selectedTradeRowsFull.slice(0, 250),
-    [selectedTradeRowsFull]
+    [selectedTradeRowsFull],
   )
 
   const selectedTradeTotals = useMemo(
     () => summarizeTradeDisplayRows(selectedTradeRowsFull),
-    [selectedTradeRowsFull]
+    [selectedTradeRowsFull],
   )
 
   const allTradeOrderRows = useMemo(
     () => allOrders.map((order) => buildTradeTableOrderRow(order)),
-    [allOrders, cryptoMarkets, decisionSignalPayloadByDecisionId, liveMarksByOrderId]
+    [allOrders, cryptoMarkets, decisionSignalPayloadByDecisionId, liveMarksByOrderId],
   )
 
   const deferredAllBotsTradeSearch = useDeferredValue(allBotsTradeSearch)
@@ -8721,9 +9518,12 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
       const status = row.kind === 'single' ? row.row.status : row.status
       if (!matchesTradeStatusFilter(status, allBotsTradeStatusFilter)) return false
       if (!q) return true
-      const traderLabel = row.kind === 'single'
-        ? traderNameById[String(row.row.order.trader_id || '')] || shortId(row.row.order.trader_id)
-        : traderNameById[String(row.primaryRow.order.trader_id || '')] || shortId(row.primaryRow.order.trader_id)
+      const traderLabel =
+        row.kind === 'single'
+          ? traderNameById[String(row.row.order.trader_id || '')] ||
+            shortId(row.row.order.trader_id)
+          : traderNameById[String(row.primaryRow.order.trader_id || '')] ||
+            shortId(row.primaryRow.order.trader_id)
       return tradeDisplayRowSearchText(row, traderLabel).includes(q)
     })
   }, [deferredAllBotsTradeSearch, allBotsTradeStatusFilter, allTradeOrderRows, traderNameById])
@@ -8735,10 +9535,19 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
   const filteredAllPositionBook = useMemo(() => {
     const query = deferredAllBotsPositionSearch.trim().toLowerCase()
     const rows = globalPositionBook.filter((row) => {
-      if (allBotsPositionDirectionFilter === 'yes' && !isYesDirection(row.directionSide || row.direction)) return false
-      if (allBotsPositionDirectionFilter === 'no' && !isNoDirection(row.directionSide || row.direction)) return false
+      if (
+        allBotsPositionDirectionFilter === 'yes' &&
+        !isYesDirection(row.directionSide || row.direction)
+      )
+        return false
+      if (
+        allBotsPositionDirectionFilter === 'no' &&
+        !isNoDirection(row.directionSide || row.direction)
+      )
+        return false
       if (!query) return true
-      const haystack = `${row.traderName} ${row.marketQuestion} ${row.marketId} ${row.sourceSummary} ${row.statusSummary} ${row.direction} ${row.directionSide || ''} ${row.executionSummary}`.toLowerCase()
+      const haystack =
+        `${row.traderName} ${row.marketQuestion} ${row.marketId} ${row.sourceSummary} ${row.statusSummary} ${row.direction} ${row.directionSide || ''} ${row.executionSummary}`.toLowerCase()
       return haystack.includes(query)
     })
     return sortPositionRows(rows, allBotsPositionSortField, allBotsPositionSortDirection)
@@ -8752,7 +9561,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
 
   const allBotsPositionSummary = useMemo(
     () => summarizePositionRows(filteredAllPositionBook),
-    [filteredAllPositionBook]
+    [filteredAllPositionBook],
   )
 
   const activityRows = useMemo(() => {
@@ -8767,18 +9576,24 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     }
 
     const decisionRows: ActivityRow[] = allDecisions.map((decision) => {
-      const decisionKey = String(decision.decision || '').trim().toLowerCase()
+      const decisionKey = String(decision.decision || '')
+        .trim()
+        .toLowerCase()
       const legs = collectDecisionLegs(decision)
       const fallbackMarket = cleanText(decision.market_question) || cleanText(decision.market_id)
       const marketLabel = primaryMarketLabel(legs, fallbackMarket)
       const reason = decisionReasonDetail(decision)
       const failedChecksDetail = decisionFailedChecksDetail(decision)
-      const action = legs.find((leg) => leg.action)?.action || normalizeTradeAction(decision.direction)
+      const action =
+        legs.find((leg) => leg.action)?.action || normalizeTradeAction(decision.direction)
       const tone: ActivityRow['tone'] =
-        decisionKey === 'selected' ? 'positive' :
-        decisionKey === 'failed' || decisionKey === 'blocked' ? 'negative' :
-        decisionKey === 'skipped' ? 'warning' :
-        'neutral'
+        decisionKey === 'selected'
+          ? 'positive'
+          : decisionKey === 'failed' || decisionKey === 'blocked'
+            ? 'negative'
+            : decisionKey === 'skipped'
+              ? 'warning'
+              : 'neutral'
       decisionReasonById.set(decision.id, reason)
       decisionEchoFingerprints.add(
         activityDuplicateFingerprint(
@@ -8786,7 +9601,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
           decision.created_at,
           reason,
           fallbackMarket || marketLabel,
-        )
+        ),
       )
 
       return {
@@ -8810,10 +9625,13 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     const orderRows: ActivityRow[] = allOrders.map((order) => {
       const status = normalizeStatus(order.status)
       const pnl = toNumber(order.actual_profit)
-      const tone: ActivityRow['tone'] =
-        FAILED_ORDER_STATUSES.has(status) ? 'negative' :
-        RESOLVED_ORDER_STATUSES.has(status) && pnl > 0 ? 'positive' :
-        RESOLVED_ORDER_STATUSES.has(status) && pnl < 0 ? 'negative' : 'neutral'
+      const tone: ActivityRow['tone'] = FAILED_ORDER_STATUSES.has(status)
+        ? 'negative'
+        : RESOLVED_ORDER_STATUSES.has(status) && pnl > 0
+          ? 'positive'
+          : RESOLVED_ORDER_STATUSES.has(status) && pnl < 0
+            ? 'negative'
+            : 'neutral'
 
       const leg = collectOrderLeg(order)
       const fallbackMarket = cleanText(order.market_question) || cleanText(order.market_id)
@@ -8848,27 +9666,41 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
       const payload = isRecord(event.payload) ? event.payload : null
       const linkedDecisionId = payload ? cleanText(payload.decision_id) : null
       const linkedDecision = linkedDecisionId ? decisionsById.get(linkedDecisionId) || null : null
-      const linkedOrder = linkedDecisionId ? latestOrderByDecisionId.get(linkedDecisionId) || null : null
+      const linkedOrder = linkedDecisionId
+        ? latestOrderByDecisionId.get(linkedDecisionId) || null
+        : null
       const linkedOrderLeg = linkedOrder ? collectOrderLeg(linkedOrder) : null
       const linkedLegs = linkedDecision
         ? collectDecisionLegs(linkedDecision)
         : linkedOrderLeg
           ? [linkedOrderLeg]
           : []
-      const payloadMarket = payload ? (cleanText(payload.market_question) || cleanText(payload.market_id)) : null
-      const fallbackMarket = payloadMarket
-        || (linkedDecision ? cleanText(linkedDecision.market_question) || cleanText(linkedDecision.market_id) : null)
-        || (linkedOrder ? cleanText(linkedOrder.market_question) || cleanText(linkedOrder.market_id) : null)
+      const payloadMarket = payload
+        ? cleanText(payload.market_question) || cleanText(payload.market_id)
+        : null
+      const fallbackMarket =
+        payloadMarket ||
+        (linkedDecision
+          ? cleanText(linkedDecision.market_question) || cleanText(linkedDecision.market_id)
+          : null) ||
+        (linkedOrder
+          ? cleanText(linkedOrder.market_question) || cleanText(linkedOrder.market_id)
+          : null)
       const marketLabel = primaryMarketLabel(linkedLegs, fallbackMarket)
-      const action = (
-        normalizeTradeAction(payload ? (payload.action ?? payload.side ?? payload.direction) : null)
-        || (linkedOrderLeg ? linkedOrderLeg.action : null)
-        || (linkedDecision ? normalizeTradeAction(linkedDecision.direction) : null)
-      )
+      const action =
+        normalizeTradeAction(
+          payload ? (payload.action ?? payload.side ?? payload.direction) : null,
+        ) ||
+        (linkedOrderLeg ? linkedOrderLeg.action : null) ||
+        (linkedDecision ? normalizeTradeAction(linkedDecision.direction) : null)
       const reason = eventReasonDetail(event)
       const latencyDetail = eventLatencyDetail(event)
-      const severity = String(event.severity || '').trim().toLowerCase()
-      const eventType = String(event.event_type || '').trim().toLowerCase()
+      const severity = String(event.severity || '')
+        .trim()
+        .toLowerCase()
+      const eventType = String(event.event_type || '')
+        .trim()
+        .toLowerCase()
       const linkedDecisionReason = linkedDecision ? decisionReasonDetail(linkedDecision) : ''
       const resolvedReason =
         eventType === 'decision' && isGenericDecisionReason(reason) && linkedDecisionReason
@@ -8880,28 +9712,37 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
         resolvedReason,
         fallbackMarket || marketLabel,
       )
-      const linkedDecisionRowReason = linkedDecisionId ? decisionReasonById.get(linkedDecisionId) || '' : ''
+      const linkedDecisionRowReason = linkedDecisionId
+        ? decisionReasonById.get(linkedDecisionId) || ''
+        : ''
       if (
-        eventType === 'decision'
-        && (
-          (linkedDecision && areReasonsEquivalent(resolvedReason, linkedDecisionRowReason))
-          || decisionEchoFingerprints.has(decisionFingerprint)
-        )
+        eventType === 'decision' &&
+        ((linkedDecision && areReasonsEquivalent(resolvedReason, linkedDecisionRowReason)) ||
+          decisionEchoFingerprints.has(decisionFingerprint))
       ) {
         continue
       }
       const tone: ActivityRow['tone'] =
-        severity === 'warn' || severity === 'warning' ? 'warning' :
-        severity === 'error' || severity === 'failed' ? 'negative' :
-        'neutral'
+        severity === 'warn' || severity === 'warning'
+          ? 'warning'
+          : severity === 'error' || severity === 'failed'
+            ? 'negative'
+            : 'neutral'
 
-      const rawVerbosity = String(event.verbosity || '').trim().toLowerCase()
+      const rawVerbosity = String(event.verbosity || '')
+        .trim()
+        .toLowerCase()
       const verbosity: TerminalVerbosity | null =
-        rawVerbosity === 'whisper' || rawVerbosity === 'murmur'
-        || rawVerbosity === 'voice' || rawVerbosity === 'shout'
-          ? rawVerbosity as TerminalVerbosity
+        rawVerbosity === 'whisper' ||
+        rawVerbosity === 'murmur' ||
+        rawVerbosity === 'voice' ||
+        rawVerbosity === 'shout'
+          ? (rawVerbosity as TerminalVerbosity)
           : null
-      const sourceKey = String(event.source || '').trim().toLowerCase() || null
+      const sourceKey =
+        String(event.source || '')
+          .trim()
+          .toLowerCase() || null
 
       // Firehose events build a richer title (strategy + market) and
       // pull their reason from the event message rather than the
@@ -8911,10 +9752,11 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
       let detail: string
       if (verbosity) {
         const payloadStrategy = payload ? cleanText(payload.strategy_slug) : null
-        const payloadMarketSlug = payload && isRecord(payload.market)
-          ? cleanText((payload.market as Record<string, unknown>).slug)
-            || cleanText((payload.market as Record<string, unknown>).market_id)
-          : null
+        const payloadMarketSlug =
+          payload && isRecord(payload.market)
+            ? cleanText((payload.market as Record<string, unknown>).slug) ||
+              cleanText((payload.market as Record<string, unknown>).market_id)
+            : null
         const tag = String(event.event_type || 'firehose').toUpperCase()
         const labelStrategy = payloadStrategy || sourceKey || ''
         title = `${tag} • ${verbosity.toUpperCase()}${labelStrategy ? ` • ${labelStrategy}` : ''}${payloadMarketSlug ? ` • ${payloadMarketSlug}` : ''}`
@@ -8951,36 +9793,35 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
   const selectedTraderSourceKeys = useMemo(() => {
     const set = new Set<string>()
     for (const cfg of selectedTraderSourceConfigs) {
-      const key = String(cfg?.source_key || '').trim().toLowerCase()
+      const key = String(cfg?.source_key || '')
+        .trim()
+        .toLowerCase()
       if (key) set.add(key)
     }
     return set
   }, [selectedTraderSourceConfigs])
 
-  const selectedTraderActivityRows = useMemo(
-    () => {
-      // All-bots view: no trader selected — surface every row so the
-      // combined terminal mirrors the per-trader pipeline (filters,
-      // pause, slow-mode, volume) instead of a hardcoded snapshot.
-      if (selectedTraderId == null) {
-        return activityRows.slice(0, terminalMaxRows)
-      }
-      return activityRows
-        .filter((row) => {
-          if (row.traderId === selectedTraderId) return true
-          // Firehose-style global events have ``traderId=null`` and a
-          // ``sourceKey`` that identifies which strategy family they
-          // belong to.  Show them in the trader's terminal when the
-          // trader subscribes to that source.
-          if (row.traderId == null && row.sourceKey && selectedTraderSourceKeys.has(row.sourceKey)) {
-            return true
-          }
-          return false
-        })
-        .slice(0, terminalMaxRows)
-    },
-    [activityRows, selectedTraderId, selectedTraderSourceKeys, terminalMaxRows]
-  )
+  const selectedTraderActivityRows = useMemo(() => {
+    // All-bots view: no trader selected — surface every row so the
+    // combined terminal mirrors the per-trader pipeline (filters,
+    // pause, slow-mode, volume) instead of a hardcoded snapshot.
+    if (selectedTraderId == null) {
+      return activityRows.slice(0, terminalMaxRows)
+    }
+    return activityRows
+      .filter((row) => {
+        if (row.traderId === selectedTraderId) return true
+        // Firehose-style global events have ``traderId=null`` and a
+        // ``sourceKey`` that identifies which strategy family they
+        // belong to.  Show them in the trader's terminal when the
+        // trader subscribes to that source.
+        if (row.traderId == null && row.sourceKey && selectedTraderSourceKeys.has(row.sourceKey)) {
+          return true
+        }
+        return false
+      })
+      .slice(0, terminalMaxRows)
+  }, [activityRows, selectedTraderId, selectedTraderSourceKeys, terminalMaxRows])
 
   const filteredTraderActivityRows = useMemo(() => {
     const minRank = terminalVolume === 'off' ? Infinity : TERMINAL_VERBOSITY_RANK[terminalVolume]
@@ -9076,7 +9917,13 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
         return merged.slice(0, terminalMaxRows)
       })
     }
-  }, [filteredTraderActivityRows, terminalPaused, terminalSlowMode, terminalMaxRows, displayedActivityRows.length])
+  }, [
+    filteredTraderActivityRows,
+    terminalPaused,
+    terminalSlowMode,
+    terminalMaxRows,
+    displayedActivityRows.length,
+  ])
 
   // When the user un-pauses, drop straight to the latest filtered
   // snapshot.  This avoids replaying a giant backlog at once.
@@ -9130,9 +9977,14 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     }
     const visibleRows = Math.max(
       1,
-      Math.ceil((terminalViewportHeight || TERMINAL_COMPACT_ROW_HEIGHT) / TERMINAL_COMPACT_ROW_HEIGHT)
+      Math.ceil(
+        (terminalViewportHeight || TERMINAL_COMPACT_ROW_HEIGHT) / TERMINAL_COMPACT_ROW_HEIGHT,
+      ),
     )
-    const start = Math.max(0, Math.floor(terminalScrollTop / TERMINAL_COMPACT_ROW_HEIGHT) - TERMINAL_COMPACT_OVERSCAN)
+    const start = Math.max(
+      0,
+      Math.floor(terminalScrollTop / TERMINAL_COMPACT_ROW_HEIGHT) - TERMINAL_COMPACT_OVERSCAN,
+    )
     const end = Math.min(total, start + visibleRows + TERMINAL_COMPACT_OVERSCAN * 2)
     return {
       rows: displayedActivityRows.slice(start, end),
@@ -9143,23 +9995,29 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
   }, [displayedActivityRows, terminalDensity, terminalScrollTop, terminalViewportHeight])
 
   const riskActivityRows = useMemo(
-    () => activityRows.filter((row) => row.tone === 'negative' || row.tone === 'warning').slice(0, 240),
-    [activityRows]
+    () =>
+      activityRows.filter((row) => row.tone === 'negative' || row.tone === 'warning').slice(0, 240),
+    [activityRows],
   )
 
   const recentSelectedDecisions = useMemo(
-    () => allDecisions.filter((decision) => String(decision.decision).toLowerCase() === 'selected').slice(0, 24),
-    [allDecisions]
+    () =>
+      allDecisions
+        .filter((decision) => String(decision.decision).toLowerCase() === 'selected')
+        .slice(0, 24),
+    [allDecisions],
   )
 
   const selectedDecisionCountAllBots = useMemo(
-    () => allDecisions.filter((decision) => String(decision.decision).toLowerCase() === 'selected').length,
-    [allDecisions]
+    () =>
+      allDecisions.filter((decision) => String(decision.decision).toLowerCase() === 'selected')
+        .length,
+    [allDecisions],
   )
 
   const traderPerformanceById = useMemo(
     () => new Map(globalSummary.traderRows.map((row) => [row.traderId, row])),
-    [globalSummary.traderRows]
+    [globalSummary.traderRows],
   )
 
   const sourceLabelByKey = useMemo(() => {
@@ -9186,18 +10044,21 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     return traders.map((trader) => {
       const status = resolveTraderStatusPresentation(trader, orchestratorRunning)
       const sourceKeys = traderSourceKeys(trader)
-      const sourceLabels = sourceKeys.map((sourceKey) => sourceLabelByKey[sourceKey] || sourceKey.toUpperCase())
+      const sourceLabels = sourceKeys.map(
+        (sourceKey) => sourceLabelByKey[sourceKey] || sourceKey.toUpperCase(),
+      )
       const performance = traderPerformanceById.get(trader.id)
       const latestActivityTs = Math.max(
         toTs(trader.last_run_at),
-        toNumber(performance?.latest_activity_ts)
+        toNumber(performance?.latest_activity_ts),
       )
       return {
         trader,
         status,
         sourceKeys,
         sourceLabels,
-        primarySourceKey: sourceKeys.length === 1 ? sourceKeys[0] : sourceKeys.length > 1 ? 'multi' : 'unknown',
+        primarySourceKey:
+          sourceKeys.length === 1 ? sourceKeys[0] : sourceKeys.length > 1 ? 'multi' : 'unknown',
         open: toNumber(performance?.open),
         resolved: toNumber(performance?.resolved),
         partialOpenBundles: toNumber(performance?.partialOpenBundles),
@@ -9214,7 +10075,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
   // archived bots), which would otherwise produce a silent mismatch.
   const botRosterResolvedPnl = useMemo(
     () => botRosterRows.reduce((sum, row) => sum + row.pnl, 0),
-    [botRosterRows]
+    [botRosterRows],
   )
 
   // filteredBotRosterRows + groupedBotRosterRows now live inside
@@ -9222,9 +10083,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
   // derived rows there so typing the search box doesn't bubble up.
 
   const showCreatingTraderSkeleton = Boolean(
-    creatingTraderPreview
-    && createTraderMutation.isPending
-    && creatingTraderPreview.mode === selectedAccountMode
+    creatingTraderPreview &&
+    createTraderMutation.isPending &&
+    creatingTraderPreview.mode === selectedAccountMode,
   )
 
   const allBotsLeaderboardRows = useMemo(() => {
@@ -9245,7 +10106,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
           notional: toNumber(row?.notional),
           wins,
           losses,
-          winRate: (wins + losses) > 0 ? (wins / (wins + losses)) * 100 : 0,
+          winRate: wins + losses > 0 ? (wins / (wins + losses)) * 100 : 0,
         }
       })
       .sort((a, b) => {
@@ -9305,7 +10166,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
       const bucketIndex = bucketIndexByKey.get(dayKey)
       if (bucketIndex === undefined) continue
       const bucket = rows[bucketIndex]
-      const outcome = String(decision.decision || '').trim().toLowerCase()
+      const outcome = String(decision.decision || '')
+        .trim()
+        .toLowerCase()
       if (outcome === 'selected') {
         bucket.selected += 1
       } else if (outcome === 'blocked' || outcome === 'failed') {
@@ -9320,8 +10183,15 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
       const bucketIndex = bucketIndexByKey.get(dayKey)
       if (bucketIndex === undefined) continue
       const bucket = rows[bucketIndex]
-      const severity = String(event.severity || '').trim().toLowerCase()
-      if (severity === 'warn' || severity === 'warning' || severity === 'error' || severity === 'failed') {
+      const severity = String(event.severity || '')
+        .trim()
+        .toLowerCase()
+      if (
+        severity === 'warn' ||
+        severity === 'warning' ||
+        severity === 'error' ||
+        severity === 'failed'
+      ) {
         bucket.warnings += 1
       }
     }
@@ -9357,7 +10227,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
           notional: 0,
           wins: 0,
           losses: 0,
-        }
+        },
       )
       if (remainder.orders > 0) topRows.push(remainder)
     }
@@ -9387,9 +10257,10 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
       totalOrders,
       totalPnl,
       slices,
-      gradient: slices.length > 0
-        ? `conic-gradient(${slices.map((slice) => slice.segment).join(', ')})`
-        : 'conic-gradient(#334155 0deg 360deg)',
+      gradient:
+        slices.length > 0
+          ? `conic-gradient(${slices.map((slice) => slice.segment).join(', ')})`
+          : 'conic-gradient(#334155 0deg 360deg)',
     }
   }, [globalSummary.sourceRows])
 
@@ -9417,9 +10288,10 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     return {
       total,
       slices,
-      gradient: total > 0
-        ? `conic-gradient(${slices.map((slice) => slice.segment).join(', ')})`
-        : 'conic-gradient(#334155 0deg 360deg)',
+      gradient:
+        total > 0
+          ? `conic-gradient(${slices.map((slice) => slice.segment).join(', ')})`
+          : 'conic-gradient(#334155 0deg 360deg)',
     }
   }, [globalSummary.failed, globalSummary.open, globalSummary.resolved])
 
@@ -9427,7 +10299,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     const bucketKeys = allBotsOverviewBuckets.map((bucket) => bucket.key)
     const bucketIndexByKey = new Map(bucketKeys.map((key, index) => [key, index]))
     const trendByTraderId = new Map<string, number[]>(
-      allBotsLeaderboardRows.map((row) => [row.trader.id, bucketKeys.map(() => 0)])
+      allBotsLeaderboardRows.map((row) => [row.trader.id, bucketKeys.map(() => 0)]),
     )
 
     for (const order of allOrders) {
@@ -9468,88 +10340,106 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
 
   const activeTraderCount = useMemo(
     () => traders.filter((trader) => isTraderActive(trader)).length,
-    [traders]
+    [traders],
   )
 
   const startedTraderCount = useMemo(
     () => traders.filter((trader) => isTraderExecutionEnabled(trader)).length,
-    [traders]
+    [traders],
   )
   const inactiveTraderCount = useMemo(
     () => Math.max(0, traders.length - activeTraderCount),
-    [traders.length, activeTraderCount]
+    [traders.length, activeTraderCount],
   )
 
   const runningTraderCount = useMemo(
     () => (orchestratorRunning ? startedTraderCount : 0),
-    [orchestratorRunning, startedTraderCount]
+    [orchestratorRunning, startedTraderCount],
   )
-
 
   const selectedTraderExposure = useMemo(
     () => selectedPositionBook.reduce((sum, row) => sum + row.exposureUsd, 0),
-    [selectedPositionBook]
+    [selectedPositionBook],
   )
 
-  const selectedTraderOpenLivePositions = useMemo(
-    () => {
-      if (selectedTrader?.mode === 'live') {
-        const payload = selectedTraderLiveWalletPositionsQuery.data
-        const summaryCount = Number(payload?.summary?.managed_open_positions)
-        if (Number.isFinite(summaryCount)) {
-          return Math.max(0, summaryCount)
-        }
-        if (Array.isArray(payload?.positions)) {
-          return payload.positions.filter((position) => Boolean(position?.is_managed) && position?.counts_as_open !== false).length
-        }
+  const selectedTraderOpenLivePositions = useMemo(() => {
+    if (selectedTrader?.mode === 'live') {
+      const payload = selectedTraderLiveWalletPositionsQuery.data
+      const summaryCount = Number(payload?.summary?.managed_open_positions)
+      if (Number.isFinite(summaryCount)) {
+        return Math.max(0, summaryCount)
       }
-      return selectedPositionBook.filter((row) => row.liveOrderCount > 0).length
-    },
-    [selectedPositionBook, selectedTrader?.mode, selectedTraderLiveWalletPositionsQuery.data]
-  )
+      if (Array.isArray(payload?.positions)) {
+        return payload.positions.filter(
+          (position) => Boolean(position?.is_managed) && position?.counts_as_open !== false,
+        ).length
+      }
+    }
+    return selectedPositionBook.filter((row) => row.liveOrderCount > 0).length
+  }, [selectedPositionBook, selectedTrader?.mode, selectedTraderLiveWalletPositionsQuery.data])
 
   const selectedTraderOpenShadowPositions = useMemo(
     () => selectedPositionBook.filter((row) => row.shadowOrderCount > 0).length,
-    [selectedPositionBook]
+    [selectedPositionBook],
   )
 
   const selectedTraderOpenLiveOrders = useMemo(
-    () => selectedOrders.filter((order) => OPEN_ORDER_STATUSES.has(normalizeStatus(order.status)) && String(order.mode || '').toLowerCase() === 'live').length,
-    [selectedOrders]
+    () =>
+      selectedOrders.filter(
+        (order) =>
+          OPEN_ORDER_STATUSES.has(normalizeStatus(order.status)) &&
+          String(order.mode || '').toLowerCase() === 'live',
+      ).length,
+    [selectedOrders],
   )
 
   const selectedTraderOpenShadowOrders = useMemo(
-    () => selectedOrders.filter((order) => OPEN_ORDER_STATUSES.has(normalizeStatus(order.status)) && String(order.mode || '').toLowerCase() === 'shadow').length,
-    [selectedOrders]
+    () =>
+      selectedOrders.filter(
+        (order) =>
+          OPEN_ORDER_STATUSES.has(normalizeStatus(order.status)) &&
+          String(order.mode || '').toLowerCase() === 'shadow',
+      ).length,
+    [selectedOrders],
   )
 
-  const selectedTraderHasAnyDeleteExposure = (
-    selectedTraderOpenLivePositions > 0
-    || selectedTraderOpenShadowPositions > 0
-    || selectedTraderOpenLiveOrders > 0
-    || selectedTraderOpenShadowOrders > 0
-  )
+  const selectedTraderHasAnyDeleteExposure =
+    selectedTraderOpenLivePositions > 0 ||
+    selectedTraderOpenShadowPositions > 0 ||
+    selectedTraderOpenLiveOrders > 0 ||
+    selectedTraderOpenShadowOrders > 0
 
-  const selectedTraderHasLiveDeleteExposure = selectedTraderOpenLivePositions > 0 || selectedTraderOpenLiveOrders > 0
+  const selectedTraderHasLiveDeleteExposure =
+    selectedTraderOpenLivePositions > 0 || selectedTraderOpenLiveOrders > 0
 
   const selectedTraderDeleteExposureSummary = [
-    selectedTraderOpenLivePositions > 0 ? `${selectedTraderOpenLivePositions} live position(s)` : null,
-    selectedTraderOpenShadowPositions > 0 ? `${selectedTraderOpenShadowPositions} shadow position(s)` : null,
+    selectedTraderOpenLivePositions > 0
+      ? `${selectedTraderOpenLivePositions} live position(s)`
+      : null,
+    selectedTraderOpenShadowPositions > 0
+      ? `${selectedTraderOpenShadowPositions} shadow position(s)`
+      : null,
     selectedTraderOpenLiveOrders > 0 ? `${selectedTraderOpenLiveOrders} live open order(s)` : null,
-    selectedTraderOpenShadowOrders > 0 ? `${selectedTraderOpenShadowOrders} shadow open order(s)` : null,
+    selectedTraderOpenShadowOrders > 0
+      ? `${selectedTraderOpenShadowOrders} shadow open order(s)`
+      : null,
   ]
     .filter(Boolean)
     .join(' • ')
 
   const selectedDecision = useMemo(
     () => selectedDecisions.find((decision) => decision.id === selectedDecisionId) || null,
-    [selectedDecisions, selectedDecisionId]
+    [selectedDecisions, selectedDecisionId],
   )
   const selectedDecisionDirection = useMemo(
-    () => (selectedDecision ? resolveDecisionDirectionPresentation(selectedDecision) : { side: null, label: 'N/A' }),
-    [selectedDecision]
+    () =>
+      selectedDecision
+        ? resolveDecisionDirectionPresentation(selectedDecision)
+        : { side: null, label: 'N/A' },
+    [selectedDecision],
   )
-  const decisionDetailLoading = decisionDetailQuery.isPending || (decisionDetailQuery.isFetching && !decisionDetailQuery.data)
+  const decisionDetailLoading =
+    decisionDetailQuery.isPending || (decisionDetailQuery.isFetching && !decisionDetailQuery.data)
   const decisionChecks = decisionDetailQuery.data?.checks || []
   const decisionOrders = decisionDetailQuery.data?.orders || []
   const decisionOutcomeSummary = useMemo(() => {
@@ -9573,15 +10463,16 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
   const riskChecks = Array.isArray(selectedDecision?.risk_snapshot?.checks)
     ? selectedDecision?.risk_snapshot?.checks
     : []
-  const riskAllowed = selectedDecision ? toBoolean(selectedDecision.risk_snapshot?.allowed, false) : false
-  const latestSelectedTraderActivityTs = selectedTraderActivityRows.length > 0
-    ? toTs(selectedTraderActivityRows[0].ts)
-    : 0
+  const riskAllowed = selectedDecision
+    ? toBoolean(selectedDecision.risk_snapshot?.allowed, false)
+    : false
+  const latestSelectedTraderActivityTs =
+    selectedTraderActivityRows.length > 0 ? toTs(selectedTraderActivityRows[0].ts) : 0
   const latestSelectedTraderRunTs = toTs(selectedTrader?.last_run_at || worker?.last_run_at)
   const selectedTraderNoNewRows = Boolean(
     selectedTrader &&
     orchestratorRunning &&
-    latestSelectedTraderRunTs > (latestSelectedTraderActivityTs + 1000)
+    latestSelectedTraderRunTs > latestSelectedTraderActivityTs + 1000,
   )
 
   const entrySignalEligibility = orchestratorRuntimeState?.entry_signal_eligibility || null
@@ -9592,11 +10483,11 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
   const blockedRunningDisplay = orchestratorRunning
     ? toNumber(metrics?.blocked_running_traders ?? entrySignalEligibility?.blocked_running_traders)
     : 0
-  const entryBotsTitle = orchestratorRuntimeState?.reason || (
-    blockedRunningDisplay > 0 && entryEnabledDisplay === 0
+  const entryBotsTitle =
+    orchestratorRuntimeState?.reason ||
+    (blockedRunningDisplay > 0 && entryEnabledDisplay === 0
       ? 'All running bots have per-bot block new orders enabled.'
-      : 'Entry-capable running bots.'
-  )
+      : 'Entry-capable running bots.')
   const displayAvgEdge = normalizeEdgePercent(globalSummary.avgEdge)
   const selectedTraderStatus = resolveTraderStatusPresentation(selectedTrader, orchestratorRunning)
   const selectedTraderPendingAction = selectedTrader
@@ -9606,31 +10497,26 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
   const selectedTraderIsActive = Boolean(selectedTrader?.is_enabled)
   const selectedTraderIsStopped = Boolean(selectedTrader?.is_paused)
   const selectedTraderCanStart = Boolean(
-    selectedTrader
-    && selectedTraderIsActive
-    && selectedTraderIsStopped
-    && selectedTraderPendingAction !== 'start'
+    selectedTrader &&
+    selectedTraderIsActive &&
+    selectedTraderIsStopped &&
+    selectedTraderPendingAction !== 'start',
   )
   const selectedTraderCanStop = Boolean(
-    selectedTrader
-    && selectedTraderIsActive
-    && !selectedTraderIsStopped
-    && selectedTraderPendingAction !== 'stop'
+    selectedTrader &&
+    selectedTraderIsActive &&
+    !selectedTraderIsStopped &&
+    selectedTraderPendingAction !== 'stop',
   )
   const selectedTraderCanActivate = Boolean(
-    selectedTrader
-    && !selectedTraderIsActive
-    && selectedTraderPendingAction !== 'activate'
+    selectedTrader && !selectedTraderIsActive && selectedTraderPendingAction !== 'activate',
   )
   const selectedTraderCanDeactivate = Boolean(
-    selectedTrader
-    && selectedTraderIsActive
-    && selectedTraderPendingAction !== 'deactivate'
+    selectedTrader && selectedTraderIsActive && selectedTraderPendingAction !== 'deactivate',
   )
   const selectedTraderControlPending = selectedTraderPendingAction !== null
   const stopLifecycleNeedsLiveConfirm = Boolean(
-    selectedTrader
-    && stopLifecycleMode === 'close_all_positions'
+    selectedTrader && stopLifecycleMode === 'close_all_positions',
   )
 
   const requestStartTrader = () => {
@@ -9698,13 +10584,13 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     if (!selectedTrader || !selectedTraderExecutionEnabled) return
     if (runTuneIterateMutation.isPending) return
 
-    const intervalMinutes = Math.max(1, Math.min(360, Math.trunc(toNumber(tuneAutoIntervalMinutes || 15) || 15)))
-    const intervalMs = Math.max(
-      60_000,
-      Math.min(360 * 60_000, intervalMinutes * 60_000)
+    const intervalMinutes = Math.max(
+      1,
+      Math.min(360, Math.trunc(toNumber(tuneAutoIntervalMinutes || 15) || 15)),
     )
+    const intervalMs = Math.max(60_000, Math.min(360 * 60_000, intervalMinutes * 60_000))
     const baseRunAt = tuneAutoLastRunAt ?? Date.now()
-    const dueInMs = Math.max(0, (baseRunAt + intervalMs) - Date.now())
+    const dueInMs = Math.max(0, baseRunAt + intervalMs - Date.now())
     const timeoutId = window.setTimeout(() => {
       if (runTuneIterateMutation.isPending) return
       runTuneIterateMutation.mutate({ trigger: 'auto' })
@@ -9742,9 +10628,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     startBySelectedAccountMutation.mutate()
   }
 
-  const setGlobalSettingsField = <K extends keyof GlobalSettingsDraft,>(
+  const setGlobalSettingsField = <K extends keyof GlobalSettingsDraft>(
     key: K,
-    value: GlobalSettingsDraft[K]
+    value: GlobalSettingsDraft[K],
   ) => {
     setGlobalSettingsDraft((current) => ({
       ...current,
@@ -9782,12 +10668,15 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     (orchestratorEnabled && !startStopIsRunning && workerActivity.includes('start command queued'))
   const startStopIsStopping = orchestratorStopRequestPending
   const startStopPending = startStopIsStarting || startStopIsStopping
-  const startStopDisabled = startStopPending || (startStopIsConfigured ? !canStopOrchestrator : !canStartOrchestrator)
+  const startStopDisabled =
+    startStopPending || (startStopIsConfigured ? !canStopOrchestrator : !canStartOrchestrator)
 
   // Account binding is GLOBAL (header Select Account), not per-bot. Shadow
   // fills debit the selected sandbox ledger for every shadow bot.
   const boundAccountLabel = selectedAccountIsLive
-    ? (selectedAccountId === 'live:kalshi' ? 'Kalshi (live)' : 'Polymarket (live)')
+    ? selectedAccountId === 'live:kalshi'
+      ? 'Kalshi (live)'
+      : 'Polymarket (live)'
     : selectedSandboxAccount
       ? `${selectedSandboxAccount.name} (sandbox)`
       : null
@@ -9821,7 +10710,10 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     requestOrchestratorStart()
   }
 
-  const renderTradeDisplayRow = (displayRow: TradeTableDisplayRow, showTraderLabel: boolean): ReactNode => {
+  const renderTradeDisplayRow = (
+    displayRow: TradeTableDisplayRow,
+    showTraderLabel: boolean,
+  ): ReactNode => {
     if (displayRow.kind === 'single') {
       const row = displayRow.row
       const {
@@ -9854,15 +10746,14 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
         outcomeDetail,
         venuePresentation,
       } = row
-      const pendingExitLabel = pendingExitStatus && pendingExitStatus !== 'unknown'
-        ? (pendingExitStatus === 'failed' && OPEN_ORDER_STATUSES.has(status)
-          ? 'Exit:RETRY'
-          : `Exit:${pendingExitStatus.slice(0, 4).toUpperCase()}`)
-        : null
+      const pendingExitLabel =
+        pendingExitStatus && pendingExitStatus !== 'unknown'
+          ? pendingExitStatus === 'failed' && OPEN_ORDER_STATUSES.has(status)
+            ? 'Exit:RETRY'
+            : `Exit:${pendingExitStatus.slice(0, 4).toUpperCase()}`
+          : null
       const pendingExitTone: 'neutral' | 'warning' =
-        pendingExitStatus === 'failed' && OPEN_ORDER_STATUSES.has(status)
-          ? 'warning'
-          : 'neutral'
+        pendingExitStatus === 'failed' && OPEN_ORDER_STATUSES.has(status) ? 'warning' : 'neutral'
       const marketForModal = resolveCryptoMarketFromAliases(collectOrderMarketAliasIds(order))
       const openModal = () => {
         openTradeMarketModal({
@@ -9888,7 +10779,10 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
             className="border-b-0 bg-muted/[0.08] text-[11px] leading-tight cursor-pointer hover:bg-muted/[0.16] [&>td]:border-t [&>td]:border-border/70 [&>td:first-child]:border-l [&>td:last-child]:border-r"
             onClick={openModal}
           >
-            <TableCell className="max-w-[260px] py-0.5" title={order.market_question || order.market_id}>
+            <TableCell
+              className="max-w-[260px] py-0.5"
+              title={order.market_question || order.market_id}
+            >
               <div className="flex min-w-0 items-center gap-1">
                 <div className="flex shrink-0 items-center gap-0.5">
                   {links.polymarket && (
@@ -9928,11 +10822,16 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                     {order.market_question || shortId(order.market_id)}
                   </a>
                 ) : (
-                  <span className="truncate">{order.market_question || shortId(order.market_id)}</span>
+                  <span className="truncate">
+                    {order.market_question || shortId(order.market_id)}
+                  </span>
                 )}
               </div>
               {showTraderLabel ? (
-                <p className="truncate text-[9px] leading-none text-muted-foreground" title={traderLabel}>
+                <p
+                  className="truncate text-[9px] leading-none text-muted-foreground"
+                  title={traderLabel}
+                >
                   {traderLabel}
                 </p>
               ) : null}
@@ -9952,49 +10851,82 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
             >
               {currentValue > 0 ? formatCurrency(currentValue, true) : '—'}
             </TableCell>
-            <TableCell className="text-right font-mono py-0.5 text-[10px]">{fillPx > 0 ? fillPx.toFixed(3) : '—'}</TableCell>
-            <TableCell className="text-right font-mono py-0.5 text-[10px]">{fillProgressPercent !== null ? formatPercent(fillProgressPercent, 0) : '—'}</TableCell>
+            <TableCell className="text-right font-mono py-0.5 text-[10px]">
+              {fillPx > 0 ? fillPx.toFixed(3) : '—'}
+            </TableCell>
+            <TableCell className="text-right font-mono py-0.5 text-[10px]">
+              {fillProgressPercent !== null ? formatPercent(fillProgressPercent, 0) : '—'}
+            </TableCell>
             <TableCell className="text-right font-mono py-0.5 text-[10px]">
               {markPx > 0 ? (
-                <FlashNumber
-                  value={markPx}
-                  decimals={3}
-                  className="font-mono text-[10px]"
-                />
-              ) : '—'}
+                <FlashNumber value={markPx} decimals={3} className="font-mono text-[10px]" />
+              ) : (
+                '—'
+              )}
             </TableCell>
-            <TableCell className={cn('text-right font-mono py-0.5 text-[10px] font-semibold', unrealized > 0 ? 'text-emerald-500' : unrealized < 0 ? 'text-red-500' : '')}>
+            <TableCell
+              className={cn(
+                'text-right font-mono py-0.5 text-[10px] font-semibold',
+                unrealized > 0 ? 'text-emerald-500' : unrealized < 0 ? 'text-red-500' : '',
+              )}
+            >
               {OPEN_ORDER_STATUSES.has(status) ? (
                 <FlashNumber
                   value={unrealized}
                   decimals={2}
                   prefix="$"
-                  className={cn('font-mono text-[10px] font-semibold', unrealized > 0 ? 'text-emerald-500' : unrealized < 0 ? 'text-red-500' : '')}
+                  className={cn(
+                    'font-mono text-[10px] font-semibold',
+                    unrealized > 0 ? 'text-emerald-500' : unrealized < 0 ? 'text-red-500' : '',
+                  )}
                 />
-              ) : '—'}
+              ) : (
+                '—'
+              )}
             </TableCell>
-            <TableCell className={cn('text-right font-mono py-0.5 text-[10px] font-semibold', dynamicEdgePercent > 0 ? 'text-emerald-500' : dynamicEdgePercent < 0 ? 'text-red-500' : '')}>{formatPercent(dynamicEdgePercent)}</TableCell>
-            <TableCell className={cn('text-right font-mono py-0.5 text-[10px] font-semibold', pnl > 0 ? 'text-emerald-500' : pnl < 0 ? 'text-red-500' : '')}>
+            <TableCell
+              className={cn(
+                'text-right font-mono py-0.5 text-[10px] font-semibold',
+                dynamicEdgePercent > 0
+                  ? 'text-emerald-500'
+                  : dynamicEdgePercent < 0
+                    ? 'text-red-500'
+                    : '',
+              )}
+            >
+              {formatPercent(dynamicEdgePercent)}
+            </TableCell>
+            <TableCell
+              className={cn(
+                'text-right font-mono py-0.5 text-[10px] font-semibold',
+                pnl > 0 ? 'text-emerald-500' : pnl < 0 ? 'text-red-500' : '',
+              )}
+            >
               {RESOLVED_ORDER_STATUSES.has(status) ? formatCurrency(pnl, true) : '—'}
             </TableCell>
             <TableCell className="py-0.5">
               <Badge
                 variant="outline"
                 title={
-                  `${venuePresentation.detail}`
-                  + (providerSnapshotStatus ? ` • provider:${providerSnapshotStatus}` : '')
-                  + (order.verification_status ? ` • verification:${order.verification_status}` : '')
-                  + (order.verification_source ? ` • source:${order.verification_source}` : '')
-                  + (order.verification_reason ? ` • reason:${order.verification_reason}` : '')
-                  + (order.execution_wallet_address ? ` • wallet:${order.execution_wallet_address}` : '')
-                  + (order.verification_tx_hash ? ` • tx:${order.verification_tx_hash}` : '')
-                  + (
-                    order.provider_clob_order_id || order.provider_order_id
-                      ? ` • order_ref:${order.provider_clob_order_id || order.provider_order_id}`
-                      : ''
-                  )
+                  `${venuePresentation.detail}` +
+                  (providerSnapshotStatus ? ` • provider:${providerSnapshotStatus}` : '') +
+                  (order.verification_status
+                    ? ` • verification:${order.verification_status}`
+                    : '') +
+                  (order.verification_source ? ` • source:${order.verification_source}` : '') +
+                  (order.verification_reason ? ` • reason:${order.verification_reason}` : '') +
+                  (order.execution_wallet_address
+                    ? ` • wallet:${order.execution_wallet_address}`
+                    : '') +
+                  (order.verification_tx_hash ? ` • tx:${order.verification_tx_hash}` : '') +
+                  (order.provider_clob_order_id || order.provider_order_id
+                    ? ` • order_ref:${order.provider_clob_order_id || order.provider_order_id}`
+                    : '')
                 }
-                className={cn('h-4 max-w-[120px] truncate px-1 text-[9px] font-semibold', venuePresentation.className)}
+                className={cn(
+                  'h-4 max-w-[120px] truncate px-1 text-[9px] font-semibold',
+                  venuePresentation.className,
+                )}
               >
                 {venuePresentation.label}
               </Badge>
@@ -10003,18 +10935,28 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
               {exitProgressPercent !== null ? formatPercent(exitProgressPercent, 0) : '—'}
             </TableCell>
             <TableCell className="py-0.5 text-[9px] text-muted-foreground">
-              <span title={`${String(order.mode || '').toUpperCase()} • mark:${formatTimestamp(markUpdatedAt)} • created:${formatTimestamp(order.created_at)}`}>
+              <span
+                title={`${String(order.mode || '').toUpperCase()} • mark:${formatTimestamp(markUpdatedAt)} • created:${formatTimestamp(order.created_at)}`}
+              >
                 {formatRelativeAge(markUpdatedAt)}
               </span>
             </TableCell>
             <TableCell className="py-0.5 text-[9px] text-muted-foreground">
-              <span title={`${String(order.mode || '').toUpperCase()} • exit eval:${formatTimestamp(exitEvaluatedAt)} • updated:${formatTimestamp(order.updated_at)}`}>
+              <span
+                title={`${String(order.mode || '').toUpperCase()} • exit eval:${formatTimestamp(exitEvaluatedAt)} • updated:${formatTimestamp(order.updated_at)}`}
+              >
                 {formatRelativeAge(exitEvaluatedAt)}
               </span>
             </TableCell>
           </TableRow>
-          <TableRow className="cursor-pointer bg-muted/[0.08] hover:bg-muted/[0.16]" onClick={openModal}>
-            <TableCell colSpan={13} className="border-b-2 border-l border-r border-border/80 px-0 py-0.5">
+          <TableRow
+            className="cursor-pointer bg-muted/[0.08] hover:bg-muted/[0.16]"
+            onClick={openModal}
+          >
+            <TableCell
+              colSpan={13}
+              className="border-b-2 border-l border-r border-border/80 px-0 py-0.5"
+            >
               {renderTradeLifecycleFlow({
                 status,
                 outcomeHeadline,
@@ -10024,7 +10966,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                 closeTrigger,
                 pendingExitLabel,
                 pendingExitTone,
-                pulseCurrentStage: OPEN_ORDER_STATUSES.has(status) && String(order.mode || '').toLowerCase() === 'live',
+                pulseCurrentStage:
+                  OPEN_ORDER_STATUSES.has(status) &&
+                  String(order.mode || '').toLowerCase() === 'live',
               })}
             </TableCell>
           </TableRow>
@@ -10086,22 +11030,22 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
         links,
       })
     }
-    const pendingExitLabel = pendingExitStatus && pendingExitStatus !== 'unknown'
-      ? (pendingExitStatus === 'failed' && OPEN_ORDER_STATUSES.has(status)
-        ? 'Exit:RETRY'
-        : `Exit:${pendingExitStatus.slice(0, 4).toUpperCase()}`)
-      : null
+    const pendingExitLabel =
+      pendingExitStatus && pendingExitStatus !== 'unknown'
+        ? pendingExitStatus === 'failed' && OPEN_ORDER_STATUSES.has(status)
+          ? 'Exit:RETRY'
+          : `Exit:${pendingExitStatus.slice(0, 4).toUpperCase()}`
+        : null
     const pendingExitTone: 'neutral' | 'warning' =
-      pendingExitStatus === 'failed' && OPEN_ORDER_STATUSES.has(status)
-        ? 'warning'
-        : 'neutral'
-    const rangeClassName = resolutionProfitLow !== null && resolutionProfitHigh !== null
-      ? resolutionProfitLow >= 0
-        ? 'text-emerald-500'
-        : resolutionProfitHigh <= 0
-          ? 'text-red-500'
-          : 'text-amber-600 dark:text-amber-300'
-      : ''
+      pendingExitStatus === 'failed' && OPEN_ORDER_STATUSES.has(status) ? 'warning' : 'neutral'
+    const rangeClassName =
+      resolutionProfitLow !== null && resolutionProfitHigh !== null
+        ? resolutionProfitLow >= 0
+          ? 'text-emerald-500'
+          : resolutionProfitHigh <= 0
+            ? 'text-red-500'
+            : 'text-amber-600 dark:text-amber-300'
+        : ''
     const bundleLegSummary = legs.map((leg) => buildTradeBundleLegSummaryLabel(leg)).join(' • ')
     const bundleLegTooltip = legs
       .map((leg) => {
@@ -10110,32 +11054,44 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
         return `${buildTradeBundleLegSummaryLabel(leg)}${sizeLabel}${priceLabel}`
       })
       .join(' | ')
-    const primaryMarketLabel = cleanText(bundle.legs[0]?.market_question) || cleanText(order.market_question) || shortId(order.market_id)
-    const marketTitle = bundle.leg_count > 1 ? `${primaryMarketLabel} +${bundle.leg_count - 1} more` : primaryMarketLabel
-    const resolutionRangeLabel = formatSignedCurrencyRange(resolutionProfitLow, resolutionProfitHigh)
-    const hasOpenResolutionProfile = (
-      OPEN_ORDER_STATUSES.has(status)
-      && bundleSettlementReady
-      && filledNotional > 0
-      && resolutionProfitLow !== null
-      && resolutionProfitHigh !== null
+    const primaryMarketLabel =
+      cleanText(bundle.legs[0]?.market_question) ||
+      cleanText(order.market_question) ||
+      shortId(order.market_id)
+    const marketTitle =
+      bundle.leg_count > 1
+        ? `${primaryMarketLabel} +${bundle.leg_count - 1} more`
+        : primaryMarketLabel
+    const resolutionRangeLabel = formatSignedCurrencyRange(
+      resolutionProfitLow,
+      resolutionProfitHigh,
     )
-    const resolutionRoiLow = hasOpenResolutionProfile ? (resolutionProfitLow / filledNotional) * 100 : null
-    const resolutionRoiHigh = hasOpenResolutionProfile ? (resolutionProfitHigh / filledNotional) * 100 : null
+    const hasOpenResolutionProfile =
+      OPEN_ORDER_STATUSES.has(status) &&
+      bundleSettlementReady &&
+      filledNotional > 0 &&
+      resolutionProfitLow !== null &&
+      resolutionProfitHigh !== null
+    const resolutionRoiLow = hasOpenResolutionProfile
+      ? (resolutionProfitLow / filledNotional) * 100
+      : null
+    const resolutionRoiHigh = hasOpenResolutionProfile
+      ? (resolutionProfitHigh / filledNotional) * 100
+      : null
     const resolutionRoiLabel = formatSignedPercentRange(resolutionRoiLow, resolutionRoiHigh, 2)
     const bundleEdgeClassName = hasOpenResolutionProfile
-      ? (
-        resolutionRoiLow !== null && resolutionRoiHigh !== null
-          ? (
-            resolutionRoiLow >= 0
-              ? 'text-emerald-500'
-              : resolutionRoiHigh <= 0
-                ? 'text-red-500'
-                : 'text-amber-600 dark:text-amber-300'
-          )
+      ? resolutionRoiLow !== null && resolutionRoiHigh !== null
+        ? resolutionRoiLow >= 0
+          ? 'text-emerald-500'
+          : resolutionRoiHigh <= 0
+            ? 'text-red-500'
+            : 'text-amber-600 dark:text-amber-300'
+        : ''
+      : dynamicEdgePercent > 0
+        ? 'text-emerald-500'
+        : dynamicEdgePercent < 0
+          ? 'text-red-500'
           : ''
-      )
-      : (dynamicEdgePercent > 0 ? 'text-emerald-500' : dynamicEdgePercent < 0 ? 'text-red-500' : '')
 
     return (
       <Fragment key={displayRow.key}>
@@ -10186,14 +11142,28 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                 <span className="truncate">{marketTitle}</span>
               )}
             </div>
-            <p className={cn('truncate text-[9px] leading-none', guaranteedAnomaly ? 'text-red-600 dark:text-red-300' : 'text-cyan-700 dark:text-cyan-300')} title={bundleLabel}>
+            <p
+              className={cn(
+                'truncate text-[9px] leading-none',
+                guaranteedAnomaly
+                  ? 'text-red-600 dark:text-red-300'
+                  : 'text-cyan-700 dark:text-cyan-300',
+              )}
+              title={bundleLabel}
+            >
               {bundleLabel}
             </p>
-            <p className="truncate text-[9px] leading-none text-muted-foreground" title={bundleLegTooltip}>
+            <p
+              className="truncate text-[9px] leading-none text-muted-foreground"
+              title={bundleLegTooltip}
+            >
               {bundleLegSummary}
             </p>
             {showTraderLabel ? (
-              <p className="truncate text-[9px] leading-none text-muted-foreground" title={traderLabel}>
+              <p
+                className="truncate text-[9px] leading-none text-muted-foreground"
+                title={traderLabel}
+              >
                 {traderLabel}
               </p>
             ) : null}
@@ -10205,7 +11175,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                 'h-4 max-w-[120px] truncate px-1 text-[9px] font-semibold',
                 guaranteedAnomaly
                   ? 'border-red-300 bg-red-100 text-red-900 dark:border-red-400/60 dark:bg-red-500/25 dark:text-red-200'
-                  : 'border-cyan-300 bg-cyan-100 text-cyan-900 dark:border-cyan-400/45 dark:bg-cyan-500/12 dark:text-cyan-200'
+                  : 'border-cyan-300 bg-cyan-100 text-cyan-900 dark:border-cyan-400/45 dark:bg-cyan-500/12 dark:text-cyan-200',
               )}
               title={bundleLabel}
             >
@@ -10218,16 +11188,18 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
           >
             {currentValue > 0 ? formatCurrency(currentValue, true) : '—'}
           </TableCell>
-          <TableCell className="text-right font-mono py-0.5 text-[10px]">{fillPx !== null && fillPx > 0 ? fillPx.toFixed(3) : '—'}</TableCell>
-          <TableCell className="text-right font-mono py-0.5 text-[10px]">{fillProgressPercent !== null ? formatPercent(fillProgressPercent, 0) : '—'}</TableCell>
+          <TableCell className="text-right font-mono py-0.5 text-[10px]">
+            {fillPx !== null && fillPx > 0 ? fillPx.toFixed(3) : '—'}
+          </TableCell>
+          <TableCell className="text-right font-mono py-0.5 text-[10px]">
+            {fillProgressPercent !== null ? formatPercent(fillProgressPercent, 0) : '—'}
+          </TableCell>
           <TableCell className="text-right font-mono py-0.5 text-[10px]">
             {markPx !== null && markPx > 0 ? (
-              <FlashNumber
-                value={markPx}
-                decimals={3}
-                className="font-mono text-[10px]"
-              />
-            ) : '—'}
+              <FlashNumber value={markPx} decimals={3} className="font-mono text-[10px]" />
+            ) : (
+              '—'
+            )}
           </TableCell>
           <TableCell
             className={cn(
@@ -10238,9 +11210,13 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                   ? 'text-emerald-500'
                   : unrealized < 0
                     ? 'text-red-500'
-                    : ''
+                    : '',
             )}
-            title={hasOpenResolutionProfile ? `Current mark-to-market: ${formatCurrency(unrealized, true)}` : undefined}
+            title={
+              hasOpenResolutionProfile
+                ? `Current mark-to-market: ${formatCurrency(unrealized, true)}`
+                : undefined
+            }
           >
             {OPEN_ORDER_STATUSES.has(status)
               ? hasOpenResolutionProfile
@@ -10249,21 +11225,40 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
               : '—'}
           </TableCell>
           <TableCell
-            className={cn('text-right font-mono py-0.5 text-[10px] font-semibold', bundleEdgeClassName)}
-            title={hasOpenResolutionProfile ? `Current mark edge: ${formatPercent(dynamicEdgePercent)}` : undefined}
+            className={cn(
+              'text-right font-mono py-0.5 text-[10px] font-semibold',
+              bundleEdgeClassName,
+            )}
+            title={
+              hasOpenResolutionProfile
+                ? `Current mark edge: ${formatPercent(dynamicEdgePercent)}`
+                : undefined
+            }
           >
             {hasOpenResolutionProfile ? resolutionRoiLabel : formatPercent(dynamicEdgePercent)}
           </TableCell>
-          <TableCell className={cn('text-right font-mono py-0.5 text-[10px] font-semibold', RESOLVED_ORDER_STATUSES.has(status) ? (realizedPnl > 0 ? 'text-emerald-500' : realizedPnl < 0 ? 'text-red-500' : '') : '')}>
-            {RESOLVED_ORDER_STATUSES.has(status)
-              ? formatCurrency(realizedPnl, true)
-              : '—'}
+          <TableCell
+            className={cn(
+              'text-right font-mono py-0.5 text-[10px] font-semibold',
+              RESOLVED_ORDER_STATUSES.has(status)
+                ? realizedPnl > 0
+                  ? 'text-emerald-500'
+                  : realizedPnl < 0
+                    ? 'text-red-500'
+                    : ''
+                : '',
+            )}
+          >
+            {RESOLVED_ORDER_STATUSES.has(status) ? formatCurrency(realizedPnl, true) : '—'}
           </TableCell>
           <TableCell className="py-0.5">
             <Badge
               variant="outline"
               title={`${venuePresentation.detail}${providerSnapshotStatus ? ` • provider:${providerSnapshotStatus}` : ''}`}
-              className={cn('h-4 max-w-[120px] truncate px-1 text-[9px] font-semibold', venuePresentation.className)}
+              className={cn(
+                'h-4 max-w-[120px] truncate px-1 text-[9px] font-semibold',
+                venuePresentation.className,
+              )}
             >
               {venuePresentation.label}
             </Badge>
@@ -10272,18 +11267,28 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
             {exitProgressPercent !== null ? formatPercent(exitProgressPercent, 0) : '—'}
           </TableCell>
           <TableCell className="py-0.5 text-[9px] text-muted-foreground">
-            <span title={`${String(order.mode || '').toUpperCase()} • mark:${formatTimestamp(markUpdatedAt)} • created:${formatTimestamp(order.created_at)}`}>
+            <span
+              title={`${String(order.mode || '').toUpperCase()} • mark:${formatTimestamp(markUpdatedAt)} • created:${formatTimestamp(order.created_at)}`}
+            >
               {formatRelativeAge(markUpdatedAt)}
             </span>
           </TableCell>
           <TableCell className="py-0.5 text-[9px] text-muted-foreground">
-            <span title={`${String(order.mode || '').toUpperCase()} • exit eval:${formatTimestamp(exitEvaluatedAt)} • updated:${formatTimestamp(order.updated_at)}`}>
+            <span
+              title={`${String(order.mode || '').toUpperCase()} • exit eval:${formatTimestamp(exitEvaluatedAt)} • updated:${formatTimestamp(order.updated_at)}`}
+            >
               {formatRelativeAge(exitEvaluatedAt)}
             </span>
           </TableCell>
         </TableRow>
-        <TableRow className="cursor-pointer bg-cyan-500/[0.06] hover:bg-cyan-500/[0.10]" onClick={openModal}>
-          <TableCell colSpan={13} className="border-b-2 border-l border-r border-border/80 px-0 py-0.5">
+        <TableRow
+          className="cursor-pointer bg-cyan-500/[0.06] hover:bg-cyan-500/[0.10]"
+          onClick={openModal}
+        >
+          <TableCell
+            colSpan={13}
+            className="border-b-2 border-l border-r border-border/80 px-0 py-0.5"
+          >
             {renderTradeLifecycleFlow({
               status,
               outcomeHeadline,
@@ -10293,7 +11298,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
               closeTrigger,
               pendingExitLabel,
               pendingExitTone,
-              pulseCurrentStage: OPEN_ORDER_STATUSES.has(status) && String(order.mode || '').toLowerCase() === 'live',
+              pulseCurrentStage:
+                OPEN_ORDER_STATUSES.has(status) &&
+                String(order.mode || '').toLowerCase() === 'live',
             })}
             <div className="flex items-center justify-between gap-2 px-2 pb-1 text-[9px]">
               <span className="min-w-0 truncate text-muted-foreground" title={bundleLegTooltip}>
@@ -10379,7 +11386,12 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                     disabled={controlBusy}
                     className="scale-[0.8]"
                   />
-                  <span className={cn('text-[10px] font-medium', killSwitchOn ? 'text-red-300' : 'text-emerald-300')}>
+                  <span
+                    className={cn(
+                      'text-[10px] font-medium',
+                      killSwitchOn ? 'text-red-300' : 'text-emerald-300',
+                    )}
+                  >
                     {killSwitchStatusLabel}
                   </span>
                 </span>
@@ -10391,7 +11403,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
             {killSwitchMutation.isPending ? (
               <span className="inline-flex items-center gap-1 text-[10px] font-medium text-red-300">
                 <Loader2 className="w-3 h-3 animate-spin" />
-                {killSwitchSwitchValue ? t('tradingPanel.controls.blockingDots') : t('tradingPanel.controls.openingDots')}
+                {killSwitchSwitchValue
+                  ? t('tradingPanel.controls.blockingDots')
+                  : t('tradingPanel.controls.openingDots')}
               </span>
             ) : null}
           </div>
@@ -10405,7 +11419,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                 ? 'bg-red-500'
                 : orchestratorRunning
                   ? 'bg-emerald-500'
-                  : 'bg-amber-400'
+                  : 'bg-amber-400',
             )}
           />
           <Clock3 className="w-3 h-3" />
@@ -10420,7 +11434,10 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
           >
             {orchestratorStatusLabel}
           </Badge>
-          <Badge className="h-5 px-1.5 text-[10px]" variant={selectedAccountMode === 'live' ? 'destructive' : 'outline'}>
+          <Badge
+            className="h-5 px-1.5 text-[10px]"
+            variant={selectedAccountMode === 'live' ? 'destructive' : 'outline'}
+          >
             {selectedAccountMode.toUpperCase()}
           </Badge>
           <Badge
@@ -10443,10 +11460,18 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
         </div>
 
         <div className="hidden lg:flex items-center gap-3 text-[11px] font-mono text-muted-foreground">
-          <span>{t('tradingPanel.hub.bots')} {tradersRunningDisplay}/{toNumber(metrics?.traders_total)}</span>
+          <span>
+            {t('tradingPanel.hub.bots')} {tradersRunningDisplay}/{toNumber(metrics?.traders_total)}
+          </span>
           <span className="text-border">|</span>
           <span
-            className={entryEnabledDisplay > 0 ? 'text-emerald-500' : orchestratorRunning ? 'text-amber-500' : undefined}
+            className={
+              entryEnabledDisplay > 0
+                ? 'text-emerald-500'
+                : orchestratorRunning
+                  ? 'text-amber-500'
+                  : undefined
+            }
             title={entryBotsTitle}
           >
             Entry {entryEnabledDisplay}/{tradersRunningDisplay}
@@ -10464,13 +11489,20 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
             {formatCurrency(toNumber(metrics?.daily_pnl))}
           </span>
           <span className="text-border">|</span>
-          <span>{t('tradingPanel.hub.exp')} {formatCurrency(toNumber(metrics?.gross_exposure_usd), true)}</span>
+          <span>
+            {t('tradingPanel.hub.exp')}{' '}
+            {formatCurrency(toNumber(metrics?.gross_exposure_usd), true)}
+          </span>
           <span className="text-border">|</span>
           <span>{t('tradingPanel.hub.openCount', { count: globalSummary.open })}</span>
           <span className="text-border">|</span>
-          <span>{t('tradingPanel.hub.wr')} {formatPercent(globalSummary.winRate)}</span>
+          <span>
+            {t('tradingPanel.hub.wr')} {formatPercent(globalSummary.winRate)}
+          </span>
           <span className="text-border">|</span>
-          <span>{t('tradingPanel.hub.edge')} {formatPercent(displayAvgEdge)}</span>
+          <span>
+            {t('tradingPanel.hub.edge')} {formatPercent(displayAvgEdge)}
+          </span>
         </div>
 
         <div className="ml-auto flex items-center gap-1.5">
@@ -10482,7 +11514,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                 variant="outline"
                 className={cn(
                   'h-6 px-2 text-[10px]',
-                  cortexFlyoutOpen && 'bg-orange-500/20 text-orange-300 border-orange-500/30'
+                  cortexFlyoutOpen && 'bg-orange-500/20 text-orange-300 border-orange-500/30',
                 )}
                 onClick={() => setCortexFlyoutOpen(true)}
               >
@@ -10522,8 +11554,8 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
         </div>
       ) : !startStopIsConfigured && boundAccountLabel && !killSwitchOn ? (
         <div className="shrink-0 rounded-md border border-cyan-500/25 bg-cyan-500/5 px-2 py-1 text-[11px] text-muted-foreground">
-          Account is selected. Press <span className="font-medium text-foreground">SHADOW</span> to start
-          the engine. Bots share this global account — there is no per-bot account assignment.
+          Account is selected. Press <span className="font-medium text-foreground">SHADOW</span> to
+          start the engine. Bots share this global account — there is no per-bot account assignment.
         </div>
       ) : null}
 
@@ -10556,9 +11588,15 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                 >
                   <div className="shrink-0">
                     <TabsList className="h-auto justify-start gap-1 rounded-lg border border-border/60 bg-card/70 p-1">
-                      <TabsTrigger value="overview" className="h-7 px-2.5 text-[11px]">{t('tradingPanel.allBots.overview')}</TabsTrigger>
-                      <TabsTrigger value="trades" className="h-7 px-2.5 text-[11px]">{t('tradingPanel.allBots.allTrades')}</TabsTrigger>
-                      <TabsTrigger value="positions" className="h-7 px-2.5 text-[11px]">{t('tradingPanel.allBots.allPositions')}</TabsTrigger>
+                      <TabsTrigger value="overview" className="h-7 px-2.5 text-[11px]">
+                        {t('tradingPanel.allBots.overview')}
+                      </TabsTrigger>
+                      <TabsTrigger value="trades" className="h-7 px-2.5 text-[11px]">
+                        {t('tradingPanel.allBots.allTrades')}
+                      </TabsTrigger>
+                      <TabsTrigger value="positions" className="h-7 px-2.5 text-[11px]">
+                        {t('tradingPanel.allBots.allPositions')}
+                      </TabsTrigger>
                     </TabsList>
                   </div>
 
@@ -10574,15 +11612,27 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-1.5">
                                 <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
-                                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{t('tradingPanel.allBots.resolvedPnl')}</span>
+                                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                  {t('tradingPanel.allBots.resolvedPnl')}
+                                </span>
                               </div>
-                              <span className="text-[9px] font-mono text-muted-foreground">{overviewStartLabel} - {overviewEndLabel}</span>
+                              <span className="text-[9px] font-mono text-muted-foreground">
+                                {overviewStartLabel} - {overviewEndLabel}
+                              </span>
                             </div>
-                            <p className={cn('mt-1 text-sm font-mono', globalSummary.resolvedPnl >= 0 ? 'text-emerald-500' : 'text-red-500')}>
+                            <p
+                              className={cn(
+                                'mt-1 text-sm font-mono',
+                                globalSummary.resolvedPnl >= 0
+                                  ? 'text-emerald-500'
+                                  : 'text-red-500',
+                              )}
+                            >
                               {formatCurrency(globalSummary.resolvedPnl)}
                             </p>
                             <p className="text-[10px] text-muted-foreground">
-                              {t('tradingPanel.allBots.latestDay')} {formatSignedCurrency(overviewLatestBucket?.resolvedPnl ?? 0)}
+                              {t('tradingPanel.allBots.latestDay')}{' '}
+                              {formatSignedCurrency(overviewLatestBucket?.resolvedPnl ?? 0)}
                             </p>
                             <div className="mt-1.5 h-8">
                               {overviewPnlSeries.length >= 2 && (
@@ -10611,13 +11661,22 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-1.5">
                                 <BarChart3 className="w-3.5 h-3.5 text-cyan-500" />
-                                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{t('tradingPanel.allBots.orderThroughput')}</span>
+                                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                  {t('tradingPanel.allBots.orderThroughput')}
+                                </span>
                               </div>
-                              <span className="text-[9px] font-mono text-muted-foreground">14d</span>
+                              <span className="text-[9px] font-mono text-muted-foreground">
+                                14d
+                              </span>
                             </div>
-                            <p className="mt-1 text-sm font-mono">{t('tradingPanel.allBots.ordersCount', { count: overviewLatestBucket?.orders ?? 0 })}</p>
+                            <p className="mt-1 text-sm font-mono">
+                              {t('tradingPanel.allBots.ordersCount', {
+                                count: overviewLatestBucket?.orders ?? 0,
+                              })}
+                            </p>
                             <p className="text-[10px] text-muted-foreground">
-                              {t('tradingPanel.allBots.prev')} {(overviewPreviousBucket?.orders ?? 0)} · {t('tradingPanel.stats.failed')} {(overviewLatestBucket?.failed ?? 0)}
+                              {t('tradingPanel.allBots.prev')} {overviewPreviousBucket?.orders ?? 0}{' '}
+                              · {t('tradingPanel.stats.failed')} {overviewLatestBucket?.failed ?? 0}
                             </p>
                             <div className="mt-1.5 h-8">
                               {overviewOrdersSeries.length >= 2 && (
@@ -10646,19 +11705,29 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-1.5">
                                 <Sparkles className="w-3.5 h-3.5 text-violet-400" />
-                                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{t('tradingPanel.allBots.selectedSignals')}</span>
+                                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                  {t('tradingPanel.allBots.selectedSignals')}
+                                </span>
                               </div>
-                              <span className="text-[9px] font-mono text-muted-foreground">{t('tradingPanel.allBots.recentCount', { count: recentSelectedDecisions.length })}</span>
+                              <span className="text-[9px] font-mono text-muted-foreground">
+                                {t('tradingPanel.allBots.recentCount', {
+                                  count: recentSelectedDecisions.length,
+                                })}
+                              </span>
                             </div>
                             <p className="mt-1 text-sm font-mono">{selectedDecisionCountAllBots}</p>
                             <p className="text-[10px] text-muted-foreground">
-                              {t('tradingPanel.allBots.latestDay')} {(overviewLatestBucket?.selected ?? 0)} · {t('tradingPanel.hub.wr')} {formatPercent(globalSummary.winRate)}
+                              {t('tradingPanel.allBots.latestDay')}{' '}
+                              {overviewLatestBucket?.selected ?? 0} · {t('tradingPanel.hub.wr')}{' '}
+                              {formatPercent(globalSummary.winRate)}
                             </p>
                             <div className="mt-1.5 h-8">
                               {overviewSelectedSeries.length >= 2 && (
                                 <Liveline
                                   data={toTimeValueSeries(overviewSelectedSeries)}
-                                  value={overviewSelectedSeries[overviewSelectedSeries.length - 1] ?? 0}
+                                  value={
+                                    overviewSelectedSeries[overviewSelectedSeries.length - 1] ?? 0
+                                  }
                                   color="#a78bfa"
                                   theme={themeMode}
                                   window={(overviewSelectedSeries.length - 1) * 60}
@@ -10681,13 +11750,24 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-1.5">
                                 <ShieldAlert className="w-3.5 h-3.5 text-amber-500" />
-                                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{t('tradingPanel.allBots.riskPressure')}</span>
+                                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                  {t('tradingPanel.allBots.riskPressure')}
+                                </span>
                               </div>
-                              <span className="text-[9px] font-mono text-muted-foreground">{t('tradingPanel.allBots.alertsCount', { count: riskActivityRows.length })}</span>
+                              <span className="text-[9px] font-mono text-muted-foreground">
+                                {t('tradingPanel.allBots.alertsCount', {
+                                  count: riskActivityRows.length,
+                                })}
+                              </span>
                             </div>
-                            <p className="mt-1 text-sm font-mono">{t('tradingPanel.allBots.todayCount', { count: overviewLatestBucket?.warnings ?? 0 })}</p>
+                            <p className="mt-1 text-sm font-mono">
+                              {t('tradingPanel.allBots.todayCount', {
+                                count: overviewLatestBucket?.warnings ?? 0,
+                              })}
+                            </p>
                             <p className="text-[10px] text-muted-foreground">
-                              {t('tradingPanel.allBots.prev')} {overviewPreviousBucket?.warnings ?? 0}
+                              {t('tradingPanel.allBots.prev')}{' '}
+                              {overviewPreviousBucket?.warnings ?? 0}
                             </p>
                             <div className="mt-1.5 h-8">
                               {overviewRiskSeries.length >= 2 && (
@@ -10715,19 +11795,31 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                           <div className="rounded-md border border-emerald-500/25 bg-emerald-500/10 p-2.5">
                             <div className="flex items-center gap-1.5">
                               <Play className="w-3.5 h-3.5 text-emerald-500" />
-                              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{t('tradingPanel.allBots.runningBots')}</span>
+                              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                {t('tradingPanel.allBots.runningBots')}
+                              </span>
                             </div>
-                            <p className="mt-1 text-sm font-mono">{runningTraderCount}/{activeTraderCount}</p>
-                            <p className="text-[10px] text-muted-foreground">{t('tradingPanel.allBots.inactive')} {inactiveTraderCount}</p>
+                            <p className="mt-1 text-sm font-mono">
+                              {runningTraderCount}/{activeTraderCount}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {t('tradingPanel.allBots.inactive')} {inactiveTraderCount}
+                            </p>
                           </div>
 
                           <div className="rounded-md border border-blue-500/25 bg-blue-500/10 p-2.5">
                             <div className="flex items-center gap-1.5">
                               <PieChart className="w-3.5 h-3.5 text-blue-500" />
-                              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{t('tradingPanel.modal.exposure')}</span>
+                              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                {t('tradingPanel.modal.exposure')}
+                              </span>
                             </div>
-                            <p className="mt-1 text-sm font-mono">{formatCurrency(toNumber(metrics?.gross_exposure_usd), true)}</p>
-                            <p className="text-[10px] text-muted-foreground">{t('tradingPanel.allBots.openOrders', { count: globalSummary.open })}</p>
+                            <p className="mt-1 text-sm font-mono">
+                              {formatCurrency(toNumber(metrics?.gross_exposure_usd), true)}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {t('tradingPanel.allBots.openOrders', { count: globalSummary.open })}
+                            </p>
                           </div>
                         </div>
 
@@ -10735,10 +11827,15 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                           <div className="px-2.5 py-2 border-b border-border/40 flex items-center justify-between gap-2 shrink-0">
                             <div className="flex items-center gap-1.5">
                               <Clock3 className="w-3.5 h-3.5 text-cyan-500" />
-                              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('tradingPanel.allBots.livePulseFeed')}</span>
+                              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                {t('tradingPanel.allBots.livePulseFeed')}
+                              </span>
                             </div>
                             <span className="text-[10px] font-mono text-muted-foreground">
-                              {terminalPaused ? `${t('tradingPanel.terminal.paused')} · ` : ''}{t('tradingPanel.terminal.eventsCount', { count: displayedActivityRows.length })}
+                              {terminalPaused ? `${t('tradingPanel.terminal.paused')} · ` : ''}
+                              {t('tradingPanel.terminal.eventsCount', {
+                                count: displayedActivityRows.length,
+                              })}
                             </span>
                           </div>
                           {/* Same control surface as the per-trader Terminal tab.
@@ -10747,33 +11844,62 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                               to a dropdown so nothing overflows. */}
                           <div className="shrink-0 flex flex-nowrap items-center gap-1 px-2 py-1.5 border-b border-border/40 overflow-hidden">
                             {(['all', 'decision', 'order', 'event'] as FeedFilter[]).map((kind) => (
-                              <Button key={kind} size="sm" variant={traderFeedFilter === kind ? 'default' : 'outline'} onClick={() => setTraderFeedFilter(kind)} className="h-5 px-1.5 text-[10px] shrink-0">
+                              <Button
+                                key={kind}
+                                size="sm"
+                                variant={traderFeedFilter === kind ? 'default' : 'outline'}
+                                onClick={() => setTraderFeedFilter(kind)}
+                                className="h-5 px-1.5 text-[10px] shrink-0"
+                              >
                                 {kind}
                               </Button>
                             ))}
                             <div className="inline-flex items-center gap-0.5 ml-1 shrink-0">
-                              <Button size="sm" variant={terminalDensity === 'compact' ? 'default' : 'outline'} onClick={() => setTerminalDensity('compact')} title={t('tradingPanel.terminal.compactRows')} className="h-5 px-1.5 text-[10px]">
+                              <Button
+                                size="sm"
+                                variant={terminalDensity === 'compact' ? 'default' : 'outline'}
+                                onClick={() => setTerminalDensity('compact')}
+                                title={t('tradingPanel.terminal.compactRows')}
+                                className="h-5 px-1.5 text-[10px]"
+                              >
                                 ▤
                               </Button>
-                              <Button size="sm" variant={terminalDensity === 'expanded' ? 'default' : 'outline'} onClick={() => setTerminalDensity('expanded')} title={t('tradingPanel.terminal.expandedRows')} className="h-5 px-1.5 text-[10px]">
+                              <Button
+                                size="sm"
+                                variant={terminalDensity === 'expanded' ? 'default' : 'outline'}
+                                onClick={() => setTerminalDensity('expanded')}
+                                title={t('tradingPanel.terminal.expandedRows')}
+                                className="h-5 px-1.5 text-[10px]"
+                              >
                                 ☰
                               </Button>
                             </div>
                             <select
                               value={terminalVolume}
-                              onChange={(event) => setTerminalVolume(event.target.value as TerminalVolume)}
-                              title={TERMINAL_VOLUME_OPTIONS.find((o) => o.value === terminalVolume)?.hint || t('tradingPanel.terminal.firehoseVolume')}
+                              onChange={(event) =>
+                                setTerminalVolume(event.target.value as TerminalVolume)
+                              }
+                              title={
+                                TERMINAL_VOLUME_OPTIONS.find((o) => o.value === terminalVolume)
+                                  ?.hint || t('tradingPanel.terminal.firehoseVolume')
+                              }
                               className="h-5 rounded border border-border/40 bg-background px-1 text-[10px] ml-1 shrink-0"
                             >
                               {TERMINAL_VOLUME_OPTIONS.map((opt) => (
-                                <option key={opt.value} value={opt.value}>{t('tradingPanel.terminal.volPrefix')} {opt.label.toLowerCase()}</option>
+                                <option key={opt.value} value={opt.value}>
+                                  {t('tradingPanel.terminal.volPrefix')} {opt.label.toLowerCase()}
+                                </option>
                               ))}
                             </select>
                             <Button
                               size="sm"
                               variant={terminalPaused ? 'default' : 'outline'}
                               onClick={() => setTerminalPaused((v) => !v)}
-                              title={terminalPaused ? t('tradingPanel.terminal.resumeStreaming') : t('tradingPanel.terminal.pauseIncoming')}
+                              title={
+                                terminalPaused
+                                  ? t('tradingPanel.terminal.resumeStreaming')
+                                  : t('tradingPanel.terminal.pauseIncoming')
+                              }
                               className="h-5 px-1.5 text-[10px] ml-1 shrink-0"
                             >
                               {terminalPaused ? '▶' : '⏸'}
@@ -10785,16 +11911,23 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                               title={t('tradingPanel.terminal.slowModeTooltip')}
                               className="h-5 px-1.5 text-[10px] shrink-0"
                             >
-                              🐢{terminalSlowMode && slowModePending > 0 ? ` ${slowModePending}` : ''}
+                              🐢
+                              {terminalSlowMode && slowModePending > 0 ? ` ${slowModePending}` : ''}
                             </Button>
                             <select
                               value={terminalMaxRows}
-                              onChange={(event) => setTerminalMaxRows(Number(event.target.value) || TERMINAL_SELECTED_MAX_ROWS_DEFAULT)}
+                              onChange={(event) =>
+                                setTerminalMaxRows(
+                                  Number(event.target.value) || TERMINAL_SELECTED_MAX_ROWS_DEFAULT,
+                                )
+                              }
                               title={t('tradingPanel.terminal.maxRowsTooltip')}
                               className="h-5 rounded border border-border/40 bg-background px-1 text-[10px] ml-1 shrink-0"
                             >
                               {[220, 500, 1000, 2000, 5000].map((n) => (
-                                <option key={n} value={n}>{t('tradingPanel.terminal.maxN', { n })}</option>
+                                <option key={n} value={n}>
+                                  {t('tradingPanel.terminal.maxN', { n })}
+                                </option>
                               ))}
                             </select>
                           </div>
@@ -10806,9 +11939,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                                 terminalDensity === 'compact'
                                   ? cn(
                                       'space-y-0.5 font-mono text-[11px]',
-                                      displayedActivityRows.length > 0 && 'w-max min-w-full'
+                                      displayedActivityRows.length > 0 && 'w-max min-w-full',
                                     )
-                                  : 'space-y-1.5 text-[11px]'
+                                  : 'space-y-1.5 text-[11px]',
                               )}
                             >
                               {displayedActivityRows.length === 0 ? (
@@ -10816,7 +11949,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                                   {terminalPaused
                                     ? t('tradingPanel.terminal.pausedHint')
                                     : terminalSlowMode && slowModePending > 0
-                                      ? t('tradingPanel.terminal.slowModeQueued', { count: slowModePending })
+                                      ? t('tradingPanel.terminal.slowModeQueued', {
+                                          count: slowModePending,
+                                        })
                                       : t('tradingPanel.terminal.noActivity')}
                                 </p>
                               ) : terminalDensity === 'compact' ? (
@@ -10825,31 +11960,49 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                                     key={`${row.kind}:${row.id}`}
                                     className={cn(
                                       'rounded border px-2 py-1 flex items-center gap-1.5 whitespace-nowrap w-max min-w-full',
-                                      row.tone === 'positive' && 'border-emerald-500/25 text-emerald-700 dark:text-emerald-100',
-                                      row.tone === 'negative' && 'border-red-500/30 text-red-700 dark:text-red-100',
-                                      row.tone === 'warning' && 'border-amber-500/30 text-amber-700 dark:text-amber-100',
-                                      row.tone === 'neutral' && row.action === 'BUY' && 'border-emerald-500/25 bg-emerald-500/5 text-emerald-700 dark:text-emerald-100',
-                                      row.tone === 'neutral' && row.action === 'SELL' && 'border-red-500/30 bg-red-500/5 text-red-700 dark:text-red-100',
-                                      row.tone === 'neutral' && !row.action && 'border-border/50 text-foreground'
+                                      row.tone === 'positive' &&
+                                        'border-emerald-500/25 text-emerald-700 dark:text-emerald-100',
+                                      row.tone === 'negative' &&
+                                        'border-red-500/30 text-red-700 dark:text-red-100',
+                                      row.tone === 'warning' &&
+                                        'border-amber-500/30 text-amber-700 dark:text-amber-100',
+                                      row.tone === 'neutral' &&
+                                        row.action === 'BUY' &&
+                                        'border-emerald-500/25 bg-emerald-500/5 text-emerald-700 dark:text-emerald-100',
+                                      row.tone === 'neutral' &&
+                                        row.action === 'SELL' &&
+                                        'border-red-500/30 bg-red-500/5 text-red-700 dark:text-red-100',
+                                      row.tone === 'neutral' &&
+                                        !row.action &&
+                                        'border-border/50 text-foreground',
                                     )}
                                   >
-                                    <span className="text-muted-foreground shrink-0">[{formatTimestamp(row.ts)}]</span>
-                                    <span className="uppercase text-[10px] shrink-0">{row.kind}</span>
+                                    <span className="text-muted-foreground shrink-0">
+                                      [{formatTimestamp(row.ts)}]
+                                    </span>
+                                    <span className="uppercase text-[10px] shrink-0">
+                                      {row.kind}
+                                    </span>
                                     {row.action && (
                                       <span
                                         className={cn(
                                           'uppercase text-[10px] font-semibold shrink-0',
-                                          row.action === 'BUY' ? 'text-emerald-500' : 'text-red-500'
+                                          row.action === 'BUY'
+                                            ? 'text-emerald-500'
+                                            : 'text-red-500',
                                         )}
                                       >
                                         {row.action}
                                       </span>
                                     )}
                                     <span className="text-[10px] text-muted-foreground shrink-0">
-                                      {traderNameById[String(row.traderId || '')] || shortId(row.traderId || '')}
+                                      {traderNameById[String(row.traderId || '')] ||
+                                        shortId(row.traderId || '')}
                                     </span>
                                     <span className="font-medium shrink-0">{row.title}</span>
-                                    <span className="text-muted-foreground shrink-0">{row.detail}</span>
+                                    <span className="text-muted-foreground shrink-0">
+                                      {row.detail}
+                                    </span>
                                   </div>
                                 ))
                               ) : (
@@ -10858,24 +12011,38 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                                     key={`${row.kind}:${row.id}`}
                                     className={cn(
                                       'rounded-md border px-2.5 py-2',
-                                      row.tone === 'positive' && 'border-emerald-500/25 bg-emerald-500/5',
+                                      row.tone === 'positive' &&
+                                        'border-emerald-500/25 bg-emerald-500/5',
                                       row.tone === 'negative' && 'border-red-500/30 bg-red-500/5',
-                                      row.tone === 'warning' && 'border-amber-500/30 bg-amber-500/5',
-                                      row.tone === 'neutral' && 'border-border/50 bg-background/40'
+                                      row.tone === 'warning' &&
+                                        'border-amber-500/30 bg-amber-500/5',
+                                      row.tone === 'neutral' && 'border-border/50 bg-background/40',
                                     )}
                                   >
                                     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
                                       <span className="font-mono">{formatTimestamp(row.ts)}</span>
                                       <span className="uppercase">{row.kind}</span>
                                       {row.action ? (
-                                        <span className={cn('uppercase font-semibold', row.action === 'BUY' ? 'text-emerald-500' : 'text-red-500')}>
+                                        <span
+                                          className={cn(
+                                            'uppercase font-semibold',
+                                            row.action === 'BUY'
+                                              ? 'text-emerald-500'
+                                              : 'text-red-500',
+                                          )}
+                                        >
                                           {row.action}
                                         </span>
                                       ) : null}
-                                      <span>{traderNameById[String(row.traderId || '')] || shortId(row.traderId || '')}</span>
+                                      <span>
+                                        {traderNameById[String(row.traderId || '')] ||
+                                          shortId(row.traderId || '')}
+                                      </span>
                                     </div>
                                     <p className="mt-0.5 font-medium break-words">{row.title}</p>
-                                    <p className="mt-0.5 text-[10px] text-muted-foreground break-words">{row.detail}</p>
+                                    <p className="mt-0.5 text-[10px] text-muted-foreground break-words">
+                                      {row.detail}
+                                    </p>
                                   </div>
                                 ))
                               )}
@@ -10911,66 +12078,124 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-1.5">
                               <PieChart className="w-3.5 h-3.5 text-cyan-500" />
-                              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('tradingPanel.allBots.executionMix')}</span>
+                              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                {t('tradingPanel.allBots.executionMix')}
+                              </span>
                             </div>
-                            <span className="text-[10px] font-mono text-muted-foreground">{t('tradingPanel.allBots.ordersCount', { count: allBotsSourceMixChart.totalOrders })}</span>
+                            <span className="text-[10px] font-mono text-muted-foreground">
+                              {t('tradingPanel.allBots.ordersCount', {
+                                count: allBotsSourceMixChart.totalOrders,
+                              })}
+                            </span>
                           </div>
                           <div className="mt-2 grid gap-2 md:grid-cols-2">
                             <div className="rounded-md border border-border/50 bg-background/40 p-2">
-                              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{t('tradingPanel.allBots.sources')}</p>
+                              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                {t('tradingPanel.allBots.sources')}
+                              </p>
                               <div className="mt-2 grid grid-cols-[96px_minmax(0,1fr)] gap-2 items-center">
-                                <div className="relative h-24 w-24 rounded-full border border-border/50" style={{ background: allBotsSourceMixChart.gradient }}>
+                                <div
+                                  className="relative h-24 w-24 rounded-full border border-border/50"
+                                  style={{ background: allBotsSourceMixChart.gradient }}
+                                >
                                   <div className="absolute inset-[18px] rounded-full border border-border/60 bg-card" />
                                   <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                                    <span className="text-sm font-mono">{allBotsSourceMixChart.totalOrders}</span>
-                                    <span className="text-[9px] uppercase tracking-wider text-muted-foreground">{t('tradingPanel.allBots.orders')}</span>
+                                    <span className="text-sm font-mono">
+                                      {allBotsSourceMixChart.totalOrders}
+                                    </span>
+                                    <span className="text-[9px] uppercase tracking-wider text-muted-foreground">
+                                      {t('tradingPanel.allBots.orders')}
+                                    </span>
                                   </div>
                                 </div>
                                 <div className="space-y-1">
                                   {allBotsSourceMixChart.slices.length === 0 ? (
-                                    <p className="text-[10px] text-muted-foreground">{t('tradingPanel.allBots.noSourceActivity')}</p>
+                                    <p className="text-[10px] text-muted-foreground">
+                                      {t('tradingPanel.allBots.noSourceActivity')}
+                                    </p>
                                   ) : (
                                     allBotsSourceMixChart.slices.map((slice) => (
-                                      <div key={slice.key} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1.5 text-[10px]">
-                                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: slice.color }} />
+                                      <div
+                                        key={slice.key}
+                                        className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1.5 text-[10px]"
+                                      >
+                                        <span
+                                          className="w-2 h-2 rounded-full"
+                                          style={{ backgroundColor: slice.color }}
+                                        />
                                         <span className="truncate">{slice.label}</span>
-                                        <span className="font-mono text-muted-foreground">{slice.percent.toFixed(0)}%</span>
+                                        <span className="font-mono text-muted-foreground">
+                                          {slice.percent.toFixed(0)}%
+                                        </span>
                                       </div>
                                     ))
                                   )}
                                 </div>
                               </div>
-                              <p className={cn('mt-2 text-[10px] font-mono', allBotsSourceMixChart.totalPnl > 0 ? 'text-emerald-500' : allBotsSourceMixChart.totalPnl < 0 ? 'text-red-500' : 'text-muted-foreground')}>
-                                {t('tradingPanel.allBots.mixPnl')} {formatCurrency(allBotsSourceMixChart.totalPnl)}
+                              <p
+                                className={cn(
+                                  'mt-2 text-[10px] font-mono',
+                                  allBotsSourceMixChart.totalPnl > 0
+                                    ? 'text-emerald-500'
+                                    : allBotsSourceMixChart.totalPnl < 0
+                                      ? 'text-red-500'
+                                      : 'text-muted-foreground',
+                                )}
+                              >
+                                {t('tradingPanel.allBots.mixPnl')}{' '}
+                                {formatCurrency(allBotsSourceMixChart.totalPnl)}
                               </p>
                             </div>
 
                             <div className="rounded-md border border-border/50 bg-background/40 p-2">
-                              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{t('tradingPanel.modal.lifecycle')}</p>
+                              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                {t('tradingPanel.modal.lifecycle')}
+                              </p>
                               <div className="mt-2 grid grid-cols-[96px_minmax(0,1fr)] gap-2 items-center">
-                                <div className="relative h-24 w-24 rounded-full border border-border/50" style={{ background: allBotsLifecycleMixChart.gradient }}>
+                                <div
+                                  className="relative h-24 w-24 rounded-full border border-border/50"
+                                  style={{ background: allBotsLifecycleMixChart.gradient }}
+                                >
                                   <div className="absolute inset-[18px] rounded-full border border-border/60 bg-card" />
                                   <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                                    <span className="text-sm font-mono">{allBotsLifecycleMixChart.total}</span>
-                                    <span className="text-[9px] uppercase tracking-wider text-muted-foreground">{t('tradingPanel.allBots.orders')}</span>
+                                    <span className="text-sm font-mono">
+                                      {allBotsLifecycleMixChart.total}
+                                    </span>
+                                    <span className="text-[9px] uppercase tracking-wider text-muted-foreground">
+                                      {t('tradingPanel.allBots.orders')}
+                                    </span>
                                   </div>
                                 </div>
                                 <div className="space-y-1">
                                   {allBotsLifecycleMixChart.slices.map((slice) => (
-                                    <div key={slice.key} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1.5 text-[10px]">
-                                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: slice.color }} />
+                                    <div
+                                      key={slice.key}
+                                      className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1.5 text-[10px]"
+                                    >
+                                      <span
+                                        className="w-2 h-2 rounded-full"
+                                        style={{ backgroundColor: slice.color }}
+                                      />
                                       <span>{slice.label}</span>
-                                      <span className="font-mono text-muted-foreground">{slice.value}</span>
+                                      <span className="font-mono text-muted-foreground">
+                                        {slice.value}
+                                      </span>
                                     </div>
                                   ))}
                                 </div>
                               </div>
                               <div className="mt-2 space-y-1">
                                 {riskActivityRows.length === 0 ? (
-                                  <p className="text-[10px] text-muted-foreground">{t('tradingPanel.allBots.noRiskAlerts')}</p>
+                                  <p className="text-[10px] text-muted-foreground">
+                                    {t('tradingPanel.allBots.noRiskAlerts')}
+                                  </p>
                                 ) : (
                                   riskActivityRows.slice(0, 3).map((row) => (
-                                    <p key={`${row.kind}:${row.id}`} className="truncate text-[10px] text-muted-foreground" title={row.title}>
+                                    <p
+                                      key={`${row.kind}:${row.id}`}
+                                      className="truncate text-[10px] text-muted-foreground"
+                                      title={row.title}
+                                    >
                                       {formatTimestamp(row.ts)} · {row.title}
                                     </p>
                                   ))
@@ -10984,17 +12209,26 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                           <div className="px-2.5 py-2 border-b border-border/40 flex items-center justify-between gap-2 shrink-0">
                             <div className="flex items-center gap-1.5">
                               <Trophy className="w-3.5 h-3.5 text-cyan-500" />
-                              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('tradingPanel.allBots.leaderboard')}</span>
+                              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                {t('tradingPanel.allBots.leaderboard')}
+                              </span>
                             </div>
-                            <span className="text-[10px] font-mono text-muted-foreground">{t('tradingPanel.allBots.top')} {allBotsLeaderboardWithTrend.length}</span>
+                            <span className="text-[10px] font-mono text-muted-foreground">
+                              {t('tradingPanel.allBots.top')} {allBotsLeaderboardWithTrend.length}
+                            </span>
                           </div>
                           <ScrollArea className="h-[280px] xl:h-full xl:flex-1 xl:min-h-0">
                             <div className="space-y-1.5 p-2">
                               {allBotsLeaderboardWithTrend.length === 0 ? (
-                                <p className="py-8 text-center text-[11px] text-muted-foreground">{t('tradingPanel.allBots.noBotData')}</p>
+                                <p className="py-8 text-center text-[11px] text-muted-foreground">
+                                  {t('tradingPanel.allBots.noBotData')}
+                                </p>
                               ) : (
                                 allBotsLeaderboardWithTrend.map((row) => {
-                                  const traderStatus = resolveTraderStatusPresentation(row.trader, orchestratorRunning)
+                                  const traderStatus = resolveTraderStatusPresentation(
+                                    row.trader,
+                                    orchestratorRunning,
+                                  )
                                   return (
                                     <button
                                       key={row.trader.id}
@@ -11002,7 +12236,8 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                                       onClick={() => setSelectedTraderId(row.trader.id)}
                                       className={cn(
                                         'w-full rounded-md border border-border/50 bg-background/40 px-2.5 py-2 text-left transition-colors hover:border-cyan-500/40 hover:bg-cyan-500/5',
-                                        selectedTraderId === row.trader.id && 'border-cyan-500/50 bg-cyan-500/10'
+                                        selectedTraderId === row.trader.id &&
+                                          'border-cyan-500/50 bg-cyan-500/10',
                                       )}
                                     >
                                       <div className="flex items-center gap-2">
@@ -11011,32 +12246,75 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                                         </span>
                                         <div className="min-w-0 flex-1">
                                           <div className="flex items-center gap-1.5">
-                                            <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', traderStatus.dotClassName)} />
-                                            <span className="truncate text-[11px] font-medium" title={row.trader.name}>{row.trader.name}</span>
+                                            <span
+                                              className={cn(
+                                                'w-1.5 h-1.5 rounded-full shrink-0',
+                                                traderStatus.dotClassName,
+                                              )}
+                                            />
+                                            <span
+                                              className="truncate text-[11px] font-medium"
+                                              title={row.trader.name}
+                                            >
+                                              {row.trader.name}
+                                            </span>
                                           </div>
                                           <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted/70">
                                             <div
-                                              className={cn('h-full rounded-full', row.pnl >= 0 ? 'bg-emerald-500/80' : 'bg-red-500/80')}
+                                              className={cn(
+                                                'h-full rounded-full',
+                                                row.pnl >= 0
+                                                  ? 'bg-emerald-500/80'
+                                                  : 'bg-red-500/80',
+                                              )}
                                               style={{ width: `${row.pnlBarPercent}%` }}
                                             />
                                           </div>
                                         </div>
                                         <div className="shrink-0 text-right">
-                                          <p className={cn('text-[11px] font-mono', row.pnl > 0 ? 'text-emerald-500' : row.pnl < 0 ? 'text-red-500' : 'text-muted-foreground')}>
+                                          <p
+                                            className={cn(
+                                              'text-[11px] font-mono',
+                                              row.pnl > 0
+                                                ? 'text-emerald-500'
+                                                : row.pnl < 0
+                                                  ? 'text-red-500'
+                                                  : 'text-muted-foreground',
+                                            )}
+                                          >
                                             {formatCurrency(row.pnl, true)}
                                           </p>
-                                          <p className="text-[9px] text-muted-foreground">{t('tradingPanel.hub.wr')} {formatPercent(row.winRate)}</p>
+                                          <p className="text-[9px] text-muted-foreground">
+                                            {t('tradingPanel.hub.wr')} {formatPercent(row.winRate)}
+                                          </p>
                                         </div>
                                       </div>
                                       <div className="mt-1.5 flex items-center justify-between gap-2">
                                         <span className="text-[9px] text-muted-foreground">
-                                          <span>{t('tradingPanel.allBots.openCount', { count: row.open })}</span>
+                                          <span>
+                                            {t('tradingPanel.allBots.openCount', {
+                                              count: row.open,
+                                            })}
+                                          </span>
                                           {row.partialOpenBundles > 0 && (
-                                            <span className="text-amber-500" title={t('tradingPanel.allBots.partialBundlesTooltip')}>
-                                              {' · '}{t('tradingPanel.allBots.partialCount', { count: row.partialOpenBundles })}
+                                            <span
+                                              className="text-amber-500"
+                                              title={t(
+                                                'tradingPanel.allBots.partialBundlesTooltip',
+                                              )}
+                                            >
+                                              {' · '}
+                                              {t('tradingPanel.allBots.partialCount', {
+                                                count: row.partialOpenBundles,
+                                              })}
                                             </span>
                                           )}
-                                          <span>{' · '}{t('tradingPanel.allBots.resolvedCount', { count: row.resolved })}</span>
+                                          <span>
+                                            {' · '}
+                                            {t('tradingPanel.allBots.resolvedCount', {
+                                              count: row.resolved,
+                                            })}
+                                          </span>
                                         </span>
                                         {row.trend.length >= 2 && (
                                           <Liveline
@@ -11082,7 +12360,11 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                           <Button
                             key={statusOption.value}
                             size="sm"
-                            variant={allBotsTradeStatusFilter === statusOption.value ? 'default' : 'outline'}
+                            variant={
+                              allBotsTradeStatusFilter === statusOption.value
+                                ? 'default'
+                                : 'outline'
+                            }
                             onClick={() => setAllBotsTradeStatusFilter(statusOption.value)}
                             className="h-5 px-2 text-[10px]"
                           >
@@ -11090,53 +12372,92 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                           </Button>
                         ))}
                         <span className="ml-auto text-[10px] font-mono text-muted-foreground">
-                          {t('tradingPanel.allBots.rowsCount', { count: filteredAllTradeHistory.length })}
-                          {ordersTotalCount > ordersPageSize && ` (${t('tradingPanel.pagination.pageOf', { current: ordersPage + 1, total: ordersTotalPages })})`}
+                          {t('tradingPanel.allBots.rowsCount', {
+                            count: filteredAllTradeHistory.length,
+                          })}
+                          {ordersTotalCount > ordersPageSize &&
+                            ` (${t('tradingPanel.pagination.pageOf', { current: ordersPage + 1, total: ordersTotalPages })})`}
                         </span>
                       </div>
                       <div className="flex-1 min-h-0 flex flex-col rounded-md border border-border/60 bg-card/80">
                         {filteredAllTradeHistory.length === 0 ? (
-                          <div className="h-full flex items-center justify-center text-sm text-muted-foreground">{t('tradingPanel.allBots.noTradesFilters')}</div>
+                          <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
+                            {t('tradingPanel.allBots.noTradesFilters')}
+                          </div>
                         ) : (
                           <>
-                            <div className="flex-1 min-h-0 overflow-auto" ref={tradesTableParentRef}>
+                            <div
+                              className="flex-1 min-h-0 overflow-auto"
+                              ref={tradesTableParentRef}
+                            >
                               <Table className="w-full table-fixed">
                                 <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
                                   <TableRow>
-                                    <TableHead className="w-[32%] text-[10px]">{t('tradingPanel.tableHeaders.market')}</TableHead>
-                                    <TableHead className="w-[6%] text-[10px]">{t('tradingPanel.tableHeaders.dir')}</TableHead>
-                                    <TableHead className="w-[8%] text-[10px] text-right">{t('tradingPanel.tableHeaders.value')}</TableHead>
-                                    <TableHead className="w-[6%] text-[10px] text-right">{t('tradingPanel.tableHeaders.fill')}</TableHead>
-                                    <TableHead className="w-[6%] text-[10px] text-right">{t('tradingPanel.tableHeaders.fillProgress')}</TableHead>
-                                    <TableHead className="w-[6%] text-[10px] text-right">{t('tradingPanel.tableHeaders.mark')}</TableHead>
-                                    <TableHead className="w-[8%] text-[10px] text-right">U-P&amp;L</TableHead>
-                                    <TableHead className="w-[7%] text-[10px] text-right">Edge Δ</TableHead>
-                                    <TableHead className="w-[8%] text-[10px] text-right">R-P&amp;L</TableHead>
-                                    <TableHead className="w-[8%] text-[10px]">{t('tradingPanel.tableHeaders.venue')}</TableHead>
-                                    <TableHead className="w-[6%] text-[10px] text-right">{t('tradingPanel.tableHeaders.exitPercent')}</TableHead>
-                                    <TableHead className="w-[5%] text-[10px]">{t('tradingPanel.tableHeaders.markAge')}</TableHead>
-                                    <TableHead className="w-[5%] text-[10px]">{t('tradingPanel.tableHeaders.evalAge')}</TableHead>
+                                    <TableHead className="w-[32%] text-[10px]">
+                                      {t('tradingPanel.tableHeaders.market')}
+                                    </TableHead>
+                                    <TableHead className="w-[6%] text-[10px]">
+                                      {t('tradingPanel.tableHeaders.dir')}
+                                    </TableHead>
+                                    <TableHead className="w-[8%] text-[10px] text-right">
+                                      {t('tradingPanel.tableHeaders.value')}
+                                    </TableHead>
+                                    <TableHead className="w-[6%] text-[10px] text-right">
+                                      {t('tradingPanel.tableHeaders.fill')}
+                                    </TableHead>
+                                    <TableHead className="w-[6%] text-[10px] text-right">
+                                      {t('tradingPanel.tableHeaders.fillProgress')}
+                                    </TableHead>
+                                    <TableHead className="w-[6%] text-[10px] text-right">
+                                      {t('tradingPanel.tableHeaders.mark')}
+                                    </TableHead>
+                                    <TableHead className="w-[8%] text-[10px] text-right">
+                                      U-P&amp;L
+                                    </TableHead>
+                                    <TableHead className="w-[7%] text-[10px] text-right">
+                                      Edge Δ
+                                    </TableHead>
+                                    <TableHead className="w-[8%] text-[10px] text-right">
+                                      R-P&amp;L
+                                    </TableHead>
+                                    <TableHead className="w-[8%] text-[10px]">
+                                      {t('tradingPanel.tableHeaders.venue')}
+                                    </TableHead>
+                                    <TableHead className="w-[6%] text-[10px] text-right">
+                                      {t('tradingPanel.tableHeaders.exitPercent')}
+                                    </TableHead>
+                                    <TableHead className="w-[5%] text-[10px]">
+                                      {t('tradingPanel.tableHeaders.markAge')}
+                                    </TableHead>
+                                    <TableHead className="w-[5%] text-[10px]">
+                                      {t('tradingPanel.tableHeaders.evalAge')}
+                                    </TableHead>
                                   </TableRow>
                                 </TableHeader>
-                                <TableBody>
-                                {allTradeRowsRendered}
-                                </TableBody>
+                                <TableBody>{allTradeRowsRendered}</TableBody>
                               </Table>
                             </div>
                             {ordersTotalPages > 1 && (
                               <div className="shrink-0 flex items-center justify-between border-t border-border/60 px-3 py-1.5">
                                 <div className="flex items-center gap-1.5">
-                                  <span className="text-[10px] text-muted-foreground">{t('tradingPanel.pagination.pageSize')}:</span>
+                                  <span className="text-[10px] text-muted-foreground">
+                                    {t('tradingPanel.pagination.pageSize')}:
+                                  </span>
                                   <Select
                                     value={String(ordersPageSize)}
-                                    onValueChange={(value) => { setOrdersPageSize(Number(value)); setOrdersPage(0) }}
+                                    onValueChange={(value) => {
+                                      setOrdersPageSize(Number(value))
+                                      setOrdersPage(0)
+                                    }}
                                   >
                                     <SelectTrigger className="h-5 w-16 text-[10px]">
                                       <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
                                       {ORDERS_PAGE_SIZE_OPTIONS.map((size) => (
-                                        <SelectItem key={size} value={String(size)}>{size}</SelectItem>
+                                        <SelectItem key={size} value={String(size)}>
+                                          {size}
+                                        </SelectItem>
                                       ))}
                                     </SelectContent>
                                   </Select>
@@ -11167,7 +12488,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                                     size="sm"
                                     variant="outline"
                                     disabled={ordersPage >= ordersTotalPages - 1}
-                                    onClick={() => setOrdersPage((p) => Math.min(ordersTotalPages - 1, p + 1))}
+                                    onClick={() =>
+                                      setOrdersPage((p) => Math.min(ordersTotalPages - 1, p + 1))
+                                    }
                                     className="h-5 px-1.5 text-[10px]"
                                   >
                                     {t('tradingPanel.pagination.next')}
@@ -11183,7 +12506,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                                   </Button>
                                 </div>
                                 <span className="text-[10px] font-mono text-muted-foreground">
-                                  {t('tradingPanel.pagination.totalCount', { count: ordersTotalCount })}
+                                  {t('tradingPanel.pagination.totalCount', {
+                                    count: ordersTotalCount,
+                                  })}
                                 </span>
                               </div>
                             )}
@@ -11206,7 +12531,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                           <Button
                             key={direction}
                             size="sm"
-                            variant={allBotsPositionDirectionFilter === direction ? 'default' : 'outline'}
+                            variant={
+                              allBotsPositionDirectionFilter === direction ? 'default' : 'outline'
+                            }
                             onClick={() => setAllBotsPositionDirectionFilter(direction)}
                             className="h-5 px-2 text-[10px]"
                           >
@@ -11215,48 +12542,79 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                         ))}
                         <Select
                           value={allBotsPositionSortField}
-                          onValueChange={(value) => setAllBotsPositionSortField(value as PositionSortField)}
+                          onValueChange={(value) =>
+                            setAllBotsPositionSortField(value as PositionSortField)
+                          }
                         >
                           <SelectTrigger className="h-6 w-[132px] text-[11px]">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="exposure">{t('tradingPanel.modal.exposure')}</SelectItem>
+                            <SelectItem value="exposure">
+                              {t('tradingPanel.modal.exposure')}
+                            </SelectItem>
                             <SelectItem value="unrealized">U-P&L</SelectItem>
-                            <SelectItem value="edge">{t('tradingPanel.tableHeaders.edge')}</SelectItem>
-                            <SelectItem value="confidence">{t('tradingPanel.tableHeaders.confidence')}</SelectItem>
-                            <SelectItem value="updated">{t('tradingPanel.tableHeaders.updated')}</SelectItem>
+                            <SelectItem value="edge">
+                              {t('tradingPanel.tableHeaders.edge')}
+                            </SelectItem>
+                            <SelectItem value="confidence">
+                              {t('tradingPanel.tableHeaders.confidence')}
+                            </SelectItem>
+                            <SelectItem value="updated">
+                              {t('tradingPanel.tableHeaders.updated')}
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => setAllBotsPositionSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'))}
+                          onClick={() =>
+                            setAllBotsPositionSortDirection((current) =>
+                              current === 'asc' ? 'desc' : 'asc',
+                            )
+                          }
                           className="h-5 px-2 text-[10px]"
                         >
                           {allBotsPositionSortDirection === 'desc' ? 'desc' : 'asc'}
                         </Button>
-                        <span className="ml-auto text-[10px] font-mono text-muted-foreground">{t('tradingPanel.allBots.rowsCount', { count: filteredAllPositionBook.length })}</span>
+                        <span className="ml-auto text-[10px] font-mono text-muted-foreground">
+                          {t('tradingPanel.allBots.rowsCount', {
+                            count: filteredAllPositionBook.length,
+                          })}
+                        </span>
                       </div>
                       <div className="shrink-0 grid grid-cols-2 gap-1 sm:grid-cols-4 lg:grid-cols-8">
                         <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
-                          <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.stats.positions')}</p>
+                          <p className="text-[9px] uppercase text-muted-foreground">
+                            {t('tradingPanel.stats.positions')}
+                          </p>
                           <p className="text-xs font-mono">{allBotsPositionSummary.totalRows}</p>
                         </div>
                         <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
                           <p className="text-[9px] uppercase text-muted-foreground">YES / NO</p>
-                          <p className="text-xs font-mono">{allBotsPositionSummary.yesRows} / {allBotsPositionSummary.noRows}</p>
+                          <p className="text-xs font-mono">
+                            {allBotsPositionSummary.yesRows} / {allBotsPositionSummary.noRows}
+                          </p>
                         </div>
                         <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
-                          <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.modal.exposure')}</p>
-                          <p className="text-xs font-mono">{formatCurrency(allBotsPositionSummary.totalExposure, true)}</p>
+                          <p className="text-[9px] uppercase text-muted-foreground">
+                            {t('tradingPanel.modal.exposure')}
+                          </p>
+                          <p className="text-xs font-mono">
+                            {formatCurrency(allBotsPositionSummary.totalExposure, true)}
+                          </p>
                         </div>
                         <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
                           <p className="text-[9px] uppercase text-muted-foreground">U-P&amp;L</p>
-                          <p className={cn(
-                            'text-xs font-mono',
-                            allBotsPositionSummary.totalUnrealizedPnl > 0 ? 'text-emerald-500' : allBotsPositionSummary.totalUnrealizedPnl < 0 ? 'text-red-500' : ''
-                          )}
+                          <p
+                            className={cn(
+                              'text-xs font-mono',
+                              allBotsPositionSummary.totalUnrealizedPnl > 0
+                                ? 'text-emerald-500'
+                                : allBotsPositionSummary.totalUnrealizedPnl < 0
+                                  ? 'text-red-500'
+                                  : '',
+                            )}
                           >
                             {allBotsPositionSummary.rowsWithUnrealized > 0
                               ? formatCurrency(allBotsPositionSummary.totalUnrealizedPnl, true)
@@ -11264,135 +12622,241 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                           </p>
                         </div>
                         <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
-                          <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.stats.avgEdge')}</p>
-                          <p className="text-xs font-mono">{formatPercent(allBotsPositionSummary.avgEdge)}</p>
+                          <p className="text-[9px] uppercase text-muted-foreground">
+                            {t('tradingPanel.stats.avgEdge')}
+                          </p>
+                          <p className="text-xs font-mono">
+                            {formatPercent(allBotsPositionSummary.avgEdge)}
+                          </p>
                         </div>
                         <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
-                          <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.stats.avgConf')}</p>
-                          <p className="text-xs font-mono">{formatPercent(normalizeConfidencePercent(allBotsPositionSummary.avgConfidence))}</p>
+                          <p className="text-[9px] uppercase text-muted-foreground">
+                            {t('tradingPanel.stats.avgConf')}
+                          </p>
+                          <p className="text-xs font-mono">
+                            {formatPercent(
+                              normalizeConfidencePercent(allBotsPositionSummary.avgConfidence),
+                            )}
+                          </p>
                         </div>
                         <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
-                          <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.stats.liveShadow')}</p>
-                          <p className="text-xs font-mono">{allBotsPositionSummary.liveOrders} / {allBotsPositionSummary.shadowOrders}</p>
+                          <p className="text-[9px] uppercase text-muted-foreground">
+                            {t('tradingPanel.stats.liveShadow')}
+                          </p>
+                          <p className="text-xs font-mono">
+                            {allBotsPositionSummary.liveOrders} /{' '}
+                            {allBotsPositionSummary.shadowOrders}
+                          </p>
                         </div>
                         <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
-                          <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.stats.marks')}</p>
-                          <p className="text-xs font-mono">{allBotsPositionSummary.freshMarks} / {allBotsPositionSummary.markedRows}</p>
+                          <p className="text-[9px] uppercase text-muted-foreground">
+                            {t('tradingPanel.stats.marks')}
+                          </p>
+                          <p className="text-xs font-mono">
+                            {allBotsPositionSummary.freshMarks} /{' '}
+                            {allBotsPositionSummary.markedRows}
+                          </p>
                         </div>
                       </div>
                       <div className="flex-1 min-h-0 flex flex-col rounded-md border border-border/60 bg-card/80">
                         {filteredAllPositionBook.length === 0 ? (
-                          <div className="h-full flex items-center justify-center text-sm text-muted-foreground">{t('tradingPanel.allBots.noPositionsFilters')}</div>
+                          <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
+                            {t('tradingPanel.allBots.noPositionsFilters')}
+                          </div>
                         ) : (
                           <>
-                            <div className="flex-1 min-h-0 overflow-auto" ref={positionsTableParentRef}>
+                            <div
+                              className="flex-1 min-h-0 overflow-auto"
+                              ref={positionsTableParentRef}
+                            >
                               <Table className="w-full table-fixed">
                                 <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
                                   <TableRow>
-                                    <TableHead className="w-[28%] text-[10px]">{t('tradingPanel.tableHeaders.market')}</TableHead>
+                                    <TableHead className="w-[28%] text-[10px]">
+                                      {t('tradingPanel.tableHeaders.market')}
+                                    </TableHead>
                                     <TableHead className="w-[5%] text-[10px]">L</TableHead>
-                                    <TableHead className="w-[10%] text-[10px]">{t('tradingPanel.tableHeaders.dir')}</TableHead>
-                                    <TableHead className="w-[8%] text-[10px] text-right">{t('tradingPanel.modal.exposure')}</TableHead>
-                                    <TableHead className="w-[6%] text-[10px] text-right">{t('tradingPanel.tableHeaders.avgPx')}</TableHead>
-                                    <TableHead className="w-[6%] text-[10px] text-right">{t('tradingPanel.tableHeaders.mark')}</TableHead>
-                                    <TableHead className="w-[8%] text-[10px] text-right">U-P&amp;L</TableHead>
-                                    <TableHead className="w-[6%] text-[10px] text-right">{t('tradingPanel.tableHeaders.edge')}</TableHead>
-                                    <TableHead className="w-[6%] text-[10px] text-right">{t('tradingPanel.tableHeaders.conf')}</TableHead>
-                                    <TableHead className="w-[5%] text-[10px] text-right">{t('tradingPanel.tableHeaders.orders')}</TableHead>
-                                    <TableHead className="w-[6%] text-[10px] text-right">{t('tradingPanel.tableHeaders.mode')}</TableHead>
-                                    <TableHead className="w-[6%] text-[10px]">{t('tradingPanel.tableHeaders.updated')}</TableHead>
+                                    <TableHead className="w-[10%] text-[10px]">
+                                      {t('tradingPanel.tableHeaders.dir')}
+                                    </TableHead>
+                                    <TableHead className="w-[8%] text-[10px] text-right">
+                                      {t('tradingPanel.modal.exposure')}
+                                    </TableHead>
+                                    <TableHead className="w-[6%] text-[10px] text-right">
+                                      {t('tradingPanel.tableHeaders.avgPx')}
+                                    </TableHead>
+                                    <TableHead className="w-[6%] text-[10px] text-right">
+                                      {t('tradingPanel.tableHeaders.mark')}
+                                    </TableHead>
+                                    <TableHead className="w-[8%] text-[10px] text-right">
+                                      U-P&amp;L
+                                    </TableHead>
+                                    <TableHead className="w-[6%] text-[10px] text-right">
+                                      {t('tradingPanel.tableHeaders.edge')}
+                                    </TableHead>
+                                    <TableHead className="w-[6%] text-[10px] text-right">
+                                      {t('tradingPanel.tableHeaders.conf')}
+                                    </TableHead>
+                                    <TableHead className="w-[5%] text-[10px] text-right">
+                                      {t('tradingPanel.tableHeaders.orders')}
+                                    </TableHead>
+                                    <TableHead className="w-[6%] text-[10px] text-right">
+                                      {t('tradingPanel.tableHeaders.mode')}
+                                    </TableHead>
+                                    <TableHead className="w-[6%] text-[10px]">
+                                      {t('tradingPanel.tableHeaders.updated')}
+                                    </TableHead>
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                {filteredAllPositionBook.map((row) => {
-                                  const marketForModal = resolveCryptoMarketFromAliases([row.marketId, ...row.marketAliases])
-                                  return (
-                                  <TableRow
-                                    key={row.key}
-                                    className="text-xs cursor-pointer hover:bg-muted/30"
-                                    onClick={() => {
-                                      openPositionMarketModal({
-                                        market: marketForModal,
-                                        row,
-                                      })
-                                    }}
-                                  >
-                                    <TableCell className="truncate py-1" title={row.marketQuestion}>
-                                      <p className="truncate">{row.marketQuestion}</p>
-                                      <p className="text-[10px] text-muted-foreground truncate" title={positionMetaLine(row)}>
-                                        {row.traderName} • {positionMetaLine(row)}
-                                      </p>
-                                    </TableCell>
-                                    <TableCell className="py-1">
-                                      <div className="flex items-center gap-1">
-                                        {row.links.polymarket && (
-                                          <a
-                                            href={row.links.polymarket}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            onClick={(event) => event.stopPropagation()}
-                                            className="inline-flex h-4 w-4 items-center justify-center rounded border border-border/70 text-muted-foreground transition-colors hover:text-foreground"
-                                            title={t('tradingPanel.modal.openPolymarket')}
+                                  {filteredAllPositionBook.map((row) => {
+                                    const marketForModal = resolveCryptoMarketFromAliases([
+                                      row.marketId,
+                                      ...row.marketAliases,
+                                    ])
+                                    return (
+                                      <TableRow
+                                        key={row.key}
+                                        className="text-xs cursor-pointer hover:bg-muted/30"
+                                        onClick={() => {
+                                          openPositionMarketModal({
+                                            market: marketForModal,
+                                            row,
+                                          })
+                                        }}
+                                      >
+                                        <TableCell
+                                          className="truncate py-1"
+                                          title={row.marketQuestion}
+                                        >
+                                          <p className="truncate">{row.marketQuestion}</p>
+                                          <p
+                                            className="text-[10px] text-muted-foreground truncate"
+                                            title={positionMetaLine(row)}
                                           >
-                                            <ExternalLink className="h-3 w-3" />
-                                          </a>
-                                        )}
-                                        {row.links.kalshi && (
-                                          <a
-                                            href={row.links.kalshi}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            onClick={(event) => event.stopPropagation()}
-                                            className="inline-flex h-4 w-4 items-center justify-center rounded border border-border/70 text-muted-foreground transition-colors hover:text-foreground"
-                                            title={t('tradingPanel.modal.openKalshi')}
+                                            {row.traderName} • {positionMetaLine(row)}
+                                          </p>
+                                        </TableCell>
+                                        <TableCell className="py-1">
+                                          <div className="flex items-center gap-1">
+                                            {row.links.polymarket && (
+                                              <a
+                                                href={row.links.polymarket}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onClick={(event) => event.stopPropagation()}
+                                                className="inline-flex h-4 w-4 items-center justify-center rounded border border-border/70 text-muted-foreground transition-colors hover:text-foreground"
+                                                title={t('tradingPanel.modal.openPolymarket')}
+                                              >
+                                                <ExternalLink className="h-3 w-3" />
+                                              </a>
+                                            )}
+                                            {row.links.kalshi && (
+                                              <a
+                                                href={row.links.kalshi}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onClick={(event) => event.stopPropagation()}
+                                                className="inline-flex h-4 w-4 items-center justify-center rounded border border-border/70 text-muted-foreground transition-colors hover:text-foreground"
+                                                title={t('tradingPanel.modal.openKalshi')}
+                                              >
+                                                <ExternalLink className="h-3 w-3" />
+                                              </a>
+                                            )}
+                                            {!row.links.polymarket && !row.links.kalshi && (
+                                              <span className="text-[9px] text-muted-foreground">
+                                                —
+                                              </span>
+                                            )}
+                                          </div>
+                                        </TableCell>
+                                        <TableCell className="py-1">
+                                          <Badge
+                                            variant="outline"
+                                            className="h-5 max-w-[140px] truncate border-border/80 bg-muted/60 px-1.5 text-[10px] text-muted-foreground"
+                                            title={row.direction}
                                           >
-                                            <ExternalLink className="h-3 w-3" />
-                                          </a>
-                                        )}
-                                        {!row.links.polymarket && !row.links.kalshi && (
-                                          <span className="text-[9px] text-muted-foreground">—</span>
-                                        )}
-                                      </div>
-                                  </TableCell>
-                                  <TableCell className="py-1">
-                                      <Badge variant="outline" className="h-5 max-w-[140px] truncate border-border/80 bg-muted/60 px-1.5 text-[10px] text-muted-foreground" title={row.direction}>
-                                        {row.direction}
-                                      </Badge>
-                                  </TableCell>
-                                    <TableCell className="text-right font-mono py-1">{formatCurrency(row.exposureUsd)}</TableCell>
-                                    <TableCell className="text-right font-mono py-1">{row.averagePrice !== null ? row.averagePrice.toFixed(3) : '—'}</TableCell>
-                                    <TableCell className="text-right font-mono py-1">
-                                      {row.markPrice !== null ? (
-                                        <FlashNumber
-                                          value={row.markPrice}
-                                          decimals={3}
-                                          className="font-mono text-xs"
-                                        />
-                                      ) : '—'}
-                                    </TableCell>
-                                    <TableCell className={cn('text-right font-mono py-1', (row.unrealizedPnl || 0) > 0 ? 'text-emerald-500' : (row.unrealizedPnl || 0) < 0 ? 'text-red-500' : '')}>
-                                      {row.unrealizedPnl !== null ? formatCurrency(row.unrealizedPnl) : '—'}
-                                    </TableCell>
-                                    <TableCell className={cn('text-right font-mono py-1 font-semibold', (row.weightedEdge || 0) > 0 ? 'text-emerald-500' : (row.weightedEdge || 0) < 0 ? 'text-red-500' : '')}>{row.weightedEdge !== null ? formatPercent(row.weightedEdge) : '—'}</TableCell>
-                                    <TableCell className="text-right font-mono py-1">{row.weightedConfidence !== null ? formatPercent(normalizeConfidencePercent(row.weightedConfidence)) : '—'}</TableCell>
-                                    <TableCell className="text-right font-mono py-1">{row.orderCount}</TableCell>
-                                    <TableCell className="text-right font-mono py-1">{row.liveOrderCount}L/{row.shadowOrderCount}S</TableCell>
-                                    <TableCell className="py-1 text-[10px] text-muted-foreground">{formatShortDate(row.lastUpdated || row.markUpdatedAt)}</TableCell>
-                                  </TableRow>
-                                  )
-                                })}
-                              </TableBody>
-                            </Table>
+                                            {row.direction}
+                                          </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-right font-mono py-1">
+                                          {formatCurrency(row.exposureUsd)}
+                                        </TableCell>
+                                        <TableCell className="text-right font-mono py-1">
+                                          {row.averagePrice !== null
+                                            ? row.averagePrice.toFixed(3)
+                                            : '—'}
+                                        </TableCell>
+                                        <TableCell className="text-right font-mono py-1">
+                                          {row.markPrice !== null ? (
+                                            <FlashNumber
+                                              value={row.markPrice}
+                                              decimals={3}
+                                              className="font-mono text-xs"
+                                            />
+                                          ) : (
+                                            '—'
+                                          )}
+                                        </TableCell>
+                                        <TableCell
+                                          className={cn(
+                                            'text-right font-mono py-1',
+                                            (row.unrealizedPnl || 0) > 0
+                                              ? 'text-emerald-500'
+                                              : (row.unrealizedPnl || 0) < 0
+                                                ? 'text-red-500'
+                                                : '',
+                                          )}
+                                        >
+                                          {row.unrealizedPnl !== null
+                                            ? formatCurrency(row.unrealizedPnl)
+                                            : '—'}
+                                        </TableCell>
+                                        <TableCell
+                                          className={cn(
+                                            'text-right font-mono py-1 font-semibold',
+                                            (row.weightedEdge || 0) > 0
+                                              ? 'text-emerald-500'
+                                              : (row.weightedEdge || 0) < 0
+                                                ? 'text-red-500'
+                                                : '',
+                                          )}
+                                        >
+                                          {row.weightedEdge !== null
+                                            ? formatPercent(row.weightedEdge)
+                                            : '—'}
+                                        </TableCell>
+                                        <TableCell className="text-right font-mono py-1">
+                                          {row.weightedConfidence !== null
+                                            ? formatPercent(
+                                                normalizeConfidencePercent(row.weightedConfidence),
+                                              )
+                                            : '—'}
+                                        </TableCell>
+                                        <TableCell className="text-right font-mono py-1">
+                                          {row.orderCount}
+                                        </TableCell>
+                                        <TableCell className="text-right font-mono py-1">
+                                          {row.liveOrderCount}L/{row.shadowOrderCount}S
+                                        </TableCell>
+                                        <TableCell className="py-1 text-[10px] text-muted-foreground">
+                                          {formatShortDate(row.lastUpdated || row.markUpdatedAt)}
+                                        </TableCell>
+                                      </TableRow>
+                                    )
+                                  })}
+                                </TableBody>
+                              </Table>
                             </div>
                           </>
                         )}
                       </div>
                     </div>
                   </TabsContent>
-	                </Tabs>
-	              </div>
-	            </div>
-	          ) : (
+                </Tabs>
+              </div>
+            </div>
+          ) : (
             <>
               {selectedTrader && (
                 <div className="shrink-0 rounded-lg border border-border/70 bg-card px-3 py-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -11409,18 +12873,35 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                           ? t('tradingPanel.controls.activating')
                           : selectedTraderPendingAction === 'deactivate'
                             ? t('tradingPanel.controls.deactivating')
-                        : selectedTraderStatus.label}
+                            : selectedTraderStatus.label}
                   </Badge>
                   <div className="hidden md:flex items-center gap-2 text-[11px] font-mono text-muted-foreground">
-                    <span className={selectedTraderSummary.pnl >= 0 ? 'text-emerald-500' : 'text-red-500'}>{formatCurrency(selectedTraderSummary.pnl)}</span>
+                    <span
+                      className={
+                        selectedTraderSummary.pnl >= 0 ? 'text-emerald-500' : 'text-red-500'
+                      }
+                    >
+                      {formatCurrency(selectedTraderSummary.pnl)}
+                    </span>
                     <span className="text-border">|</span>
-                    <span>{t('tradingPanel.hub.wr')} {formatPercent(selectedTraderSummary.winRate)}</span>
+                    <span>
+                      {t('tradingPanel.hub.wr')} {formatPercent(selectedTraderSummary.winRate)}
+                    </span>
                     <span className="text-border">|</span>
-                    <span>{t('tradingPanel.allBots.ordersCount', { count: selectedTraderPerformanceRow?.orders ?? selectedOrders.length })}</span>
+                    <span>
+                      {t('tradingPanel.allBots.ordersCount', {
+                        count: selectedTraderPerformanceRow?.orders ?? selectedOrders.length,
+                      })}
+                    </span>
                     <span className="text-border">|</span>
-                    <span>{t('tradingPanel.hub.exp')} {formatCurrency(selectedTraderExposure, true)}</span>
+                    <span>
+                      {t('tradingPanel.hub.exp')} {formatCurrency(selectedTraderExposure, true)}
+                    </span>
                     <span className="text-border">|</span>
-                    <span>{t('tradingPanel.hub.edge')} {formatPercent(normalizeEdgePercent(selectedTraderSummary.avgEdge))}</span>
+                    <span>
+                      {t('tradingPanel.hub.edge')}{' '}
+                      {formatPercent(normalizeEdgePercent(selectedTraderSummary.avgEdge))}
+                    </span>
                   </div>
                   <div className="ml-auto flex items-center gap-1">
                     <Button
@@ -11432,7 +12913,8 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                     >
                       {selectedTraderPendingAction === 'start' ? (
                         <>
-                          <Loader2 className="w-3 h-3 mr-0.5 animate-spin" /> {t('tradingPanel.controls.starting')}
+                          <Loader2 className="w-3 h-3 mr-0.5 animate-spin" />{' '}
+                          {t('tradingPanel.controls.starting')}
                         </>
                       ) : (
                         <>
@@ -11449,7 +12931,8 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                     >
                       {selectedTraderPendingAction === 'stop' ? (
                         <>
-                          <Loader2 className="w-3 h-3 mr-0.5 animate-spin" /> {t('tradingPanel.controls.stopping')}
+                          <Loader2 className="w-3 h-3 mr-0.5 animate-spin" />{' '}
+                          {t('tradingPanel.controls.stopping')}
                         </>
                       ) : (
                         <>
@@ -11462,22 +12945,29 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                       variant={selectedTraderIsActive ? 'secondary' : 'outline'}
                       className="h-6 px-2 text-[10px]"
                       disabled={
-                        selectedTraderControlPending
-                        || (selectedTraderIsActive ? !selectedTraderCanDeactivate : !selectedTraderCanActivate)
+                        selectedTraderControlPending ||
+                        (selectedTraderIsActive
+                          ? !selectedTraderCanDeactivate
+                          : !selectedTraderCanActivate)
                       }
-                      onClick={selectedTraderIsActive ? requestDeactivateTrader : requestActivateTrader}
+                      onClick={
+                        selectedTraderIsActive ? requestDeactivateTrader : requestActivateTrader
+                      }
                     >
                       {selectedTraderPendingAction === 'activate' ? (
                         <>
-                          <Loader2 className="w-3 h-3 mr-0.5 animate-spin" /> {t('tradingPanel.controls.activating')}
+                          <Loader2 className="w-3 h-3 mr-0.5 animate-spin" />{' '}
+                          {t('tradingPanel.controls.activating')}
                         </>
                       ) : selectedTraderPendingAction === 'deactivate' ? (
                         <>
-                          <Loader2 className="w-3 h-3 mr-0.5 animate-spin" /> {t('tradingPanel.controls.deactivating')}
+                          <Loader2 className="w-3 h-3 mr-0.5 animate-spin" />{' '}
+                          {t('tradingPanel.controls.deactivating')}
                         </>
                       ) : selectedTraderIsActive ? (
                         <>
-                          <Square className="w-3 h-3 mr-0.5" /> {t('tradingPanel.controls.deactivate')}
+                          <Square className="w-3 h-3 mr-0.5" />{' '}
+                          {t('tradingPanel.controls.deactivate')}
                         </>
                       ) : (
                         <>
@@ -11512,17 +13002,27 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                             />
                           </span>
                         </TooltipTrigger>
-                        <TooltipContent side="bottom" className="max-w-[320px] text-xs leading-snug">
+                        <TooltipContent
+                          side="bottom"
+                          className="max-w-[320px] text-xs leading-snug"
+                        >
                           {t('tradingPanel.controls.perBotKillSwitchTooltip')}
                         </TooltipContent>
                       </Tooltip>
                       {traderBlockNewOrdersMutation.isPending ? (
                         <Loader2 className="w-3 h-3 animate-spin text-red-300" />
                       ) : selectedTrader.block_new_orders ? (
-                        <span className="text-[10px] font-medium text-red-300">{t('tradingPanel.controls.blocking')}</span>
+                        <span className="text-[10px] font-medium text-red-300">
+                          {t('tradingPanel.controls.blocking')}
+                        </span>
                       ) : null}
                     </div>
-                    <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" onClick={() => openEditTraderFlyout(selectedTrader)}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-6 px-2 text-[10px]"
+                      onClick={() => openEditTraderFlyout(selectedTrader)}
+                    >
                       <Settings className="w-3 h-3 mr-0.5" /> {t('tradingPanel.controls.config')}
                     </Button>
                   </div>
@@ -11535,89 +13035,98 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                   Signals short-circuit at the decision-gate layer so the
                   bot keeps running but won't open new positions for it.
                   Override inline without leaving the trading panel. */}
-              {selectedTraderDemotedStrategies.length > 0 && (() => {
-                const row = selectedTraderDemotedStrategies[0]
-                const overrideBusy = overrideStrategyHealthMutation.isPending
-                  || clearStrategyHealthOverrideMutation.isPending
-                return (
-                  <div className="shrink-0 mx-2 mb-1 mt-1 rounded-md border border-amber-500/50 bg-amber-100 dark:bg-amber-500/10 px-3 py-2 space-y-1.5">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                      <span className="text-[11px] font-semibold text-amber-900 dark:text-amber-200">
-                        {t('tradingPanel.demotion.strategyDemoted')}
-                      </span>
-                      <span className="text-[10px] font-mono text-amber-900 dark:text-amber-100">
-                        {row.strategy_type}
-                      </span>
-                      <span className="text-[10px] text-amber-800 dark:text-amber-200/70">
-                        — {row.manual_override ? t('tradingPanel.demotion.manualOverride') : t('tradingPanel.demotion.autoDemoted')};
-                        {' '}{t('tradingPanel.demotion.signalsBlocked')}
-                      </span>
-                      <div className="ml-auto flex items-center gap-1">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="h-6 gap-1 px-2 text-[10px] border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10"
-                          disabled={overrideBusy}
-                          onClick={() => overrideStrategyHealthMutation.mutate({
-                            strategyType: row.strategy_type,
-                            status: 'active',
-                          })}
-                          title={t('tradingPanel.demotion.forceActiveTooltip')}
-                        >
-                          {overrideStrategyHealthMutation.isPending ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <CheckCircle2 className="w-3 h-3" />
-                          )}
-                          {t('tradingPanel.controls.activate')}
-                        </Button>
-                        {row.manual_override && (
+              {selectedTraderDemotedStrategies.length > 0 &&
+                (() => {
+                  const row = selectedTraderDemotedStrategies[0]
+                  const overrideBusy =
+                    overrideStrategyHealthMutation.isPending ||
+                    clearStrategyHealthOverrideMutation.isPending
+                  return (
+                    <div className="shrink-0 mx-2 mb-1 mt-1 rounded-md border border-amber-500/50 bg-amber-100 dark:bg-amber-500/10 px-3 py-2 space-y-1.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                        <span className="text-[11px] font-semibold text-amber-900 dark:text-amber-200">
+                          {t('tradingPanel.demotion.strategyDemoted')}
+                        </span>
+                        <span className="text-[10px] font-mono text-amber-900 dark:text-amber-100">
+                          {row.strategy_type}
+                        </span>
+                        <span className="text-[10px] text-amber-800 dark:text-amber-200/70">
+                          —{' '}
+                          {row.manual_override
+                            ? t('tradingPanel.demotion.manualOverride')
+                            : t('tradingPanel.demotion.autoDemoted')}
+                          ; {t('tradingPanel.demotion.signalsBlocked')}
+                        </span>
+                        <div className="ml-auto flex items-center gap-1">
                           <Button
                             type="button"
                             size="sm"
                             variant="outline"
-                            className="h-6 gap-1 px-2 text-[10px]"
+                            className="h-6 gap-1 px-2 text-[10px] border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10"
                             disabled={overrideBusy}
-                            onClick={() => clearStrategyHealthOverrideMutation.mutate(row.strategy_type)}
-                            title={t('tradingPanel.demotion.clearOverrideTooltip')}
+                            onClick={() =>
+                              overrideStrategyHealthMutation.mutate({
+                                strategyType: row.strategy_type,
+                                status: 'active',
+                              })
+                            }
+                            title={t('tradingPanel.demotion.forceActiveTooltip')}
                           >
-                            {clearStrategyHealthOverrideMutation.isPending ? (
+                            {overrideStrategyHealthMutation.isPending ? (
                               <Loader2 className="w-3 h-3 animate-spin" />
                             ) : (
-                              <XCircle className="w-3 h-3" />
+                              <CheckCircle2 className="w-3 h-3" />
                             )}
-                            {t('tradingPanel.controls.clear')}
+                            {t('tradingPanel.controls.activate')}
                           </Button>
+                          {row.manual_override && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-6 gap-1 px-2 text-[10px]"
+                              disabled={overrideBusy}
+                              onClick={() =>
+                                clearStrategyHealthOverrideMutation.mutate(row.strategy_type)
+                              }
+                              title={t('tradingPanel.demotion.clearOverrideTooltip')}
+                            >
+                              {clearStrategyHealthOverrideMutation.isPending ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <XCircle className="w-3 h-3" />
+                              )}
+                              {t('tradingPanel.controls.clear')}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-3 text-[10px] text-amber-800/80 dark:text-muted-foreground/70 font-mono">
+                        <span>n {row.sample_size ?? 0}</span>
+                        {Number.isFinite(Number(row.directional_accuracy)) && (
+                          <span>
+                            acc {((Number(row.directional_accuracy) || 0) * 100).toFixed(1)}%
+                          </span>
                         )}
+                        {Number.isFinite(Number(row.mae_roi)) && (
+                          <span>mae {Number(row.mae_roi).toFixed(2)}</span>
+                        )}
+                        {row.last_reason && <span className="italic">{row.last_reason}</span>}
                       </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-3 text-[10px] text-amber-800/80 dark:text-muted-foreground/70 font-mono">
-                      <span>n {row.sample_size ?? 0}</span>
-                      {Number.isFinite(Number(row.directional_accuracy)) && (
-                        <span>acc {((Number(row.directional_accuracy) || 0) * 100).toFixed(1)}%</span>
-                      )}
-                      {Number.isFinite(Number(row.mae_roi)) && (
-                        <span>mae {Number(row.mae_roi).toFixed(2)}</span>
-                      )}
-                      {row.last_reason && (
-                        <span className="italic">{row.last_reason}</span>
-                      )}
-                    </div>
-                  </div>
-                )
-              })()}
+                  )
+                })()}
 
               <div className="shrink-0 flex items-center gap-0.5 border-b border-border/50 px-1">
-                {([
+                {[
                   { key: 'trades' as const, label: t('tradingPanel.tabs.trades') },
                   { key: 'terminal' as const, label: t('tradingPanel.tabs.terminal') },
                   { key: 'tune' as const, label: t('tradingPanel.tabs.tune') },
                   { key: 'risk' as const, label: t('tradingPanel.tabs.risk') },
                   { key: 'decisions' as const, label: t('tradingPanel.tabs.decisions') },
                   { key: 'performance' as const, label: t('tradingPanel.tabs.performance') },
-                ]).map((tab) => (
+                ].map((tab) => (
                   <button
                     key={tab.key}
                     type="button"
@@ -11626,7 +13135,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                       'px-3 py-1.5 text-[11px] font-medium transition-colors border-b-2 -mb-[1px]',
                       workTab === tab.key
                         ? 'border-cyan-500 text-foreground'
-                        : 'border-transparent text-muted-foreground hover:text-foreground'
+                        : 'border-transparent text-muted-foreground hover:text-foreground',
                     )}
                   >
                     {tab.label}
@@ -11639,21 +13148,39 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                   <div className="h-full flex flex-col min-h-0 gap-1.5">
                     <div className="shrink-0 flex flex-wrap items-center gap-1 px-1">
                       {(['all', 'decision', 'order', 'event'] as FeedFilter[]).map((kind) => (
-                        <Button key={kind} size="sm" variant={traderFeedFilter === kind ? 'default' : 'outline'} onClick={() => setTraderFeedFilter(kind)} className="h-5 px-2 text-[10px]">
+                        <Button
+                          key={kind}
+                          size="sm"
+                          variant={traderFeedFilter === kind ? 'default' : 'outline'}
+                          onClick={() => setTraderFeedFilter(kind)}
+                          className="h-5 px-2 text-[10px]"
+                        >
                           {kind}
                         </Button>
                       ))}
                       <div className="ml-1 inline-flex items-center gap-1">
-                        <Button size="sm" variant={terminalDensity === 'compact' ? 'default' : 'outline'} onClick={() => setTerminalDensity('compact')} className="h-5 px-2 text-[10px]">
+                        <Button
+                          size="sm"
+                          variant={terminalDensity === 'compact' ? 'default' : 'outline'}
+                          onClick={() => setTerminalDensity('compact')}
+                          className="h-5 px-2 text-[10px]"
+                        >
                           {t('tradingPanel.terminal.compact')}
                         </Button>
-                        <Button size="sm" variant={terminalDensity === 'expanded' ? 'default' : 'outline'} onClick={() => setTerminalDensity('expanded')} className="h-5 px-2 text-[10px]">
+                        <Button
+                          size="sm"
+                          variant={terminalDensity === 'expanded' ? 'default' : 'outline'}
+                          onClick={() => setTerminalDensity('expanded')}
+                          className="h-5 px-2 text-[10px]"
+                        >
                           {t('tradingPanel.terminal.expanded')}
                         </Button>
                       </div>
                       {/* Firehose volume + flow controls. */}
                       <div className="ml-2 inline-flex items-center gap-1 border-l border-border/40 pl-2">
-                        <span className="text-[10px] uppercase text-muted-foreground tracking-wide">{t('tradingPanel.terminal.volume')}</span>
+                        <span className="text-[10px] uppercase text-muted-foreground tracking-wide">
+                          {t('tradingPanel.terminal.volume')}
+                        </span>
                         {TERMINAL_VOLUME_OPTIONS.map((opt) => (
                           <Button
                             key={opt.value}
@@ -11672,10 +13199,16 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                           size="sm"
                           variant={terminalPaused ? 'default' : 'outline'}
                           onClick={() => setTerminalPaused((v) => !v)}
-                          title={terminalPaused ? t('tradingPanel.terminal.resumeStreaming') : t('tradingPanel.terminal.pauseIncoming')}
+                          title={
+                            terminalPaused
+                              ? t('tradingPanel.terminal.resumeStreaming')
+                              : t('tradingPanel.terminal.pauseIncoming')
+                          }
                           className="h-5 px-2 text-[10px]"
                         >
-                          {terminalPaused ? `▶ ${t('tradingPanel.terminal.resume')}` : `⏸ ${t('tradingPanel.terminal.pause')}`}
+                          {terminalPaused
+                            ? `▶ ${t('tradingPanel.terminal.resume')}`
+                            : `⏸ ${t('tradingPanel.terminal.pause')}`}
                         </Button>
                         <Button
                           size="sm"
@@ -11684,18 +13217,27 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                           title={t('tradingPanel.terminal.slowModeTooltip')}
                           className="h-5 px-2 text-[10px]"
                         >
-                          🐢 {t('tradingPanel.terminal.slow')}{terminalSlowMode && slowModePending > 0 ? ` (${slowModePending})` : ''}
+                          🐢 {t('tradingPanel.terminal.slow')}
+                          {terminalSlowMode && slowModePending > 0 ? ` (${slowModePending})` : ''}
                         </Button>
                       </div>
                       <div className="ml-1 inline-flex items-center gap-1">
-                        <span className="text-[10px] text-muted-foreground">{t('tradingPanel.terminal.max')}</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {t('tradingPanel.terminal.max')}
+                        </span>
                         <select
                           value={terminalMaxRows}
-                          onChange={(event) => setTerminalMaxRows(Number(event.target.value) || TERMINAL_SELECTED_MAX_ROWS_DEFAULT)}
+                          onChange={(event) =>
+                            setTerminalMaxRows(
+                              Number(event.target.value) || TERMINAL_SELECTED_MAX_ROWS_DEFAULT,
+                            )
+                          }
                           className="h-5 rounded border border-border/40 bg-background px-1 text-[10px]"
                         >
                           {[220, 500, 1000, 2000, 5000].map((n) => (
-                            <option key={n} value={n}>{n}</option>
+                            <option key={n} value={n}>
+                              {n}
+                            </option>
                           ))}
                         </select>
                       </div>
@@ -11705,12 +13247,17 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                           : t('tradingPanel.terminal.autoTruncate', { n: terminalMaxRows })}
                       </span>
                       {terminalDensity === 'compact' && (
-                        <span className="text-[10px] text-muted-foreground">{t('tradingPanel.terminal.rendering')} {compactTerminalWindow.rows.length}/{compactTerminalWindow.total}</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {t('tradingPanel.terminal.rendering')} {compactTerminalWindow.rows.length}
+                          /{compactTerminalWindow.total}
+                        </span>
                       )}
                     </div>
                     {selectedTraderNoNewRows && (
                       <div className="shrink-0 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-700 dark:text-amber-100 mx-1">
-                        {t('tradingPanel.terminal.noNewRows', { ts: formatTimestamp(selectedTrader?.last_run_at || worker?.last_run_at) })}
+                        {t('tradingPanel.terminal.noNewRows', {
+                          ts: formatTimestamp(selectedTrader?.last_run_at || worker?.last_run_at),
+                        })}
                       </div>
                     )}
                     <div
@@ -11726,7 +13273,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                           {terminalPaused
                             ? t('tradingPanel.terminal.pausedHint')
                             : terminalSlowMode && slowModePending > 0
-                              ? t('tradingPanel.terminal.slowModeQueued', { count: slowModePending })
+                              ? t('tradingPanel.terminal.slowModeQueued', {
+                                  count: slowModePending,
+                                })
                               : t('tradingPanel.terminal.noEvents')}
                         </div>
                       ) : terminalDensity === 'compact' ? (
@@ -11739,21 +13288,32 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                                 style={{ minHeight: TERMINAL_COMPACT_ROW_HEIGHT }}
                                 className={cn(
                                   'rounded border px-2 py-1 flex items-center gap-1.5 whitespace-nowrap',
-                                  row.tone === 'positive' && 'border-emerald-500/25 text-emerald-700 dark:text-emerald-100',
-                                  row.tone === 'negative' && 'border-red-500/30 text-red-700 dark:text-red-100',
-                                  row.tone === 'warning' && 'border-amber-500/30 text-amber-700 dark:text-amber-100',
-                                  row.tone === 'neutral' && row.action === 'BUY' && 'border-emerald-500/25 bg-emerald-500/5 text-emerald-700 dark:text-emerald-100',
-                                  row.tone === 'neutral' && row.action === 'SELL' && 'border-red-500/30 bg-red-500/5 text-red-700 dark:text-red-100',
-                                  row.tone === 'neutral' && !row.action && 'border-border/50 text-foreground'
+                                  row.tone === 'positive' &&
+                                    'border-emerald-500/25 text-emerald-700 dark:text-emerald-100',
+                                  row.tone === 'negative' &&
+                                    'border-red-500/30 text-red-700 dark:text-red-100',
+                                  row.tone === 'warning' &&
+                                    'border-amber-500/30 text-amber-700 dark:text-amber-100',
+                                  row.tone === 'neutral' &&
+                                    row.action === 'BUY' &&
+                                    'border-emerald-500/25 bg-emerald-500/5 text-emerald-700 dark:text-emerald-100',
+                                  row.tone === 'neutral' &&
+                                    row.action === 'SELL' &&
+                                    'border-red-500/30 bg-red-500/5 text-red-700 dark:text-red-100',
+                                  row.tone === 'neutral' &&
+                                    !row.action &&
+                                    'border-border/50 text-foreground',
                                 )}
                               >
-                                <span className="text-muted-foreground shrink-0">[{formatTimestamp(row.ts)}]</span>
+                                <span className="text-muted-foreground shrink-0">
+                                  [{formatTimestamp(row.ts)}]
+                                </span>
                                 <span className="uppercase text-[10px] shrink-0">{row.kind}</span>
                                 {row.action && (
                                   <span
                                     className={cn(
                                       'uppercase text-[10px] font-semibold shrink-0',
-                                      row.action === 'BUY' ? 'text-emerald-500' : 'text-red-500'
+                                      row.action === 'BUY' ? 'text-emerald-500' : 'text-red-500',
                                     )}
                                   >
                                     {row.action}
@@ -11773,29 +13333,43 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                               key={`${row.kind}:${row.id}`}
                               className={cn(
                                 'rounded border px-2 py-1',
-                                row.tone === 'positive' && 'border-emerald-500/25 text-emerald-700 dark:text-emerald-100',
-                                row.tone === 'negative' && 'border-red-500/30 text-red-700 dark:text-red-100',
-                                row.tone === 'warning' && 'border-amber-500/30 text-amber-700 dark:text-amber-100',
-                                row.tone === 'neutral' && row.action === 'BUY' && 'border-emerald-500/25 bg-emerald-500/5 text-emerald-700 dark:text-emerald-100',
-                                row.tone === 'neutral' && row.action === 'SELL' && 'border-red-500/30 bg-red-500/5 text-red-700 dark:text-red-100',
-                                row.tone === 'neutral' && !row.action && 'border-border/50 text-foreground'
+                                row.tone === 'positive' &&
+                                  'border-emerald-500/25 text-emerald-700 dark:text-emerald-100',
+                                row.tone === 'negative' &&
+                                  'border-red-500/30 text-red-700 dark:text-red-100',
+                                row.tone === 'warning' &&
+                                  'border-amber-500/30 text-amber-700 dark:text-amber-100',
+                                row.tone === 'neutral' &&
+                                  row.action === 'BUY' &&
+                                  'border-emerald-500/25 bg-emerald-500/5 text-emerald-700 dark:text-emerald-100',
+                                row.tone === 'neutral' &&
+                                  row.action === 'SELL' &&
+                                  'border-red-500/30 bg-red-500/5 text-red-700 dark:text-red-100',
+                                row.tone === 'neutral' &&
+                                  !row.action &&
+                                  'border-border/50 text-foreground',
                               )}
                             >
                               <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-                                <span className="text-muted-foreground">[{formatTimestamp(row.ts)}]</span>
+                                <span className="text-muted-foreground">
+                                  [{formatTimestamp(row.ts)}]
+                                </span>
                                 <span className="uppercase text-[10px]">{row.kind}</span>
                                 {row.action && (
-                                  <span className={cn(
-                                    'uppercase text-[10px] font-semibold',
-                                    row.action === 'BUY' ? 'text-emerald-500' : 'text-red-500'
-                                  )}
+                                  <span
+                                    className={cn(
+                                      'uppercase text-[10px] font-semibold',
+                                      row.action === 'BUY' ? 'text-emerald-500' : 'text-red-500',
+                                    )}
                                   >
                                     {row.action}
                                   </span>
                                 )}
                                 <span className="font-medium">{row.title}</span>
                               </div>
-                              <div className="text-[10px] leading-relaxed text-muted-foreground mt-0.5 break-words">{row.detail}</div>
+                              <div className="text-[10px] leading-relaxed text-muted-foreground mt-0.5 break-words">
+                                {row.detail}
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -11807,7 +13381,12 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                 {workTab === 'trades' && (
                   <div className="h-full flex flex-col min-h-0 gap-1.5">
                     <div className="shrink-0 flex flex-wrap items-center gap-1 px-1">
-                      <Input value={tradeSearch} onChange={(event) => setTradeSearch(event.target.value)} placeholder={t('tradingPanel.search.search')} className="h-6 w-36 text-[11px]" />
+                      <Input
+                        value={tradeSearch}
+                        onChange={(event) => setTradeSearch(event.target.value)}
+                        placeholder={t('tradingPanel.search.search')}
+                        className="h-6 w-36 text-[11px]"
+                      />
                       {TRADE_STATUS_FILTER_OPTIONS.map((statusOption) => (
                         <Button
                           key={statusOption.value}
@@ -11828,7 +13407,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                     </div>
                     <div className="shrink-0 grid grid-cols-2 gap-1 px-1 sm:grid-cols-4 lg:grid-cols-8">
                       <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
-                        <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.stats.trades')}</p>
+                        <p className="text-[9px] uppercase text-muted-foreground">
+                          {t('tradingPanel.stats.trades')}
+                        </p>
                         <p className="text-xs font-mono">
                           {selectedTradeTotals.total}
                           {selectedTraderOrdersQuery.isFetching ? (
@@ -11837,64 +13418,124 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                         </p>
                       </div>
                       <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
-                        <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.stats.open')}</p>
+                        <p className="text-[9px] uppercase text-muted-foreground">
+                          {t('tradingPanel.stats.open')}
+                        </p>
                         <p className="text-xs font-mono">{selectedTradeTotals.open}</p>
                       </div>
                       <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
-                        <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.stats.winLoss')}</p>
-                        <p className="text-xs font-mono">{selectedTradeTotals.wins} / {selectedTradeTotals.losses}</p>
+                        <p className="text-[9px] uppercase text-muted-foreground">
+                          {t('tradingPanel.stats.winLoss')}
+                        </p>
+                        <p className="text-xs font-mono">
+                          {selectedTradeTotals.wins} / {selectedTradeTotals.losses}
+                        </p>
                       </div>
                       <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
-                        <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.stats.winRate')}</p>
-                        <p className="text-xs font-mono">{formatPercent(selectedTradeTotals.winRate)}</p>
+                        <p className="text-[9px] uppercase text-muted-foreground">
+                          {t('tradingPanel.stats.winRate')}
+                        </p>
+                        <p className="text-xs font-mono">
+                          {formatPercent(selectedTradeTotals.winRate)}
+                        </p>
                       </div>
                       <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
-                        <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.stats.failed')}</p>
+                        <p className="text-[9px] uppercase text-muted-foreground">
+                          {t('tradingPanel.stats.failed')}
+                        </p>
                         <p className="text-xs font-mono">{selectedTradeTotals.failed}</p>
                       </div>
                       <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
-                        <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.stats.notional')}</p>
-                        <p className="text-xs font-mono">{formatCurrency(selectedTradeTotals.totalNotional, true)}</p>
+                        <p className="text-[9px] uppercase text-muted-foreground">
+                          {t('tradingPanel.stats.notional')}
+                        </p>
+                        <p className="text-xs font-mono">
+                          {formatCurrency(selectedTradeTotals.totalNotional, true)}
+                        </p>
                       </div>
                       <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
                         <p className="text-[9px] uppercase text-muted-foreground">R-P&amp;L</p>
-                        <p className={cn('text-xs font-mono', selectedTradeTotals.realizedPnl > 0 ? 'text-emerald-500' : selectedTradeTotals.realizedPnl < 0 ? 'text-red-500' : '')}>
+                        <p
+                          className={cn(
+                            'text-xs font-mono',
+                            selectedTradeTotals.realizedPnl > 0
+                              ? 'text-emerald-500'
+                              : selectedTradeTotals.realizedPnl < 0
+                                ? 'text-red-500'
+                                : '',
+                          )}
+                        >
                           {formatCurrency(selectedTradeTotals.realizedPnl, true)}
                         </p>
                       </div>
                       <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
                         <p className="text-[9px] uppercase text-muted-foreground">U-P&amp;L</p>
-                        <p className={cn('text-xs font-mono', selectedTradeTotals.unrealizedPnl > 0 ? 'text-emerald-500' : selectedTradeTotals.unrealizedPnl < 0 ? 'text-red-500' : '')}>
+                        <p
+                          className={cn(
+                            'text-xs font-mono',
+                            selectedTradeTotals.unrealizedPnl > 0
+                              ? 'text-emerald-500'
+                              : selectedTradeTotals.unrealizedPnl < 0
+                                ? 'text-red-500'
+                                : '',
+                          )}
+                        >
                           {formatCurrency(selectedTradeTotals.unrealizedPnl, true)}
                         </p>
                       </div>
                     </div>
                     <div className="flex-1 min-h-0 overflow-hidden px-1">
                       {selectedTradeRows.length === 0 ? (
-                        <div className="h-full flex items-center justify-center text-sm text-muted-foreground">{t('tradingPanel.allBots.noTradesFilters')}</div>
+                        <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
+                          {t('tradingPanel.allBots.noTradesFilters')}
+                        </div>
                       ) : (
                         <div className="h-full min-h-0 overflow-auto">
                           <Table className="w-full table-fixed">
                             <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
                               <TableRow>
-                                <TableHead className="w-[32%] text-[10px]">{t('tradingPanel.tableHeaders.market')}</TableHead>
-                                <TableHead className="w-[6%] text-[10px]">{t('tradingPanel.tableHeaders.dir')}</TableHead>
-                                <TableHead className="w-[8%] text-[10px] text-right">{t('tradingPanel.tableHeaders.value')}</TableHead>
-                                <TableHead className="w-[6%] text-[10px] text-right">{t('tradingPanel.tableHeaders.fill')}</TableHead>
-                                <TableHead className="w-[6%] text-[10px] text-right">{t('tradingPanel.tableHeaders.fillProgress')}</TableHead>
-                                <TableHead className="w-[6%] text-[10px] text-right">{t('tradingPanel.tableHeaders.mark')}</TableHead>
-                                <TableHead className="w-[8%] text-[10px] text-right">U-P&amp;L</TableHead>
-                                <TableHead className="w-[7%] text-[10px] text-right">Edge Δ</TableHead>
-                                <TableHead className="w-[8%] text-[10px] text-right">R-P&amp;L</TableHead>
-                                <TableHead className="w-[8%] text-[10px]">{t('tradingPanel.tableHeaders.venue')}</TableHead>
-                                <TableHead className="w-[6%] text-[10px] text-right">{t('tradingPanel.tableHeaders.exitPercent')}</TableHead>
-                                <TableHead className="w-[5%] text-[10px]">{t('tradingPanel.tableHeaders.markAge')}</TableHead>
-                                <TableHead className="w-[5%] text-[10px]">{t('tradingPanel.tableHeaders.evalAge')}</TableHead>
+                                <TableHead className="w-[32%] text-[10px]">
+                                  {t('tradingPanel.tableHeaders.market')}
+                                </TableHead>
+                                <TableHead className="w-[6%] text-[10px]">
+                                  {t('tradingPanel.tableHeaders.dir')}
+                                </TableHead>
+                                <TableHead className="w-[8%] text-[10px] text-right">
+                                  {t('tradingPanel.tableHeaders.value')}
+                                </TableHead>
+                                <TableHead className="w-[6%] text-[10px] text-right">
+                                  {t('tradingPanel.tableHeaders.fill')}
+                                </TableHead>
+                                <TableHead className="w-[6%] text-[10px] text-right">
+                                  {t('tradingPanel.tableHeaders.fillProgress')}
+                                </TableHead>
+                                <TableHead className="w-[6%] text-[10px] text-right">
+                                  {t('tradingPanel.tableHeaders.mark')}
+                                </TableHead>
+                                <TableHead className="w-[8%] text-[10px] text-right">
+                                  U-P&amp;L
+                                </TableHead>
+                                <TableHead className="w-[7%] text-[10px] text-right">
+                                  Edge Δ
+                                </TableHead>
+                                <TableHead className="w-[8%] text-[10px] text-right">
+                                  R-P&amp;L
+                                </TableHead>
+                                <TableHead className="w-[8%] text-[10px]">
+                                  {t('tradingPanel.tableHeaders.venue')}
+                                </TableHead>
+                                <TableHead className="w-[6%] text-[10px] text-right">
+                                  {t('tradingPanel.tableHeaders.exitPercent')}
+                                </TableHead>
+                                <TableHead className="w-[5%] text-[10px]">
+                                  {t('tradingPanel.tableHeaders.markAge')}
+                                </TableHead>
+                                <TableHead className="w-[5%] text-[10px]">
+                                  {t('tradingPanel.tableHeaders.evalAge')}
+                                </TableHead>
                               </TableRow>
                             </TableHeader>
-                            <TableBody>
-                              {selectedTradeRowsRendered}
-                            </TableBody>
+                            <TableBody>{selectedTradeRowsRendered}</TableBody>
                           </Table>
                         </div>
                       )}
@@ -11902,8 +13543,8 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                   </div>
                 )}
 
-                {workTab === 'tune' && (
-                  selectedTrader ? (
+                {workTab === 'tune' &&
+                  (selectedTrader ? (
                     <AutoresearchView
                       trader={selectedTrader}
                       dynamicStrategyParamSections={dynamicStrategyParamSections}
@@ -11929,8 +13570,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                         </div>
                       </div>
                     </div>
-                  )
-                )}
+                  ))}
 
                 {workTab === 'risk' && (
                   <RiskLimitsView
@@ -11948,9 +13588,17 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                 {workTab === 'decisions' && (
                   <div className="h-full min-h-0 grid gap-2 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] px-1">
                     <div className="flex min-w-0 flex-col gap-1.5 min-h-0 overflow-hidden">
-                      <Input value={decisionSearch} onChange={(event) => setDecisionSearch(event.target.value)} placeholder={t('tradingPanel.search.searchDecisions')} className="h-6 text-[11px] shrink-0" />
+                      <Input
+                        value={decisionSearch}
+                        onChange={(event) => setDecisionSearch(event.target.value)}
+                        placeholder={t('tradingPanel.search.searchDecisions')}
+                        className="h-6 text-[11px] shrink-0"
+                      />
                       <div className="shrink-0 flex items-center justify-between gap-2">
-                        <p className="text-[10px] text-muted-foreground">{t('tradingPanel.decisions.showing')} {filteredDecisions.length}/{selectedDecisions.length}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {t('tradingPanel.decisions.showing')} {filteredDecisions.length}/
+                          {selectedDecisions.length}
+                        </p>
                         <Button
                           type="button"
                           size="sm"
@@ -11964,48 +13612,72 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                       <div className="shrink-0 grid gap-1 grid-cols-3">
                         <button
                           type="button"
-                          onClick={() => setDecisionOutcomeFilter((current) => (current === 'selected' ? 'all' : 'selected'))}
+                          onClick={() =>
+                            setDecisionOutcomeFilter((current) =>
+                              current === 'selected' ? 'all' : 'selected',
+                            )
+                          }
                           className={cn(
                             'rounded border px-2 py-1 text-center transition-colors',
                             decisionOutcomeFilter === 'selected'
                               ? 'border-cyan-500/50 bg-cyan-500/10'
-                              : 'border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10'
+                              : 'border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10',
                           )}
                         >
-                          <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.decisions.selected')}</p>
-                          <p className="text-xs font-mono text-emerald-500">{decisionOutcomeSummary.selected}</p>
+                          <p className="text-[9px] uppercase text-muted-foreground">
+                            {t('tradingPanel.decisions.selected')}
+                          </p>
+                          <p className="text-xs font-mono text-emerald-500">
+                            {decisionOutcomeSummary.selected}
+                          </p>
                         </button>
                         <button
                           type="button"
-                          onClick={() => setDecisionOutcomeFilter((current) => (current === 'blocked' ? 'all' : 'blocked'))}
+                          onClick={() =>
+                            setDecisionOutcomeFilter((current) =>
+                              current === 'blocked' ? 'all' : 'blocked',
+                            )
+                          }
                           className={cn(
                             'rounded border px-2 py-1 text-center transition-colors',
                             decisionOutcomeFilter === 'blocked'
                               ? 'border-cyan-500/50 bg-cyan-500/10'
-                              : 'border-red-500/30 bg-red-500/5 hover:bg-red-500/10'
+                              : 'border-red-500/30 bg-red-500/5 hover:bg-red-500/10',
                           )}
                         >
-                          <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.decisions.blocked')}</p>
-                          <p className="text-xs font-mono text-red-500">{decisionOutcomeSummary.blocked}</p>
+                          <p className="text-[9px] uppercase text-muted-foreground">
+                            {t('tradingPanel.decisions.blocked')}
+                          </p>
+                          <p className="text-xs font-mono text-red-500">
+                            {decisionOutcomeSummary.blocked}
+                          </p>
                         </button>
                         <button
                           type="button"
-                          onClick={() => setDecisionOutcomeFilter((current) => (current === 'skipped' ? 'all' : 'skipped'))}
+                          onClick={() =>
+                            setDecisionOutcomeFilter((current) =>
+                              current === 'skipped' ? 'all' : 'skipped',
+                            )
+                          }
                           className={cn(
                             'rounded border px-2 py-1 text-center transition-colors',
                             decisionOutcomeFilter === 'skipped'
                               ? 'border-cyan-500/50 bg-cyan-500/10'
-                              : 'border-border/70 bg-background/70 hover:bg-muted/40'
+                              : 'border-border/70 bg-background/70 hover:bg-muted/40',
                           )}
                         >
-                          <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.decisions.skipped')}</p>
+                          <p className="text-[9px] uppercase text-muted-foreground">
+                            {t('tradingPanel.decisions.skipped')}
+                          </p>
                           <p className="text-xs font-mono">{decisionOutcomeSummary.skipped}</p>
                         </button>
                       </div>
                       <ScrollArea className="flex-1 min-h-0 rounded-md border border-border/50 bg-muted/10">
                         <div className="space-y-0.5 p-1.5 pr-2 text-xs">
                           {filteredDecisions.length === 0 ? (
-                            <p className="py-4 text-center text-muted-foreground">{t('tradingPanel.decisions.noDecisions')}</p>
+                            <p className="py-4 text-center text-muted-foreground">
+                              {t('tradingPanel.decisions.noDecisions')}
+                            </p>
                           ) : (
                             filteredDecisions.map((decision) => {
                               const isActive = decision.id === selectedDecisionId
@@ -12018,16 +13690,36 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                                   onClick={() => setSelectedDecisionId(decision.id)}
                                   className={cn(
                                     'w-full min-w-0 text-left rounded border px-2 py-1 transition-colors',
-                                    isActive ? 'border-cyan-500/50 bg-cyan-500/10' : 'border-border/50 hover:bg-muted/40',
-                                    outcome === 'selected' && !isActive ? 'border-emerald-500/25' :
-                                    outcome === 'blocked' && !isActive ? 'border-red-500/25' : ''
+                                    isActive
+                                      ? 'border-cyan-500/50 bg-cyan-500/10'
+                                      : 'border-border/50 hover:bg-muted/40',
+                                    outcome === 'selected' && !isActive
+                                      ? 'border-emerald-500/25'
+                                      : outcome === 'blocked' && !isActive
+                                        ? 'border-red-500/25'
+                                        : '',
                                   )}
                                 >
                                   <div className="flex min-w-0 items-center justify-between gap-2 font-mono">
-                                    <span className="min-w-0 flex-1 truncate" title={marketLabel}>{marketLabel}</span>
-                                    <Badge variant={outcome === 'selected' ? 'default' : outcome === 'blocked' ? 'destructive' : 'outline'} className="text-[9px] h-4 px-1 shrink-0">{outcome}</Badge>
+                                    <span className="min-w-0 flex-1 truncate" title={marketLabel}>
+                                      {marketLabel}
+                                    </span>
+                                    <Badge
+                                      variant={
+                                        outcome === 'selected'
+                                          ? 'default'
+                                          : outcome === 'blocked'
+                                            ? 'destructive'
+                                            : 'outline'
+                                      }
+                                      className="text-[9px] h-4 px-1 shrink-0"
+                                    >
+                                      {outcome}
+                                    </Badge>
                                   </div>
-                                  <p className="min-w-0 text-[10px] text-muted-foreground truncate">{decision.reason || decision.strategy_key}</p>
+                                  <p className="min-w-0 text-[10px] text-muted-foreground truncate">
+                                    {decision.reason || decision.strategy_key}
+                                  </p>
                                 </button>
                               )
                             })
@@ -12040,18 +13732,49 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                       {selectedDecision ? (
                         <>
                           <div className="shrink-0 rounded-md border border-border p-2 text-xs space-y-1">
-                            <p className="font-medium">{resolveDecisionMarketLabel(selectedDecision)}</p>
+                            <p className="font-medium">
+                              {resolveDecisionMarketLabel(selectedDecision)}
+                            </p>
                             <div className="grid gap-1 text-[11px] text-muted-foreground sm:grid-cols-2">
-                              <span>{t('tradingPanel.decisions.source')}: {selectedDecision.source}</span>
-                              <span>{t('tradingPanel.decisions.strategy')}: {selectedDecision.strategy_key}</span>
-                              <span>{t('tradingPanel.decisions.direction')}: {selectedDecisionDirection.label}</span>
-                              <span>{t('tradingPanel.decisions.price')}: {toNumber(selectedDecision.market_price).toFixed(3)}</span>
-                              <span>{t('tradingPanel.decisions.model')}: {toNumber(selectedDecision.model_probability).toFixed(3)}</span>
-                              <span>{t('tradingPanel.tableHeaders.edge')}: {formatPercent(toNumber(selectedDecision.edge_percent))}</span>
-                              <span>{t('tradingPanel.tableHeaders.confidence')}: {formatPercent(normalizeConfidencePercent(toNumber(selectedDecision.confidence)))}</span>
-                              <span>{t('tradingPanel.decisions.score')}: {toNumber(selectedDecision.signal_score).toFixed(3)}</span>
+                              <span>
+                                {t('tradingPanel.decisions.source')}: {selectedDecision.source}
+                              </span>
+                              <span>
+                                {t('tradingPanel.decisions.strategy')}:{' '}
+                                {selectedDecision.strategy_key}
+                              </span>
+                              <span>
+                                {t('tradingPanel.decisions.direction')}:{' '}
+                                {selectedDecisionDirection.label}
+                              </span>
+                              <span>
+                                {t('tradingPanel.decisions.price')}:{' '}
+                                {toNumber(selectedDecision.market_price).toFixed(3)}
+                              </span>
+                              <span>
+                                {t('tradingPanel.decisions.model')}:{' '}
+                                {toNumber(selectedDecision.model_probability).toFixed(3)}
+                              </span>
+                              <span>
+                                {t('tradingPanel.tableHeaders.edge')}:{' '}
+                                {formatPercent(toNumber(selectedDecision.edge_percent))}
+                              </span>
+                              <span>
+                                {t('tradingPanel.tableHeaders.confidence')}:{' '}
+                                {formatPercent(
+                                  normalizeConfidencePercent(toNumber(selectedDecision.confidence)),
+                                )}
+                              </span>
+                              <span>
+                                {t('tradingPanel.decisions.score')}:{' '}
+                                {toNumber(selectedDecision.signal_score).toFixed(3)}
+                              </span>
                             </div>
-                            <p className="text-[10px]">{t('tradingPanel.decisions.reason')}: {selectedDecision.reason || t('tradingPanel.common.notAvailableShort')}</p>
+                            <p className="text-[10px]">
+                              {t('tradingPanel.decisions.reason')}:{' '}
+                              {selectedDecision.reason ||
+                                t('tradingPanel.common.notAvailableShort')}
+                            </p>
                           </div>
 
                           {decisionDetailLoading ? (
@@ -12059,7 +13782,10 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                               <div className="space-y-1.5 animate-pulse">
                                 <div className="h-2.5 w-40 rounded bg-muted/60" />
                                 {Array.from({ length: 6 }).map((_, index) => (
-                                  <div key={`decision-check-skeleton-${index}`} className="rounded border border-border/40 bg-background/35 px-2 py-1.5">
+                                  <div
+                                    key={`decision-check-skeleton-${index}`}
+                                    className="rounded border border-border/40 bg-background/35 px-2 py-1.5"
+                                  >
                                     <div className="h-2.5 w-44 rounded bg-muted/55" />
                                     <div className="mt-1.5 h-2 w-[92%] rounded bg-muted/50" />
                                   </div>
@@ -12069,38 +13795,95 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                           ) : decisionChecks.length > 0 ? (
                             <ScrollArea className="flex-1 min-h-0 rounded-md border border-border/50 bg-muted/10">
                               <div className="space-y-1 p-2 text-xs">
-                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">{t('tradingPanel.decisions.checksWithCounts', { pass: decisionPassCount, fail: decisionFailCount })}</p>
+                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                                  {t('tradingPanel.decisions.checksWithCounts', {
+                                    pass: decisionPassCount,
+                                    fail: decisionFailCount,
+                                  })}
+                                </p>
                                 {decisionChecks.map((check, i) => (
-                                  <div key={i} className={cn('rounded border px-2 py-1', check.passed ? 'border-emerald-500/25' : 'border-red-500/25')}>
+                                  <div
+                                    key={i}
+                                    className={cn(
+                                      'rounded border px-2 py-1',
+                                      check.passed ? 'border-emerald-500/25' : 'border-red-500/25',
+                                    )}
+                                  >
                                     <div className="flex items-center gap-1">
-                                      {check.passed ? <CheckCircle2 className="w-3 h-3 text-emerald-500" /> : <AlertTriangle className="w-3 h-3 text-red-500" />}
-                                      <span className="font-medium">{check.check_label || check.check_name || check.check_key || t('tradingPanel.decisions.check')}</span>
+                                      {check.passed ? (
+                                        <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                                      ) : (
+                                        <AlertTriangle className="w-3 h-3 text-red-500" />
+                                      )}
+                                      <span className="font-medium">
+                                        {check.check_label ||
+                                          check.check_name ||
+                                          check.check_key ||
+                                          t('tradingPanel.decisions.check')}
+                                      </span>
                                     </div>
-                                    {(check.detail || check.message) ? <p className="text-[10px] text-muted-foreground mt-0.5 pl-4">{check.detail || check.message}</p> : null}
+                                    {check.detail || check.message ? (
+                                      <p className="text-[10px] text-muted-foreground mt-0.5 pl-4">
+                                        {check.detail || check.message}
+                                      </p>
+                                    ) : null}
                                   </div>
                                 ))}
                                 {riskChecks && riskChecks.length > 0 ? (
                                   <>
-                                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-2 mb-1">{t('tradingPanel.decisions.riskChecks')} — {riskAllowed ? t('tradingPanel.decisions.allowed') : t('tradingPanel.decisions.blocked')}</p>
+                                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-2 mb-1">
+                                      {t('tradingPanel.decisions.riskChecks')} —{' '}
+                                      {riskAllowed
+                                        ? t('tradingPanel.decisions.allowed')
+                                        : t('tradingPanel.decisions.blocked')}
+                                    </p>
                                     {riskChecks.map((check: any, i: number) => (
-                                      <div key={`risk-${i}`} className={cn('rounded border px-2 py-1', check.passed ? 'border-emerald-500/25' : 'border-red-500/25')}>
+                                      <div
+                                        key={`risk-${i}`}
+                                        className={cn(
+                                          'rounded border px-2 py-1',
+                                          check.passed
+                                            ? 'border-emerald-500/25'
+                                            : 'border-red-500/25',
+                                        )}
+                                      >
                                         <div className="flex items-center gap-1">
-                                          {check.passed ? <CheckCircle2 className="w-3 h-3 text-emerald-500" /> : <AlertTriangle className="w-3 h-3 text-red-500" />}
-                                          <span className="font-medium">{check.check_name || check.name}</span>
+                                          {check.passed ? (
+                                            <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                                          ) : (
+                                            <AlertTriangle className="w-3 h-3 text-red-500" />
+                                          )}
+                                          <span className="font-medium">
+                                            {check.check_name || check.name}
+                                          </span>
                                         </div>
-                                        {check.message ? <p className="text-[10px] text-muted-foreground mt-0.5 pl-4">{check.message}</p> : null}
+                                        {check.message ? (
+                                          <p className="text-[10px] text-muted-foreground mt-0.5 pl-4">
+                                            {check.message}
+                                          </p>
+                                        ) : null}
                                       </div>
                                     ))}
                                   </>
                                 ) : null}
                                 {decisionOrders.length > 0 ? (
                                   <>
-                                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-2 mb-1">{t('tradingPanel.decisions.linkedOrders', { count: decisionOrders.length })}</p>
+                                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-2 mb-1">
+                                      {t('tradingPanel.decisions.linkedOrders', {
+                                        count: decisionOrders.length,
+                                      })}
+                                    </p>
                                     {decisionOrders.map((order: any) => {
-                                      const directionPresentation = resolveOrderDirectionPresentation(order as TraderOrder)
+                                      const directionPresentation =
+                                        resolveOrderDirectionPresentation(order as TraderOrder)
                                       return (
-                                        <div key={order.id} className="rounded border border-border px-2 py-1 font-mono text-[10px]">
-                                          {normalizeStatus(order.status).toUpperCase()} {'\u2022'} {formatCurrency(toNumber(order.notional_usd))} {'\u2022'} {directionPresentation.label}
+                                        <div
+                                          key={order.id}
+                                          className="rounded border border-border px-2 py-1 font-mono text-[10px]"
+                                        >
+                                          {normalizeStatus(order.status).toUpperCase()} {'\u2022'}{' '}
+                                          {formatCurrency(toNumber(order.notional_usd))} {'\u2022'}{' '}
+                                          {directionPresentation.label}
                                         </div>
                                       )
                                     })}
@@ -12109,11 +13892,15 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                               </div>
                             </ScrollArea>
                           ) : (
-                            <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">{t('tradingPanel.decisions.noChecksData')}</div>
+                            <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
+                              {t('tradingPanel.decisions.noChecksData')}
+                            </div>
                           )}
                         </>
                       ) : (
-                        <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">{t('tradingPanel.decisions.selectDecision')}</div>
+                        <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
+                          {t('tradingPanel.decisions.selectDecision')}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -12123,31 +13910,64 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                   <div className="h-full min-h-0 flex flex-col gap-2 px-1">
                     <div className="shrink-0 grid gap-1 sm:grid-cols-2 lg:grid-cols-6">
                       <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
-                        <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.performance.realizedPnl')}</p>
-                        <p className={cn('text-xs font-mono', selectedPerformance.resolvedPnl > 0 ? 'text-emerald-500' : selectedPerformance.resolvedPnl < 0 ? 'text-red-500' : '')}>
+                        <p className="text-[9px] uppercase text-muted-foreground">
+                          {t('tradingPanel.performance.realizedPnl')}
+                        </p>
+                        <p
+                          className={cn(
+                            'text-xs font-mono',
+                            selectedPerformance.resolvedPnl > 0
+                              ? 'text-emerald-500'
+                              : selectedPerformance.resolvedPnl < 0
+                                ? 'text-red-500'
+                                : '',
+                          )}
+                        >
                           {formatCurrency(selectedPerformance.resolvedPnl)}
                         </p>
                       </div>
                       <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
-                        <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.performance.resolvedRoi')}</p>
-                        <p className={cn('text-xs font-mono', selectedPerformance.roiPercent > 0 ? 'text-emerald-500' : selectedPerformance.roiPercent < 0 ? 'text-red-500' : '')}>
-                          {selectedPerformance.roiPercent > 0 ? '+' : ''}{formatPercent(selectedPerformance.roiPercent, 2)}
+                        <p className="text-[9px] uppercase text-muted-foreground">
+                          {t('tradingPanel.performance.resolvedRoi')}
+                        </p>
+                        <p
+                          className={cn(
+                            'text-xs font-mono',
+                            selectedPerformance.roiPercent > 0
+                              ? 'text-emerald-500'
+                              : selectedPerformance.roiPercent < 0
+                                ? 'text-red-500'
+                                : '',
+                          )}
+                        >
+                          {selectedPerformance.roiPercent > 0 ? '+' : ''}
+                          {formatPercent(selectedPerformance.roiPercent, 2)}
                         </p>
                       </div>
                       <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
-                        <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.performance.resolved')}</p>
+                        <p className="text-[9px] uppercase text-muted-foreground">
+                          {t('tradingPanel.performance.resolved')}
+                        </p>
                         <p className="text-xs font-mono">{selectedPerformance.resolved}</p>
                       </div>
                       <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
-                        <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.stats.winLoss')}</p>
-                        <p className="text-xs font-mono">{selectedPerformance.wins} / {selectedPerformance.losses}</p>
+                        <p className="text-[9px] uppercase text-muted-foreground">
+                          {t('tradingPanel.stats.winLoss')}
+                        </p>
+                        <p className="text-xs font-mono">
+                          {selectedPerformance.wins} / {selectedPerformance.losses}
+                        </p>
                       </div>
                       <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
-                        <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.stats.open')}</p>
+                        <p className="text-[9px] uppercase text-muted-foreground">
+                          {t('tradingPanel.stats.open')}
+                        </p>
                         <p className="text-xs font-mono">{selectedPerformance.open}</p>
                       </div>
                       <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
-                        <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.stats.failed')}</p>
+                        <p className="text-[9px] uppercase text-muted-foreground">
+                          {t('tradingPanel.stats.failed')}
+                        </p>
                         <p className="text-xs font-mono">{selectedPerformance.failed}</p>
                       </div>
                     </div>
@@ -12158,63 +13978,124 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                     >
                       <div className="shrink-0 flex items-center justify-between gap-2 overflow-x-auto pb-1">
                         <TabsList className="h-auto justify-start gap-1 rounded-lg border border-border/60 bg-card/70 p-1">
-                          <TabsTrigger value="performance" className="h-7 px-2.5 text-[11px]">{t('tradingPanel.tabs.performance')}</TabsTrigger>
-                          <TabsTrigger value="latency" className="h-7 px-2.5 text-[11px]">{t('tradingPanel.performance.latency')}</TabsTrigger>
-                          <TabsTrigger value="configuration" className="h-7 px-2.5 text-[11px]">{t('tradingPanel.performance.configuration')}</TabsTrigger>
+                          <TabsTrigger value="performance" className="h-7 px-2.5 text-[11px]">
+                            {t('tradingPanel.tabs.performance')}
+                          </TabsTrigger>
+                          <TabsTrigger value="latency" className="h-7 px-2.5 text-[11px]">
+                            {t('tradingPanel.performance.latency')}
+                          </TabsTrigger>
+                          <TabsTrigger value="configuration" className="h-7 px-2.5 text-[11px]">
+                            {t('tradingPanel.performance.configuration')}
+                          </TabsTrigger>
                         </TabsList>
                         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                           <span className="rounded border border-border/60 bg-background/60 px-1.5 py-0.5 font-mono">
-                            {t('tradingPanel.performance.configsCount', { count: selectedPerformanceConfig.sections.length })}
+                            {t('tradingPanel.performance.configsCount', {
+                              count: selectedPerformanceConfig.sections.length,
+                            })}
                           </span>
                           <span className="rounded border border-border/60 bg-background/60 px-1.5 py-0.5 font-mono">
-                            {t('tradingPanel.allBots.ordersCount', { count: selectedPerformanceConfig.snapshots.length })}
+                            {t('tradingPanel.allBots.ordersCount', {
+                              count: selectedPerformanceConfig.snapshots.length,
+                            })}
                           </span>
                         </div>
                       </div>
 
                       {performanceSubview === 'performance' ? (
-                        <TabsContent value="performance" className="mt-0 flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+                        <TabsContent
+                          value="performance"
+                          className="mt-0 flex min-h-0 flex-1 flex-col gap-2 overflow-hidden"
+                        >
                           <div className="shrink-0 grid gap-1 sm:grid-cols-3 xl:grid-cols-6">
                             <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
-                              <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.performance.cumulativePnl')}</p>
-                              <p className={cn('text-xs font-mono', performancePnlSeries.finalPnl > 0 ? 'text-emerald-500' : performancePnlSeries.finalPnl < 0 ? 'text-red-500' : '')}>
+                              <p className="text-[9px] uppercase text-muted-foreground">
+                                {t('tradingPanel.performance.cumulativePnl')}
+                              </p>
+                              <p
+                                className={cn(
+                                  'text-xs font-mono',
+                                  performancePnlSeries.finalPnl > 0
+                                    ? 'text-emerald-500'
+                                    : performancePnlSeries.finalPnl < 0
+                                      ? 'text-red-500'
+                                      : '',
+                                )}
+                              >
                                 {formatSignedCurrency(performancePnlSeries.finalPnl)}
                               </p>
                             </div>
                             <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
-                              <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.performance.roi')}</p>
-                              <p className={cn('text-xs font-mono', selectedPerformance.roiPercent > 0 ? 'text-emerald-500' : selectedPerformance.roiPercent < 0 ? 'text-red-500' : '')}>
-                                {selectedPerformance.roiPercent > 0 ? '+' : ''}{formatPercent(selectedPerformance.roiPercent, 2)}
+                              <p className="text-[9px] uppercase text-muted-foreground">
+                                {t('tradingPanel.performance.roi')}
+                              </p>
+                              <p
+                                className={cn(
+                                  'text-xs font-mono',
+                                  selectedPerformance.roiPercent > 0
+                                    ? 'text-emerald-500'
+                                    : selectedPerformance.roiPercent < 0
+                                      ? 'text-red-500'
+                                      : '',
+                                )}
+                              >
+                                {selectedPerformance.roiPercent > 0 ? '+' : ''}
+                                {formatPercent(selectedPerformance.roiPercent, 2)}
                               </p>
                             </div>
                             <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
-                              <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.stats.winRate')}</p>
+                              <p className="text-[9px] uppercase text-muted-foreground">
+                                {t('tradingPanel.stats.winRate')}
+                              </p>
                               <p className="text-xs font-mono">
                                 {(() => {
-                                  const decided = selectedPerformance.wins + selectedPerformance.losses
+                                  const decided =
+                                    selectedPerformance.wins + selectedPerformance.losses
                                   const breakdownExtras: string[] = []
-                                  if (selectedPerformance.breakeven > 0) breakdownExtras.push(`${selectedPerformance.breakeven}BE`)
-                                  if (selectedPerformance.pendingPnl > 0) breakdownExtras.push(`${selectedPerformance.pendingPnl} ${t('tradingPanel.stats.pending')}`)
-                                  const extras = breakdownExtras.length > 0 ? ` · ${breakdownExtras.join(' / ')}` : ''
-                                  if (decided === 0) return selectedPerformance.resolved > 0 ? `— (${selectedPerformance.wins}W / ${selectedPerformance.losses}L${extras})` : '—'
+                                  if (selectedPerformance.breakeven > 0)
+                                    breakdownExtras.push(`${selectedPerformance.breakeven}BE`)
+                                  if (selectedPerformance.pendingPnl > 0)
+                                    breakdownExtras.push(
+                                      `${selectedPerformance.pendingPnl} ${t('tradingPanel.stats.pending')}`,
+                                    )
+                                  const extras =
+                                    breakdownExtras.length > 0
+                                      ? ` · ${breakdownExtras.join(' / ')}`
+                                      : ''
+                                  if (decided === 0)
+                                    return selectedPerformance.resolved > 0
+                                      ? `— (${selectedPerformance.wins}W / ${selectedPerformance.losses}L${extras})`
+                                      : '—'
                                   return `${formatPercent((selectedPerformance.wins / decided) * 100, 1)} (${selectedPerformance.wins}W / ${selectedPerformance.losses}L${extras})`
                                 })()}
                               </p>
                             </div>
                             <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
-                              <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.performance.profitFactor')}</p>
+                              <p className="text-[9px] uppercase text-muted-foreground">
+                                {t('tradingPanel.performance.profitFactor')}
+                              </p>
                               <p className="text-xs font-mono">
-                                {performancePnlSeries.profitFactor !== null ? performancePnlSeries.profitFactor.toFixed(2) : '—'}
+                                {performancePnlSeries.profitFactor !== null
+                                  ? performancePnlSeries.profitFactor.toFixed(2)
+                                  : '—'}
                               </p>
                             </div>
                             <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
-                              <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.performance.bestStreakPeak')}</p>
-                              <p className="text-xs font-mono text-emerald-500">{formatSignedCurrency(performancePnlSeries.peak)}</p>
+                              <p className="text-[9px] uppercase text-muted-foreground">
+                                {t('tradingPanel.performance.bestStreakPeak')}
+                              </p>
+                              <p className="text-xs font-mono text-emerald-500">
+                                {formatSignedCurrency(performancePnlSeries.peak)}
+                              </p>
                             </div>
                             <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
-                              <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.performance.maxDrawdown')}</p>
+                              <p className="text-[9px] uppercase text-muted-foreground">
+                                {t('tradingPanel.performance.maxDrawdown')}
+                              </p>
                               <p className="text-xs font-mono text-red-500">
-                                {performancePnlSeries.maxDrawdown > 0 ? `-${formatCurrency(performancePnlSeries.maxDrawdown)}` : '—'}
+                                {performancePnlSeries.maxDrawdown > 0
+                                  ? `-${formatCurrency(performancePnlSeries.maxDrawdown)}`
+                                  : '—'}
                               </p>
                             </div>
                           </div>
@@ -12223,7 +14104,12 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                             <div className="px-2 py-1 border-b border-border/50 text-[10px] uppercase tracking-wider text-muted-foreground flex items-center justify-between">
                               <span>{t('tradingPanel.performance.cumulativePnlOverTime')}</span>
                               <span className="text-muted-foreground/70 normal-case tracking-normal">
-                                {performancePnlSeries.points.length} resolved · avg {selectedPerformance.resolved > 0 ? formatSignedCurrency(performancePnlSeries.avgPnl) : '—'} · best {formatSignedCurrency(performancePnlSeries.largestWin)} · worst {formatSignedCurrency(performancePnlSeries.largestLoss)}
+                                {performancePnlSeries.points.length} resolved · avg{' '}
+                                {selectedPerformance.resolved > 0
+                                  ? formatSignedCurrency(performancePnlSeries.avgPnl)
+                                  : '—'}{' '}
+                                · best {formatSignedCurrency(performancePnlSeries.largestWin)} ·
+                                worst {formatSignedCurrency(performancePnlSeries.largestLoss)}
                               </span>
                             </div>
                             <div className="flex-1 min-h-0 p-1">
@@ -12233,18 +14119,36 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                                 </div>
                               ) : (
                                 <ResponsiveContainer width="100%" height="100%">
-                                  <AreaChart data={performancePnlSeries.points} margin={{ top: 8, right: 12, left: 4, bottom: 8 }}>
+                                  <AreaChart
+                                    data={performancePnlSeries.points}
+                                    margin={{ top: 8, right: 12, left: 4, bottom: 8 }}
+                                  >
                                     <defs>
-                                      <linearGradient id="botPnlPositive" x1="0" y1="0" x2="0" y2="1">
+                                      <linearGradient
+                                        id="botPnlPositive"
+                                        x1="0"
+                                        y1="0"
+                                        x2="0"
+                                        y2="1"
+                                      >
                                         <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.32} />
                                         <stop offset="95%" stopColor="#22d3ee" stopOpacity={0.04} />
                                       </linearGradient>
-                                      <linearGradient id="botPnlNegative" x1="0" y1="0" x2="0" y2="1">
+                                      <linearGradient
+                                        id="botPnlNegative"
+                                        x1="0"
+                                        y1="0"
+                                        x2="0"
+                                        y2="1"
+                                      >
                                         <stop offset="5%" stopColor="#ef4444" stopOpacity={0.32} />
                                         <stop offset="95%" stopColor="#ef4444" stopOpacity={0.04} />
                                       </linearGradient>
                                     </defs>
-                                    <CartesianGrid stroke="hsl(var(--border) / 0.45)" strokeDasharray="3 3" />
+                                    <CartesianGrid
+                                      stroke="hsl(var(--border) / 0.45)"
+                                      strokeDasharray="3 3"
+                                    />
                                     <XAxis
                                       dataKey="ts"
                                       type="number"
@@ -12253,7 +14157,10 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                                       tickFormatter={(value) => {
                                         const d = new Date(Number(value))
                                         return Number.isFinite(d.getTime())
-                                          ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                                          ? d.toLocaleDateString('en-US', {
+                                              month: 'short',
+                                              day: 'numeric',
+                                            })
                                           : ''
                                       }}
                                       tick={{ fontSize: 10 }}
@@ -12275,20 +14182,42 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                                       }}
                                       labelFormatter={(value) => {
                                         const d = new Date(Number(value))
-                                        return Number.isFinite(d.getTime()) ? d.toLocaleString() : ''
+                                        return Number.isFinite(d.getTime())
+                                          ? d.toLocaleString()
+                                          : ''
                                       }}
                                       formatter={(value: unknown, name: unknown) => {
                                         const num = Number(value)
-                                        const label = name === 'cumulativePnl' ? 'Cumulative' : name === 'pnl' ? 'Trade P&L' : String(name)
-                                        return [Number.isFinite(num) ? formatSignedCurrency(num) : String(value), label] as [string, string]
+                                        const label =
+                                          name === 'cumulativePnl'
+                                            ? 'Cumulative'
+                                            : name === 'pnl'
+                                              ? 'Trade P&L'
+                                              : String(name)
+                                        return [
+                                          Number.isFinite(num)
+                                            ? formatSignedCurrency(num)
+                                            : String(value),
+                                          label,
+                                        ] as [string, string]
                                       }}
                                     />
-                                    <ReferenceLine y={0} stroke="hsl(var(--border))" strokeDasharray="2 2" />
+                                    <ReferenceLine
+                                      y={0}
+                                      stroke="hsl(var(--border))"
+                                      strokeDasharray="2 2"
+                                    />
                                     <Area
                                       type="monotone"
                                       dataKey="cumulativePnl"
-                                      stroke={performancePnlSeries.finalPnl >= 0 ? '#22d3ee' : '#ef4444'}
-                                      fill={performancePnlSeries.finalPnl >= 0 ? 'url(#botPnlPositive)' : 'url(#botPnlNegative)'}
+                                      stroke={
+                                        performancePnlSeries.finalPnl >= 0 ? '#22d3ee' : '#ef4444'
+                                      }
+                                      fill={
+                                        performancePnlSeries.finalPnl >= 0
+                                          ? 'url(#botPnlPositive)'
+                                          : 'url(#botPnlNegative)'
+                                      }
                                       strokeWidth={2}
                                       dot={false}
                                       isAnimationActive={false}
@@ -12306,11 +14235,19 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                               </div>
                               <div className="flex-1 min-h-0 p-1">
                                 {performancePnlSeries.points.length === 0 ? (
-                                  <div className="h-full flex items-center justify-center text-[11px] text-muted-foreground">{t('tradingPanel.performance.noTradesYet')}</div>
+                                  <div className="h-full flex items-center justify-center text-[11px] text-muted-foreground">
+                                    {t('tradingPanel.performance.noTradesYet')}
+                                  </div>
                                 ) : (
                                   <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={performancePnlSeries.points} margin={{ top: 6, right: 8, left: 4, bottom: 6 }}>
-                                      <CartesianGrid stroke="hsl(var(--border) / 0.35)" strokeDasharray="3 3" />
+                                    <BarChart
+                                      data={performancePnlSeries.points}
+                                      margin={{ top: 6, right: 8, left: 4, bottom: 6 }}
+                                    >
+                                      <CartesianGrid
+                                        stroke="hsl(var(--border) / 0.35)"
+                                        strokeDasharray="3 3"
+                                      />
                                       <XAxis
                                         dataKey="orderIndex"
                                         tick={{ fontSize: 9 }}
@@ -12319,7 +14256,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                                       <YAxis
                                         tick={{ fontSize: 9 }}
                                         stroke="hsl(var(--muted-foreground))"
-                                        tickFormatter={(value) => formatCurrency(Number(value), true)}
+                                        tickFormatter={(value) =>
+                                          formatCurrency(Number(value), true)
+                                        }
                                       />
                                       <RechartsTooltip
                                         contentStyle={{
@@ -12331,13 +14270,22 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                                         labelFormatter={(value) => `Trade #${value}`}
                                         formatter={(value: unknown) => {
                                           const num = Number(value)
-                                          return [Number.isFinite(num) ? formatSignedCurrency(num) : String(value), 'P&L'] as [string, string]
+                                          return [
+                                            Number.isFinite(num)
+                                              ? formatSignedCurrency(num)
+                                              : String(value),
+                                            'P&L',
+                                          ] as [string, string]
                                         }}
                                       />
                                       <ReferenceLine y={0} stroke="hsl(var(--border))" />
                                       <Bar dataKey="pnl" isAnimationActive={false}>
                                         {performancePnlSeries.points.map((point, index) => (
-                                          <Cell key={`bar-${index}`} fill={point.pnl >= 0 ? '#22d3ee' : '#ef4444'} fillOpacity={0.85} />
+                                          <Cell
+                                            key={`bar-${index}`}
+                                            fill={point.pnl >= 0 ? '#22d3ee' : '#ef4444'}
+                                            fillOpacity={0.85}
+                                          />
                                         ))}
                                       </Bar>
                                     </BarChart>
@@ -12352,17 +14300,39 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                               </div>
                               <div className="flex-1 min-h-0 p-1">
                                 {performancePnlSeries.points.length === 0 ? (
-                                  <div className="h-full flex items-center justify-center text-[11px] text-muted-foreground">{t('tradingPanel.performance.noTradesYet')}</div>
+                                  <div className="h-full flex items-center justify-center text-[11px] text-muted-foreground">
+                                    {t('tradingPanel.performance.noTradesYet')}
+                                  </div>
                                 ) : (
                                   <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={performancePnlSeries.points} margin={{ top: 6, right: 8, left: 4, bottom: 6 }}>
+                                    <AreaChart
+                                      data={performancePnlSeries.points}
+                                      margin={{ top: 6, right: 8, left: 4, bottom: 6 }}
+                                    >
                                       <defs>
-                                        <linearGradient id="botDrawdownGradient" x1="0" y1="0" x2="0" y2="1">
-                                          <stop offset="5%" stopColor="#ef4444" stopOpacity={0.04} />
-                                          <stop offset="95%" stopColor="#ef4444" stopOpacity={0.32} />
+                                        <linearGradient
+                                          id="botDrawdownGradient"
+                                          x1="0"
+                                          y1="0"
+                                          x2="0"
+                                          y2="1"
+                                        >
+                                          <stop
+                                            offset="5%"
+                                            stopColor="#ef4444"
+                                            stopOpacity={0.04}
+                                          />
+                                          <stop
+                                            offset="95%"
+                                            stopColor="#ef4444"
+                                            stopOpacity={0.32}
+                                          />
                                         </linearGradient>
                                       </defs>
-                                      <CartesianGrid stroke="hsl(var(--border) / 0.35)" strokeDasharray="3 3" />
+                                      <CartesianGrid
+                                        stroke="hsl(var(--border) / 0.35)"
+                                        strokeDasharray="3 3"
+                                      />
                                       <XAxis
                                         dataKey="ts"
                                         type="number"
@@ -12371,7 +14341,10 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                                         tickFormatter={(value) => {
                                           const d = new Date(Number(value))
                                           return Number.isFinite(d.getTime())
-                                            ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                                            ? d.toLocaleDateString('en-US', {
+                                                month: 'short',
+                                                day: 'numeric',
+                                              })
                                             : ''
                                         }}
                                         tick={{ fontSize: 9 }}
@@ -12382,7 +14355,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                                       <YAxis
                                         tick={{ fontSize: 9 }}
                                         stroke="hsl(var(--muted-foreground))"
-                                        tickFormatter={(value) => formatCurrency(Number(value), true)}
+                                        tickFormatter={(value) =>
+                                          formatCurrency(Number(value), true)
+                                        }
                                       />
                                       <RechartsTooltip
                                         contentStyle={{
@@ -12393,11 +14368,18 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                                         }}
                                         labelFormatter={(value) => {
                                           const d = new Date(Number(value))
-                                          return Number.isFinite(d.getTime()) ? d.toLocaleString() : ''
+                                          return Number.isFinite(d.getTime())
+                                            ? d.toLocaleString()
+                                            : ''
                                         }}
                                         formatter={(value: unknown) => {
                                           const num = Number(value)
-                                          return [Number.isFinite(num) ? formatSignedCurrency(num) : String(value), 'Drawdown'] as [string, string]
+                                          return [
+                                            Number.isFinite(num)
+                                              ? formatSignedCurrency(num)
+                                              : String(value),
+                                            'Drawdown',
+                                          ] as [string, string]
                                         }}
                                       />
                                       <Area
@@ -12417,492 +14399,852 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                           </div>
                         </TabsContent>
                       ) : performanceSubview === 'latency' ? (
-                        <TabsContent value="latency" className="mt-0 flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
-                        {executionLatency ? (
-                          <div className="shrink-0 grid gap-1 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-8">
-                            <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
-                              <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.latency.internalSla')}</p>
-                              <p className="text-xs font-mono">{formatLatencyMs(executionLatencyTargetMs) || '—'}</p>
+                        <TabsContent
+                          value="latency"
+                          className="mt-0 flex min-h-0 flex-1 flex-col gap-2 overflow-hidden"
+                        >
+                          {executionLatency ? (
+                            <div className="shrink-0 grid gap-1 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-8">
+                              <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
+                                <p className="text-[9px] uppercase text-muted-foreground">
+                                  {t('tradingPanel.latency.internalSla')}
+                                </p>
+                                <p className="text-xs font-mono">
+                                  {formatLatencyMs(executionLatencyTargetMs) || '—'}
+                                </p>
+                              </div>
+                              <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
+                                <p className="text-[9px] uppercase text-muted-foreground">
+                                  {t('tradingPanel.latency.rollingWindow')}
+                                </p>
+                                <p className="text-xs font-mono">
+                                  {executionLatencyWindowLabel}
+                                  {executionLatencySampleCount !== null
+                                    ? ` · n=${executionLatencySampleCount}`
+                                    : ''}
+                                </p>
+                              </div>
+                              <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
+                                <p className="text-[9px] uppercase text-muted-foreground">
+                                  {t('tradingPanel.latency.traderReleaseToSubmit')}
+                                </p>
+                                <p
+                                  className={cn(
+                                    'text-xs font-mono',
+                                    selectedTraderLatencySlaBreached
+                                      ? 'text-amber-400'
+                                      : 'text-cyan-400',
+                                  )}
+                                >
+                                  {selectedTraderLatencyLabel}
+                                </p>
+                              </div>
+                              <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
+                                <p className="text-[9px] uppercase text-muted-foreground">
+                                  {t('tradingPanel.latency.overallReleaseToSubmit')}
+                                </p>
+                                <p
+                                  className={cn(
+                                    'text-xs font-mono',
+                                    executionLatencySlaBreached
+                                      ? 'text-amber-400'
+                                      : 'text-cyan-400',
+                                  )}
+                                >
+                                  {executionLatencyOverallLabel}
+                                </p>
+                              </div>
+                              <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
+                                <p className="text-[9px] uppercase text-muted-foreground">
+                                  {t('tradingPanel.latency.traderArmedToRelease')}
+                                </p>
+                                <p className="text-xs font-mono">
+                                  {selectedTraderArmedToReleaseLabel}
+                                </p>
+                              </div>
+                              <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
+                                <p className="text-[9px] uppercase text-muted-foreground">
+                                  {t('tradingPanel.latency.traderReleaseToDecision')}
+                                </p>
+                                <p className="text-xs font-mono">
+                                  {selectedTraderReleaseToDecisionLabel}
+                                </p>
+                              </div>
+                              <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
+                                <p className="text-[9px] uppercase text-muted-foreground">
+                                  {t('tradingPanel.latency.worstSource')}
+                                </p>
+                                <p className="text-xs font-mono">{worstLatencySourceLabel}</p>
+                              </div>
+                              <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
+                                <p className="text-[9px] uppercase text-muted-foreground">
+                                  {t('tradingPanel.latency.worstStrategy')}
+                                </p>
+                                <p className="text-xs font-mono">{worstLatencyStrategyLabel}</p>
+                              </div>
                             </div>
-                            <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
-                              <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.latency.rollingWindow')}</p>
-                              <p className="text-xs font-mono">
-                                {executionLatencyWindowLabel}{executionLatencySampleCount !== null ? ` · n=${executionLatencySampleCount}` : ''}
-                              </p>
+                          ) : (
+                            <div className="shrink-0 rounded-md border border-border/60 bg-background/70 px-3 py-2 text-[11px] text-muted-foreground">
+                              {t('tradingPanel.latency.noSamples')}
                             </div>
-                            <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
-                              <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.latency.traderReleaseToSubmit')}</p>
-                              <p className={cn('text-xs font-mono', selectedTraderLatencySlaBreached ? 'text-amber-400' : 'text-cyan-400')}>
-                                {selectedTraderLatencyLabel}
-                              </p>
-                            </div>
-                            <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
-                              <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.latency.overallReleaseToSubmit')}</p>
-                              <p className={cn('text-xs font-mono', executionLatencySlaBreached ? 'text-amber-400' : 'text-cyan-400')}>
-                                {executionLatencyOverallLabel}
-                              </p>
-                            </div>
-                            <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
-                              <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.latency.traderArmedToRelease')}</p>
-                              <p className="text-xs font-mono">{selectedTraderArmedToReleaseLabel}</p>
-                            </div>
-                            <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
-                              <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.latency.traderReleaseToDecision')}</p>
-                              <p className="text-xs font-mono">{selectedTraderReleaseToDecisionLabel}</p>
-                            </div>
-                            <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
-                              <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.latency.worstSource')}</p>
-                              <p className="text-xs font-mono">{worstLatencySourceLabel}</p>
-                            </div>
-                            <div className="rounded border border-border/60 bg-background/70 px-2 py-1">
-                              <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.latency.worstStrategy')}</p>
-                              <p className="text-xs font-mono">{worstLatencyStrategyLabel}</p>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="shrink-0 rounded-md border border-border/60 bg-background/70 px-3 py-2 text-[11px] text-muted-foreground">
-                            {t('tradingPanel.latency.noSamples')}
-                          </div>
-                        )}
+                          )}
 
-                        {selectedPerformance.allowanceErrorCount > 0 ? (
-                          <div className="shrink-0 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-700 dark:text-amber-100">
-                            {t('tradingPanel.latency.allowanceErrors', { count: selectedPerformance.allowanceErrorCount })}
-                          </div>
-                        ) : null}
-                        {selectedPerformance.gasErrorCount > 0 ? (
-                          <div className="shrink-0 rounded-md border border-orange-500/30 bg-orange-500/10 px-2 py-1 text-[11px] text-orange-700 dark:text-orange-100">
-                            {t('tradingPanel.latency.gasErrors', { count: selectedPerformance.gasErrorCount })}
-                          </div>
-                        ) : null}
-
-                        <div className="flex-1 min-h-0 grid gap-2 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-                          <div className="min-h-0 rounded-md border border-border/60 bg-card/60 flex flex-col">
-                            <div className="px-2 py-1 border-b border-border/50 text-[10px] uppercase tracking-wider text-muted-foreground">{t('tradingPanel.latency.stageBreakdown')}</div>
-                            <div className="flex-1 min-h-0 overflow-auto">
-                              <Table>
-                                <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
-                                  <TableRow>
-                                    <TableHead className="text-[10px]">{t('tradingPanel.latency.stage')}</TableHead>
-                                    <TableHead className="text-[10px] text-right">{t('tradingPanel.latency.trader')}</TableHead>
-                                    <TableHead className="text-[10px] text-right">{t('tradingPanel.latency.overall')}</TableHead>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                  {latencyStageRows.map((row) => (
-                                    <TableRow key={`latency-stage-${row.key}`} className="text-xs">
-                                      <TableCell className="py-1">{row.label}</TableCell>
-                                      <TableCell className="text-right font-mono py-1">{row.traderLatencyLabel}</TableCell>
-                                      <TableCell className="text-right font-mono py-1">{row.overallLatencyLabel}</TableCell>
-                                    </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
+                          {selectedPerformance.allowanceErrorCount > 0 ? (
+                            <div className="shrink-0 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-700 dark:text-amber-100">
+                              {t('tradingPanel.latency.allowanceErrors', {
+                                count: selectedPerformance.allowanceErrorCount,
+                              })}
                             </div>
-                          </div>
+                          ) : null}
+                          {selectedPerformance.gasErrorCount > 0 ? (
+                            <div className="shrink-0 rounded-md border border-orange-500/30 bg-orange-500/10 px-2 py-1 text-[11px] text-orange-700 dark:text-orange-100">
+                              {t('tradingPanel.latency.gasErrors', {
+                                count: selectedPerformance.gasErrorCount,
+                              })}
+                            </div>
+                          ) : null}
 
-                          <div className="min-h-0 grid gap-2 xl:grid-rows-2">
+                          <div className="flex-1 min-h-0 grid gap-2 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
                             <div className="min-h-0 rounded-md border border-border/60 bg-card/60 flex flex-col">
-                              <div className="px-2 py-1 border-b border-border/50 text-[10px] uppercase tracking-wider text-muted-foreground">{t('tradingPanel.latency.slowestSources')}</div>
+                              <div className="px-2 py-1 border-b border-border/50 text-[10px] uppercase tracking-wider text-muted-foreground">
+                                {t('tradingPanel.latency.stageBreakdown')}
+                              </div>
                               <div className="flex-1 min-h-0 overflow-auto">
                                 <Table>
                                   <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
                                     <TableRow>
-                                      <TableHead className="text-[10px]">{t('tradingPanel.latency.source')}</TableHead>
-                                      <TableHead className="text-[10px] text-right">{t('tradingPanel.latency.releaseToSubmit')}</TableHead>
-                                      <TableHead className="text-[10px] text-right">{t('tradingPanel.latency.samples')}</TableHead>
+                                      <TableHead className="text-[10px]">
+                                        {t('tradingPanel.latency.stage')}
+                                      </TableHead>
+                                      <TableHead className="text-[10px] text-right">
+                                        {t('tradingPanel.latency.trader')}
+                                      </TableHead>
+                                      <TableHead className="text-[10px] text-right">
+                                        {t('tradingPanel.latency.overall')}
+                                      </TableHead>
                                     </TableRow>
                                   </TableHeader>
                                   <TableBody>
-                                    {latencySourceRows.length === 0 ? (
-                                      <TableRow>
-                                        <TableCell colSpan={3} className="py-6 text-center text-[11px] text-muted-foreground">
-                                          {t('tradingPanel.latency.noSourceSamples')}
+                                    {latencyStageRows.map((row) => (
+                                      <TableRow
+                                        key={`latency-stage-${row.key}`}
+                                        className="text-xs"
+                                      >
+                                        <TableCell className="py-1">{row.label}</TableCell>
+                                        <TableCell className="text-right font-mono py-1">
+                                          {row.traderLatencyLabel}
+                                        </TableCell>
+                                        <TableCell className="text-right font-mono py-1">
+                                          {row.overallLatencyLabel}
                                         </TableCell>
                                       </TableRow>
-                                    ) : (
-                                      latencySourceRows.map((row) => (
-                                        <TableRow key={`latency-source-${row.key}`} className="text-xs">
-                                          <TableCell className="py-1">{row.label}</TableCell>
-                                          <TableCell className="text-right font-mono py-1">{row.latencyLabel}</TableCell>
-                                          <TableCell className="text-right font-mono py-1">{row.count}</TableCell>
-                                        </TableRow>
-                                      ))
-                                    )}
+                                    ))}
                                   </TableBody>
                                 </Table>
                               </div>
                             </div>
 
-                            <div className="min-h-0 rounded-md border border-border/60 bg-card/60 flex flex-col">
-                              <div className="px-2 py-1 border-b border-border/50 text-[10px] uppercase tracking-wider text-muted-foreground">{t('tradingPanel.latency.slowestStrategies')}</div>
-                              <div className="flex-1 min-h-0 overflow-auto">
-                                <Table>
-                                  <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
-                                    <TableRow>
-                                      <TableHead className="text-[10px]">{t('tradingPanel.latency.strategy')}</TableHead>
-                                      <TableHead className="text-[10px] text-right">{t('tradingPanel.latency.releaseToSubmit')}</TableHead>
-                                      <TableHead className="text-[10px] text-right">{t('tradingPanel.latency.samples')}</TableHead>
-                                    </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                    {latencyStrategyRows.length === 0 ? (
+                            <div className="min-h-0 grid gap-2 xl:grid-rows-2">
+                              <div className="min-h-0 rounded-md border border-border/60 bg-card/60 flex flex-col">
+                                <div className="px-2 py-1 border-b border-border/50 text-[10px] uppercase tracking-wider text-muted-foreground">
+                                  {t('tradingPanel.latency.slowestSources')}
+                                </div>
+                                <div className="flex-1 min-h-0 overflow-auto">
+                                  <Table>
+                                    <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
                                       <TableRow>
-                                        <TableCell colSpan={3} className="py-6 text-center text-[11px] text-muted-foreground">
-                                          {t('tradingPanel.latency.noStrategySamples')}
-                                        </TableCell>
+                                        <TableHead className="text-[10px]">
+                                          {t('tradingPanel.latency.source')}
+                                        </TableHead>
+                                        <TableHead className="text-[10px] text-right">
+                                          {t('tradingPanel.latency.releaseToSubmit')}
+                                        </TableHead>
+                                        <TableHead className="text-[10px] text-right">
+                                          {t('tradingPanel.latency.samples')}
+                                        </TableHead>
                                       </TableRow>
-                                    ) : (
-                                      latencyStrategyRows.map((row) => (
-                                        <TableRow key={`latency-strategy-${row.key}`} className="text-xs">
-                                          <TableCell className="py-1">{row.label}</TableCell>
-                                          <TableCell className="text-right font-mono py-1">{row.latencyLabel}</TableCell>
-                                          <TableCell className="text-right font-mono py-1">{row.count}</TableCell>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {latencySourceRows.length === 0 ? (
+                                        <TableRow>
+                                          <TableCell
+                                            colSpan={3}
+                                            className="py-6 text-center text-[11px] text-muted-foreground"
+                                          >
+                                            {t('tradingPanel.latency.noSourceSamples')}
+                                          </TableCell>
                                         </TableRow>
-                                      ))
-                                    )}
-                                  </TableBody>
-                                </Table>
+                                      ) : (
+                                        latencySourceRows.map((row) => (
+                                          <TableRow
+                                            key={`latency-source-${row.key}`}
+                                            className="text-xs"
+                                          >
+                                            <TableCell className="py-1">{row.label}</TableCell>
+                                            <TableCell className="text-right font-mono py-1">
+                                              {row.latencyLabel}
+                                            </TableCell>
+                                            <TableCell className="text-right font-mono py-1">
+                                              {row.count}
+                                            </TableCell>
+                                          </TableRow>
+                                        ))
+                                      )}
+                                    </TableBody>
+                                  </Table>
+                                </div>
+                              </div>
+
+                              <div className="min-h-0 rounded-md border border-border/60 bg-card/60 flex flex-col">
+                                <div className="px-2 py-1 border-b border-border/50 text-[10px] uppercase tracking-wider text-muted-foreground">
+                                  {t('tradingPanel.latency.slowestStrategies')}
+                                </div>
+                                <div className="flex-1 min-h-0 overflow-auto">
+                                  <Table>
+                                    <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
+                                      <TableRow>
+                                        <TableHead className="text-[10px]">
+                                          {t('tradingPanel.latency.strategy')}
+                                        </TableHead>
+                                        <TableHead className="text-[10px] text-right">
+                                          {t('tradingPanel.latency.releaseToSubmit')}
+                                        </TableHead>
+                                        <TableHead className="text-[10px] text-right">
+                                          {t('tradingPanel.latency.samples')}
+                                        </TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {latencyStrategyRows.length === 0 ? (
+                                        <TableRow>
+                                          <TableCell
+                                            colSpan={3}
+                                            className="py-6 text-center text-[11px] text-muted-foreground"
+                                          >
+                                            {t('tradingPanel.latency.noStrategySamples')}
+                                          </TableCell>
+                                        </TableRow>
+                                      ) : (
+                                        latencyStrategyRows.map((row) => (
+                                          <TableRow
+                                            key={`latency-strategy-${row.key}`}
+                                            className="text-xs"
+                                          >
+                                            <TableCell className="py-1">{row.label}</TableCell>
+                                            <TableCell className="text-right font-mono py-1">
+                                              {row.latencyLabel}
+                                            </TableCell>
+                                            <TableCell className="text-right font-mono py-1">
+                                              {row.count}
+                                            </TableCell>
+                                          </TableRow>
+                                        ))
+                                      )}
+                                    </TableBody>
+                                  </Table>
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
                         </TabsContent>
                       ) : (
-                        <TabsContent value="configuration" className="mt-0 flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
-                        <div className="shrink-0 flex flex-wrap items-end gap-2">
-                          <div className="min-w-[220px] max-w-[320px] flex-1">
-                            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">{t('tradingPanel.config.strategySection')}</Label>
-                            {selectedPerformanceConfig.sections.length > 1 ? (
-                              <Select value={activePerformanceSection?.sectionKey || ''} onValueChange={setPerformanceSectionKey}>
-                                <SelectTrigger className="mt-1 h-8 text-[11px]">
-                                  <SelectValue placeholder={t('tradingPanel.config.selectConfiguration')} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {selectedPerformanceConfig.sections.map((section) => (
-                                    <SelectItem key={section.sectionKey} value={section.sectionKey}>
-                                      {section.sectionLabel}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            ) : (
-                              <div className="mt-1 rounded-md border border-border/60 bg-background/70 px-2 py-1.5 text-[11px]">
-                                {activePerformanceSection?.sectionLabel || t('tradingPanel.config.noConfiguredSections')}
-                              </div>
-                            )}
-                          </div>
-                          <div className="min-w-[220px] max-w-[320px] flex-1">
-                            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">{t('tradingPanel.config.parameter')}</Label>
-                            {activePerformanceParamSummaryRows.length > 0 ? (
-                              <Select value={performanceParamKey} onValueChange={setPerformanceParamKey}>
-                                <SelectTrigger className="mt-1 h-8 text-[11px]">
-                                  <SelectValue placeholder={t('tradingPanel.config.selectParameter')} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {activePerformanceParamSummaryRows.map((row) => (
-                                    <SelectItem key={row.key} value={row.key}>
-                                      {row.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            ) : (
-                              <div className="mt-1 rounded-md border border-border/60 bg-background/70 px-2 py-1.5 text-[11px] text-muted-foreground">
-                                {t('tradingPanel.config.noParameterFields')}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {selectedPerformanceConfig.fallbackOrderCount > 0 ? (
-                          <div className="shrink-0 rounded-md border border-blue-500/25 bg-blue-500/10 px-2 py-1 text-[11px] text-blue-700 dark:text-blue-100">
-                            {t('tradingPanel.config.fallbackOrders', { count: selectedPerformanceConfig.fallbackOrderCount })}
-                          </div>
-                        ) : null}
-
-                        <div className="flex-1 min-h-0 grid gap-2 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-                          <div className="min-h-0 rounded-md border border-border/60 bg-card/60 flex flex-col">
-                            <div className="px-2 py-1 border-b border-border/50 text-[10px] uppercase tracking-wider text-muted-foreground">{t('tradingPanel.config.observedConfigurations')}</div>
-                            <div className="flex-1 min-h-0 overflow-auto">
-                              <Table>
-                                <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
-                                  <TableRow>
-                                    <TableHead className="text-[10px]">{t('tradingPanel.config.configHeader')}</TableHead>
-                                    <TableHead className="text-[10px] text-right">{t('tradingPanel.tableHeaders.orders')}</TableHead>
-                                    <TableHead className="text-[10px] text-right">{t('tradingPanel.performance.resolved')}</TableHead>
-                                    <TableHead className="text-[10px] text-right">P&amp;L</TableHead>
-                                    <TableHead className="text-[10px] text-right">{t('tradingPanel.performance.roi')}</TableHead>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                  {selectedPerformanceConfig.configurationRows.length === 0 ? (
-                                    <TableRow>
-                                      <TableCell colSpan={5} className="py-6 text-center text-[11px] text-muted-foreground">
-                                        {t('tradingPanel.config.noConfigOrders')}
-                                      </TableCell>
-                                    </TableRow>
-                                  ) : (
-                                    selectedPerformanceConfig.configurationRows.map((row) => (
-                                      <TableRow
-                                        key={`config-row-${row.sectionKey}`}
-                                        onClick={() => setPerformanceSectionKey(row.sectionKey)}
-                                        className={cn(
-                                          'text-xs cursor-pointer',
-                                          activePerformanceSection?.sectionKey === row.sectionKey
-                                            ? 'bg-cyan-500/5'
-                                            : 'hover:bg-muted/30'
-                                        )}
+                        <TabsContent
+                          value="configuration"
+                          className="mt-0 flex min-h-0 flex-1 flex-col gap-2 overflow-hidden"
+                        >
+                          <div className="shrink-0 flex flex-wrap items-end gap-2">
+                            <div className="min-w-[220px] max-w-[320px] flex-1">
+                              <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                {t('tradingPanel.config.strategySection')}
+                              </Label>
+                              {selectedPerformanceConfig.sections.length > 1 ? (
+                                <Select
+                                  value={activePerformanceSection?.sectionKey || ''}
+                                  onValueChange={setPerformanceSectionKey}
+                                >
+                                  <SelectTrigger className="mt-1 h-8 text-[11px]">
+                                    <SelectValue
+                                      placeholder={t('tradingPanel.config.selectConfiguration')}
+                                    />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {selectedPerformanceConfig.sections.map((section) => (
+                                      <SelectItem
+                                        key={section.sectionKey}
+                                        value={section.sectionKey}
                                       >
-                                        <TableCell className="py-1">
-                                          <div className="font-medium">{row.strategyLabel}</div>
-                                          <div className="text-[9px] text-muted-foreground">{row.sourceLabel} · {row.strategyVersionLabel}</div>
-                                        </TableCell>
-                                        <TableCell className="text-right font-mono py-1">{row.orders}</TableCell>
-                                        <TableCell className="text-right font-mono py-1">{row.resolved}</TableCell>
-                                        <TableCell className={cn('text-right font-mono py-1', row.pnl > 0 ? 'text-emerald-500' : row.pnl < 0 ? 'text-red-500' : '')}>
-                                          {formatCurrency(row.pnl)}
-                                        </TableCell>
-                                        <TableCell className={cn('text-right font-mono py-1', row.roiPercent > 0 ? 'text-emerald-500' : row.roiPercent < 0 ? 'text-red-500' : '')}>
-                                          {row.roiPercent > 0 ? '+' : ''}{formatPercent(row.roiPercent, 2)}
-                                        </TableCell>
-                                      </TableRow>
-                                    ))
-                                  )}
-                                </TableBody>
-                              </Table>
+                                        {section.sectionLabel}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <div className="mt-1 rounded-md border border-border/60 bg-background/70 px-2 py-1.5 text-[11px]">
+                                  {activePerformanceSection?.sectionLabel ||
+                                    t('tradingPanel.config.noConfiguredSections')}
+                                </div>
+                              )}
+                            </div>
+                            <div className="min-w-[220px] max-w-[320px] flex-1">
+                              <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                {t('tradingPanel.config.parameter')}
+                              </Label>
+                              {activePerformanceParamSummaryRows.length > 0 ? (
+                                <Select
+                                  value={performanceParamKey}
+                                  onValueChange={setPerformanceParamKey}
+                                >
+                                  <SelectTrigger className="mt-1 h-8 text-[11px]">
+                                    <SelectValue
+                                      placeholder={t('tradingPanel.config.selectParameter')}
+                                    />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {activePerformanceParamSummaryRows.map((row) => (
+                                      <SelectItem key={row.key} value={row.key}>
+                                        {row.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <div className="mt-1 rounded-md border border-border/60 bg-background/70 px-2 py-1.5 text-[11px] text-muted-foreground">
+                                  {t('tradingPanel.config.noParameterFields')}
+                                </div>
+                              )}
                             </div>
                           </div>
 
-                          <div className="min-h-0 flex flex-col gap-2">
+                          {selectedPerformanceConfig.fallbackOrderCount > 0 ? (
+                            <div className="shrink-0 rounded-md border border-blue-500/25 bg-blue-500/10 px-2 py-1 text-[11px] text-blue-700 dark:text-blue-100">
+                              {t('tradingPanel.config.fallbackOrders', {
+                                count: selectedPerformanceConfig.fallbackOrderCount,
+                              })}
+                            </div>
+                          ) : null}
+
+                          <div className="flex-1 min-h-0 grid gap-2 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
                             <div className="min-h-0 rounded-md border border-border/60 bg-card/60 flex flex-col">
-                              <div className="px-2 py-1 border-b border-border/50 text-[10px] uppercase tracking-wider text-muted-foreground">{t('tradingPanel.config.parameterPerformance')}</div>
-                              <div className="shrink-0 grid gap-1 border-b border-border/40 px-2 py-1 sm:grid-cols-3">
-                                <div>
-                                  <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.config.currentValue')}</p>
-                                  <p className="text-[11px] font-mono">
-                                    {activePerformanceParamSummaryByKey.get(performanceParamKey)?.currentValueLabel || '—'}
-                                  </p>
-                                </div>
-                                <div>
-                                  <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.config.observedBuckets')}</p>
-                                  <p className="text-[11px] font-mono">
-                                    {activePerformanceParamSummaryByKey.get(performanceParamKey)?.observedValueCount || 0}
-                                  </p>
-                                </div>
-                                <div>
-                                  <p className="text-[9px] uppercase text-muted-foreground">{t('tradingPanel.config.resolvedAtCurrent')}</p>
-                                  <p className="text-[11px] font-mono">
-                                    {activePerformanceParamSummaryByKey.get(performanceParamKey)?.currentResolved || 0}
-                                  </p>
-                                </div>
+                              <div className="px-2 py-1 border-b border-border/50 text-[10px] uppercase tracking-wider text-muted-foreground">
+                                {t('tradingPanel.config.observedConfigurations')}
                               </div>
-                              <div className="flex-1 min-h-[170px] overflow-auto">
+                              <div className="flex-1 min-h-0 overflow-auto">
                                 <Table>
                                   <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
                                     <TableRow>
-                                      <TableHead className="text-[10px]">{t('tradingPanel.tableHeaders.value')}</TableHead>
-                                      <TableHead className="text-[10px] text-right">{t('tradingPanel.tableHeaders.orders')}</TableHead>
-                                      <TableHead className="text-[10px] text-right">{t('tradingPanel.performance.resolved')}</TableHead>
-                                      <TableHead className="text-[10px] text-right">P&amp;L</TableHead>
-                                      <TableHead className="text-[10px] text-right">{t('tradingPanel.performance.roi')}</TableHead>
-                                      <TableHead className="text-[10px] text-right">W/L</TableHead>
+                                      <TableHead className="text-[10px]">
+                                        {t('tradingPanel.config.configHeader')}
+                                      </TableHead>
+                                      <TableHead className="text-[10px] text-right">
+                                        {t('tradingPanel.tableHeaders.orders')}
+                                      </TableHead>
+                                      <TableHead className="text-[10px] text-right">
+                                        {t('tradingPanel.performance.resolved')}
+                                      </TableHead>
+                                      <TableHead className="text-[10px] text-right">
+                                        P&amp;L
+                                      </TableHead>
+                                      <TableHead className="text-[10px] text-right">
+                                        {t('tradingPanel.performance.roi')}
+                                      </TableHead>
                                     </TableRow>
                                   </TableHeader>
                                   <TableBody>
-                                    {activePerformanceParamRows.length === 0 ? (
+                                    {selectedPerformanceConfig.configurationRows.length === 0 ? (
                                       <TableRow>
-                                        <TableCell colSpan={6} className="py-6 text-center text-[11px] text-muted-foreground">
-                                          {t('tradingPanel.config.selectParameterCompare')}
+                                        <TableCell
+                                          colSpan={5}
+                                          className="py-6 text-center text-[11px] text-muted-foreground"
+                                        >
+                                          {t('tradingPanel.config.noConfigOrders')}
                                         </TableCell>
                                       </TableRow>
                                     ) : (
-                                      activePerformanceParamRows.map((row) => (
-                                        <TableRow key={`param-row-${performanceParamKey}-${row.key}`} className={cn('text-xs', row.isCurrent && 'bg-cyan-500/5')}>
+                                      selectedPerformanceConfig.configurationRows.map((row) => (
+                                        <TableRow
+                                          key={`config-row-${row.sectionKey}`}
+                                          onClick={() => setPerformanceSectionKey(row.sectionKey)}
+                                          className={cn(
+                                            'text-xs cursor-pointer',
+                                            activePerformanceSection?.sectionKey === row.sectionKey
+                                              ? 'bg-cyan-500/5'
+                                              : 'hover:bg-muted/30',
+                                          )}
+                                        >
                                           <TableCell className="py-1">
-                                            <div className="font-medium">{row.valueLabel}</div>
-                                            <div className="text-[9px] text-muted-foreground">{row.isCurrent ? t('tradingPanel.config.currentValueLabel') : row.isMissing ? t('tradingPanel.config.missingFromSnapshot') : t('tradingPanel.config.historicalBucket')}</div>
+                                            <div className="font-medium">{row.strategyLabel}</div>
+                                            <div className="text-[9px] text-muted-foreground">
+                                              {row.sourceLabel} · {row.strategyVersionLabel}
+                                            </div>
                                           </TableCell>
-                                          <TableCell className="text-right font-mono py-1">{row.orders}</TableCell>
-                                          <TableCell className="text-right font-mono py-1">{row.resolved}</TableCell>
-                                          <TableCell className={cn('text-right font-mono py-1', row.pnl > 0 ? 'text-emerald-500' : row.pnl < 0 ? 'text-red-500' : '')}>
+                                          <TableCell className="text-right font-mono py-1">
+                                            {row.orders}
+                                          </TableCell>
+                                          <TableCell className="text-right font-mono py-1">
+                                            {row.resolved}
+                                          </TableCell>
+                                          <TableCell
+                                            className={cn(
+                                              'text-right font-mono py-1',
+                                              row.pnl > 0
+                                                ? 'text-emerald-500'
+                                                : row.pnl < 0
+                                                  ? 'text-red-500'
+                                                  : '',
+                                            )}
+                                          >
                                             {formatCurrency(row.pnl)}
                                           </TableCell>
-                                          <TableCell className={cn('text-right font-mono py-1', row.roiPercent > 0 ? 'text-emerald-500' : row.roiPercent < 0 ? 'text-red-500' : '')}>
-                                            {row.roiPercent > 0 ? '+' : ''}{formatPercent(row.roiPercent, 2)}
+                                          <TableCell
+                                            className={cn(
+                                              'text-right font-mono py-1',
+                                              row.roiPercent > 0
+                                                ? 'text-emerald-500'
+                                                : row.roiPercent < 0
+                                                  ? 'text-red-500'
+                                                  : '',
+                                            )}
+                                          >
+                                            {row.roiPercent > 0 ? '+' : ''}
+                                            {formatPercent(row.roiPercent, 2)}
                                           </TableCell>
-                                          <TableCell className="text-right font-mono py-1">{row.wins}/{row.losses}</TableCell>
                                         </TableRow>
                                       ))
                                     )}
                                   </TableBody>
                                 </Table>
                               </div>
-                              <div className="px-2 py-1 border-y border-border/50 text-[10px] uppercase tracking-wider text-muted-foreground">{t('tradingPanel.config.observedRuntimeContext')}</div>
-                              <div className="flex-1 min-h-0 grid gap-2 p-2 xl:grid-cols-2">
-                                <div className="min-h-0 rounded-md border border-border/50 bg-background/50 flex flex-col">
-                                  <div className="px-2 py-1 border-b border-border/40 text-[10px] uppercase tracking-wider text-muted-foreground">{t('tradingPanel.config.timeframeMode')}</div>
-                                  <div className="flex-1 min-h-0 overflow-auto">
-                                    <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground">{t('tradingPanel.config.timeframe')}</div>
-                                    <Table>
-                                      <TableBody>
-                                        {selectedPerformance.timeframeRows.map((row) => (
-                                          <TableRow key={`tf-runtime-${row.key}`} className="text-xs">
-                                            <TableCell className="font-mono py-1">{row.label}</TableCell>
-                                            <TableCell className={cn('text-right font-mono py-1', row.pnl > 0 ? 'text-emerald-500' : row.pnl < 0 ? 'text-red-500' : '')}>{formatCurrency(row.pnl)}</TableCell>
-                                            <TableCell className="text-right font-mono py-1">{row.resolved}</TableCell>
-                                          </TableRow>
-                                        ))}
-                                      </TableBody>
-                                    </Table>
-                                    <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground">{t('tradingPanel.tableHeaders.mode')}</div>
-                                    <Table>
-                                      <TableBody>
-                                        {selectedPerformance.modeRows.map((row) => (
-                                          <TableRow key={`mode-runtime-${row.key}`} className="text-xs">
-                                            <TableCell className="font-mono py-1">{row.label}</TableCell>
-                                            <TableCell className={cn('text-right font-mono py-1', row.pnl > 0 ? 'text-emerald-500' : row.pnl < 0 ? 'text-red-500' : '')}>{formatCurrency(row.pnl)}</TableCell>
-                                            <TableCell className="text-right font-mono py-1">{row.resolved}</TableCell>
-                                          </TableRow>
-                                        ))}
-                                      </TableBody>
-                                    </Table>
-                                    <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground">{t('tradingPanel.config.modeTimeframe')}</div>
-                                    <Table>
-                                      <TableBody>
-                                        {selectedPerformance.timeframeModeRows.slice(0, 16).map((row) => (
-                                          <TableRow key={`combo-runtime-${row.key}`} className="text-xs">
-                                            <TableCell className="font-mono py-1">{row.label}</TableCell>
-                                            <TableCell className={cn('text-right font-mono py-1', row.pnl > 0 ? 'text-emerald-500' : row.pnl < 0 ? 'text-red-500' : '')}>{formatCurrency(row.pnl)}</TableCell>
-                                            <TableCell className="text-right font-mono py-1">{row.resolved}</TableCell>
-                                          </TableRow>
-                                        ))}
-                                      </TableBody>
-                                    </Table>
+                            </div>
+
+                            <div className="min-h-0 flex flex-col gap-2">
+                              <div className="min-h-0 rounded-md border border-border/60 bg-card/60 flex flex-col">
+                                <div className="px-2 py-1 border-b border-border/50 text-[10px] uppercase tracking-wider text-muted-foreground">
+                                  {t('tradingPanel.config.parameterPerformance')}
+                                </div>
+                                <div className="shrink-0 grid gap-1 border-b border-border/40 px-2 py-1 sm:grid-cols-3">
+                                  <div>
+                                    <p className="text-[9px] uppercase text-muted-foreground">
+                                      {t('tradingPanel.config.currentValue')}
+                                    </p>
+                                    <p className="text-[11px] font-mono">
+                                      {activePerformanceParamSummaryByKey.get(performanceParamKey)
+                                        ?.currentValueLabel || '—'}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[9px] uppercase text-muted-foreground">
+                                      {t('tradingPanel.config.observedBuckets')}
+                                    </p>
+                                    <p className="text-[11px] font-mono">
+                                      {activePerformanceParamSummaryByKey.get(performanceParamKey)
+                                        ?.observedValueCount || 0}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[9px] uppercase text-muted-foreground">
+                                      {t('tradingPanel.config.resolvedAtCurrent')}
+                                    </p>
+                                    <p className="text-[11px] font-mono">
+                                      {activePerformanceParamSummaryByKey.get(performanceParamKey)
+                                        ?.currentResolved || 0}
+                                    </p>
                                   </div>
                                 </div>
-
-                                <div className="min-h-0 rounded-md border border-border/50 bg-background/50 flex flex-col">
-                                  <div className="px-2 py-1 border-b border-border/40 text-[10px] uppercase tracking-wider text-muted-foreground">{t('tradingPanel.config.sourceStrategyVariant')}</div>
-                                  <div className="flex-1 min-h-0 overflow-auto">
-                                    <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground">{t('tradingPanel.latency.source')}</div>
-                                    <Table>
-                                      <TableBody>
-                                        {selectedPerformance.sourceRows.map((row) => (
-                                          <TableRow key={`source-runtime-${row.key}`} className="text-xs">
-                                            <TableCell className="py-1">{row.label}</TableCell>
-                                            <TableCell className={cn('text-right font-mono py-1', row.pnl > 0 ? 'text-emerald-500' : row.pnl < 0 ? 'text-red-500' : '')}>{formatCurrency(row.pnl)}</TableCell>
-                                            <TableCell className="text-right font-mono py-1">{row.resolved}</TableCell>
-                                          </TableRow>
-                                        ))}
-                                      </TableBody>
-                                    </Table>
-                                    <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground">{t('tradingPanel.latency.strategy')}</div>
-                                    <Table>
-                                      <TableBody>
-                                        {selectedPerformance.strategyRows.map((row) => (
-                                          <TableRow key={`strategy-runtime-${row.key}`} className="text-xs">
+                                <div className="flex-1 min-h-[170px] overflow-auto">
+                                  <Table>
+                                    <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
+                                      <TableRow>
+                                        <TableHead className="text-[10px]">
+                                          {t('tradingPanel.tableHeaders.value')}
+                                        </TableHead>
+                                        <TableHead className="text-[10px] text-right">
+                                          {t('tradingPanel.tableHeaders.orders')}
+                                        </TableHead>
+                                        <TableHead className="text-[10px] text-right">
+                                          {t('tradingPanel.performance.resolved')}
+                                        </TableHead>
+                                        <TableHead className="text-[10px] text-right">
+                                          P&amp;L
+                                        </TableHead>
+                                        <TableHead className="text-[10px] text-right">
+                                          {t('tradingPanel.performance.roi')}
+                                        </TableHead>
+                                        <TableHead className="text-[10px] text-right">
+                                          W/L
+                                        </TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {activePerformanceParamRows.length === 0 ? (
+                                        <TableRow>
+                                          <TableCell
+                                            colSpan={6}
+                                            className="py-6 text-center text-[11px] text-muted-foreground"
+                                          >
+                                            {t('tradingPanel.config.selectParameterCompare')}
+                                          </TableCell>
+                                        </TableRow>
+                                      ) : (
+                                        activePerformanceParamRows.map((row) => (
+                                          <TableRow
+                                            key={`param-row-${performanceParamKey}-${row.key}`}
+                                            className={cn(
+                                              'text-xs',
+                                              row.isCurrent && 'bg-cyan-500/5',
+                                            )}
+                                          >
                                             <TableCell className="py-1">
-                                              <div className="font-medium">{row.label}</div>
-                                              <div className="text-[9px] font-mono text-muted-foreground">{row.key}</div>
+                                              <div className="font-medium">{row.valueLabel}</div>
+                                              <div className="text-[9px] text-muted-foreground">
+                                                {row.isCurrent
+                                                  ? t('tradingPanel.config.currentValueLabel')
+                                                  : row.isMissing
+                                                    ? t('tradingPanel.config.missingFromSnapshot')
+                                                    : t('tradingPanel.config.historicalBucket')}
+                                              </div>
                                             </TableCell>
-                                            <TableCell className={cn('text-right font-mono py-1', row.pnl > 0 ? 'text-emerald-500' : row.pnl < 0 ? 'text-red-500' : '')}>{formatCurrency(row.pnl)}</TableCell>
-                                            <TableCell className="text-right font-mono py-1">{row.resolved}</TableCell>
+                                            <TableCell className="text-right font-mono py-1">
+                                              {row.orders}
+                                            </TableCell>
+                                            <TableCell className="text-right font-mono py-1">
+                                              {row.resolved}
+                                            </TableCell>
+                                            <TableCell
+                                              className={cn(
+                                                'text-right font-mono py-1',
+                                                row.pnl > 0
+                                                  ? 'text-emerald-500'
+                                                  : row.pnl < 0
+                                                    ? 'text-red-500'
+                                                    : '',
+                                              )}
+                                            >
+                                              {formatCurrency(row.pnl)}
+                                            </TableCell>
+                                            <TableCell
+                                              className={cn(
+                                                'text-right font-mono py-1',
+                                                row.roiPercent > 0
+                                                  ? 'text-emerald-500'
+                                                  : row.roiPercent < 0
+                                                    ? 'text-red-500'
+                                                    : '',
+                                              )}
+                                            >
+                                              {row.roiPercent > 0 ? '+' : ''}
+                                              {formatPercent(row.roiPercent, 2)}
+                                            </TableCell>
+                                            <TableCell className="text-right font-mono py-1">
+                                              {row.wins}/{row.losses}
+                                            </TableCell>
                                           </TableRow>
-                                        ))}
-                                      </TableBody>
-                                    </Table>
-                                    <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground">{t('tradingPanel.config.subStrategy')}</div>
-                                    <Table>
-                                      <TableBody>
-                                        {selectedPerformance.subStrategyRows.slice(0, 16).map((row) => (
-                                          <TableRow key={`sub-runtime-${row.key}`} className="text-xs">
-                                            <TableCell className="font-mono py-1">{row.label}</TableCell>
-                                            <TableCell className={cn('text-right font-mono py-1', row.pnl > 0 ? 'text-emerald-500' : row.pnl < 0 ? 'text-red-500' : '')}>{formatCurrency(row.pnl)}</TableCell>
-                                            <TableCell className="text-right font-mono py-1">{row.resolved}</TableCell>
-                                          </TableRow>
-                                        ))}
-                                      </TableBody>
-                                    </Table>
+                                        ))
+                                      )}
+                                    </TableBody>
+                                  </Table>
+                                </div>
+                                <div className="px-2 py-1 border-y border-border/50 text-[10px] uppercase tracking-wider text-muted-foreground">
+                                  {t('tradingPanel.config.observedRuntimeContext')}
+                                </div>
+                                <div className="flex-1 min-h-0 grid gap-2 p-2 xl:grid-cols-2">
+                                  <div className="min-h-0 rounded-md border border-border/50 bg-background/50 flex flex-col">
+                                    <div className="px-2 py-1 border-b border-border/40 text-[10px] uppercase tracking-wider text-muted-foreground">
+                                      {t('tradingPanel.config.timeframeMode')}
+                                    </div>
+                                    <div className="flex-1 min-h-0 overflow-auto">
+                                      <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                                        {t('tradingPanel.config.timeframe')}
+                                      </div>
+                                      <Table>
+                                        <TableBody>
+                                          {selectedPerformance.timeframeRows.map((row) => (
+                                            <TableRow
+                                              key={`tf-runtime-${row.key}`}
+                                              className="text-xs"
+                                            >
+                                              <TableCell className="font-mono py-1">
+                                                {row.label}
+                                              </TableCell>
+                                              <TableCell
+                                                className={cn(
+                                                  'text-right font-mono py-1',
+                                                  row.pnl > 0
+                                                    ? 'text-emerald-500'
+                                                    : row.pnl < 0
+                                                      ? 'text-red-500'
+                                                      : '',
+                                                )}
+                                              >
+                                                {formatCurrency(row.pnl)}
+                                              </TableCell>
+                                              <TableCell className="text-right font-mono py-1">
+                                                {row.resolved}
+                                              </TableCell>
+                                            </TableRow>
+                                          ))}
+                                        </TableBody>
+                                      </Table>
+                                      <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                                        {t('tradingPanel.tableHeaders.mode')}
+                                      </div>
+                                      <Table>
+                                        <TableBody>
+                                          {selectedPerformance.modeRows.map((row) => (
+                                            <TableRow
+                                              key={`mode-runtime-${row.key}`}
+                                              className="text-xs"
+                                            >
+                                              <TableCell className="font-mono py-1">
+                                                {row.label}
+                                              </TableCell>
+                                              <TableCell
+                                                className={cn(
+                                                  'text-right font-mono py-1',
+                                                  row.pnl > 0
+                                                    ? 'text-emerald-500'
+                                                    : row.pnl < 0
+                                                      ? 'text-red-500'
+                                                      : '',
+                                                )}
+                                              >
+                                                {formatCurrency(row.pnl)}
+                                              </TableCell>
+                                              <TableCell className="text-right font-mono py-1">
+                                                {row.resolved}
+                                              </TableCell>
+                                            </TableRow>
+                                          ))}
+                                        </TableBody>
+                                      </Table>
+                                      <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                                        {t('tradingPanel.config.modeTimeframe')}
+                                      </div>
+                                      <Table>
+                                        <TableBody>
+                                          {selectedPerformance.timeframeModeRows
+                                            .slice(0, 16)
+                                            .map((row) => (
+                                              <TableRow
+                                                key={`combo-runtime-${row.key}`}
+                                                className="text-xs"
+                                              >
+                                                <TableCell className="font-mono py-1">
+                                                  {row.label}
+                                                </TableCell>
+                                                <TableCell
+                                                  className={cn(
+                                                    'text-right font-mono py-1',
+                                                    row.pnl > 0
+                                                      ? 'text-emerald-500'
+                                                      : row.pnl < 0
+                                                        ? 'text-red-500'
+                                                        : '',
+                                                  )}
+                                                >
+                                                  {formatCurrency(row.pnl)}
+                                                </TableCell>
+                                                <TableCell className="text-right font-mono py-1">
+                                                  {row.resolved}
+                                                </TableCell>
+                                              </TableRow>
+                                            ))}
+                                        </TableBody>
+                                      </Table>
+                                    </div>
+                                  </div>
+
+                                  <div className="min-h-0 rounded-md border border-border/50 bg-background/50 flex flex-col">
+                                    <div className="px-2 py-1 border-b border-border/40 text-[10px] uppercase tracking-wider text-muted-foreground">
+                                      {t('tradingPanel.config.sourceStrategyVariant')}
+                                    </div>
+                                    <div className="flex-1 min-h-0 overflow-auto">
+                                      <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                                        {t('tradingPanel.latency.source')}
+                                      </div>
+                                      <Table>
+                                        <TableBody>
+                                          {selectedPerformance.sourceRows.map((row) => (
+                                            <TableRow
+                                              key={`source-runtime-${row.key}`}
+                                              className="text-xs"
+                                            >
+                                              <TableCell className="py-1">{row.label}</TableCell>
+                                              <TableCell
+                                                className={cn(
+                                                  'text-right font-mono py-1',
+                                                  row.pnl > 0
+                                                    ? 'text-emerald-500'
+                                                    : row.pnl < 0
+                                                      ? 'text-red-500'
+                                                      : '',
+                                                )}
+                                              >
+                                                {formatCurrency(row.pnl)}
+                                              </TableCell>
+                                              <TableCell className="text-right font-mono py-1">
+                                                {row.resolved}
+                                              </TableCell>
+                                            </TableRow>
+                                          ))}
+                                        </TableBody>
+                                      </Table>
+                                      <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                                        {t('tradingPanel.latency.strategy')}
+                                      </div>
+                                      <Table>
+                                        <TableBody>
+                                          {selectedPerformance.strategyRows.map((row) => (
+                                            <TableRow
+                                              key={`strategy-runtime-${row.key}`}
+                                              className="text-xs"
+                                            >
+                                              <TableCell className="py-1">
+                                                <div className="font-medium">{row.label}</div>
+                                                <div className="text-[9px] font-mono text-muted-foreground">
+                                                  {row.key}
+                                                </div>
+                                              </TableCell>
+                                              <TableCell
+                                                className={cn(
+                                                  'text-right font-mono py-1',
+                                                  row.pnl > 0
+                                                    ? 'text-emerald-500'
+                                                    : row.pnl < 0
+                                                      ? 'text-red-500'
+                                                      : '',
+                                                )}
+                                              >
+                                                {formatCurrency(row.pnl)}
+                                              </TableCell>
+                                              <TableCell className="text-right font-mono py-1">
+                                                {row.resolved}
+                                              </TableCell>
+                                            </TableRow>
+                                          ))}
+                                        </TableBody>
+                                      </Table>
+                                      <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                                        {t('tradingPanel.config.subStrategy')}
+                                      </div>
+                                      <Table>
+                                        <TableBody>
+                                          {selectedPerformance.subStrategyRows
+                                            .slice(0, 16)
+                                            .map((row) => (
+                                              <TableRow
+                                                key={`sub-runtime-${row.key}`}
+                                                className="text-xs"
+                                              >
+                                                <TableCell className="font-mono py-1">
+                                                  {row.label}
+                                                </TableCell>
+                                                <TableCell
+                                                  className={cn(
+                                                    'text-right font-mono py-1',
+                                                    row.pnl > 0
+                                                      ? 'text-emerald-500'
+                                                      : row.pnl < 0
+                                                        ? 'text-red-500'
+                                                        : '',
+                                                  )}
+                                                >
+                                                  {formatCurrency(row.pnl)}
+                                                </TableCell>
+                                                <TableCell className="text-right font-mono py-1">
+                                                  {row.resolved}
+                                                </TableCell>
+                                              </TableRow>
+                                            ))}
+                                        </TableBody>
+                                      </Table>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
                             </div>
                           </div>
-                        </div>
                         </TabsContent>
                       )}
                     </Tabs>
                   </div>
                 )}
-
               </div>
             </>
           )}
         </div>
-	      </div>
+      </div>
 
-	      {createPortal(
-	        <AnimatePresence>
-	          {marketModalState && (
-	            <motion.div
-	              key="trading-market-modal"
-	              initial={{ opacity: 0 }}
-	              animate={{ opacity: 1 }}
-	              exit={{ opacity: 0 }}
-	              transition={{ duration: 0.18 }}
-	              className="fixed inset-0 z-[120] flex items-center justify-center"
-	              onClick={closeMarketModal}
-	            >
-	              <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-	              <motion.div
-	                initial={{ scale: 0.94, y: 22, opacity: 0 }}
-	                animate={{ scale: 1, y: 0, opacity: 1 }}
-	                exit={{ scale: 0.94, y: 22, opacity: 0 }}
-	                transition={{ type: 'spring', damping: 28, stiffness: 340, mass: 0.85 }}
-	                className="relative w-[96vw] max-w-[1180px] max-h-[92vh]"
-	                onClick={(event) => event.stopPropagation()}
-	              >
-	                <BotTradePositionModal
-	                  market={marketModalMarket}
-	                  sharedHistory={modalSharedHistory}
-	                  sharedHistoryLoading={marketHistoryQuery.isFetching}
-	                  scope={marketModalState.scope}
-	                  orders={allOrders}
-	                  themeMode={themeMode}
-	                  onSell={handleSellModalOrder}
-	                  sellPendingOrderId={sellTradeNowMutation.isPending ? String(sellTradeNowMutation.variables?.orderId || '') : null}
-	                  onReconcile={handleReconcileModalOrder}
-	                  reconcilePendingOrderId={reconcileOrderMutation.isPending ? String(reconcileOrderMutation.variables?.orderId || '') : null}
-	                  sellError={marketModalSellError}
-	                  sellSuccess={marketModalSellSuccess}
-	                  onClose={closeMarketModal}
-	                />
-	              </motion.div>
-	            </motion.div>
-	          )}
-	        </AnimatePresence>,
-	        document.body
-	      )}
+      {createPortal(
+        <AnimatePresence>
+          {marketModalState && (
+            <motion.div
+              key="trading-market-modal"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="fixed inset-0 z-[120] flex items-center justify-center"
+              onClick={closeMarketModal}
+            >
+              <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+              <motion.div
+                initial={{ scale: 0.94, y: 22, opacity: 0 }}
+                animate={{ scale: 1, y: 0, opacity: 1 }}
+                exit={{ scale: 0.94, y: 22, opacity: 0 }}
+                transition={{ type: 'spring', damping: 28, stiffness: 340, mass: 0.85 }}
+                className="relative w-[96vw] max-w-[1180px] max-h-[92vh]"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <BotTradePositionModal
+                  market={marketModalMarket}
+                  sharedHistory={modalSharedHistory}
+                  sharedHistoryLoading={marketHistoryQuery.isFetching}
+                  scope={marketModalState.scope}
+                  orders={allOrders}
+                  themeMode={themeMode}
+                  onSell={handleSellModalOrder}
+                  sellPendingOrderId={
+                    sellTradeNowMutation.isPending
+                      ? String(sellTradeNowMutation.variables?.orderId || '')
+                      : null
+                  }
+                  onReconcile={handleReconcileModalOrder}
+                  reconcilePendingOrderId={
+                    reconcileOrderMutation.isPending
+                      ? String(reconcileOrderMutation.variables?.orderId || '')
+                      : null
+                  }
+                  sellError={marketModalSellError}
+                  sellSuccess={marketModalSellSuccess}
+                  onClose={closeMarketModal}
+                />
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
 
-	      <Dialog open={confirmLiveStartOpen} onOpenChange={setConfirmLiveStartOpen}>
+      <Dialog open={confirmLiveStartOpen} onOpenChange={setConfirmLiveStartOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('tradingPanel.confirmLive.title')}</DialogTitle>
-            <DialogDescription>
-              {t('tradingPanel.confirmLive.description')}
-            </DialogDescription>
+            <DialogDescription>{t('tradingPanel.confirmLive.description')}</DialogDescription>
           </DialogHeader>
           <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-100">
             {t('tradingPanel.confirmLive.warning')}
           </div>
           <div className="grid gap-1 rounded-md border border-border p-2 text-xs">
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">{t('tradingPanel.confirmLive.accountMode')}</span>
+              <span className="text-muted-foreground">
+                {t('tradingPanel.confirmLive.accountMode')}
+              </span>
               <span className="font-mono">LIVE</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">{t('tradingPanel.confirmLive.blockNewOrders')}</span>
+              <span className="text-muted-foreground">
+                {t('tradingPanel.confirmLive.blockNewOrders')}
+              </span>
               <span
                 className={cn(
                   'font-mono',
@@ -12910,10 +15252,14 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                     ? 'text-amber-500'
                     : killSwitchOn
                       ? 'text-red-500'
-                      : 'text-emerald-600'
+                      : 'text-emerald-600',
                 )}
               >
-                {killSwitchMutation.isPending ? t('tradingPanel.confirmLive.updating') : killSwitchOn ? t('tradingPanel.confirmLive.on') : t('tradingPanel.confirmLive.off')}
+                {killSwitchMutation.isPending
+                  ? t('tradingPanel.confirmLive.updating')
+                  : killSwitchOn
+                    ? t('tradingPanel.confirmLive.on')
+                    : t('tradingPanel.confirmLive.off')}
               </span>
             </div>
           </div>
@@ -12924,9 +15270,13 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
             <Button
               variant="destructive"
               onClick={confirmLiveStart}
-              disabled={startBySelectedAccountMutation.isPending || killSwitchOn || !selectedAccountIsLive}
+              disabled={
+                startBySelectedAccountMutation.isPending || killSwitchOn || !selectedAccountIsLive
+              }
             >
-              {startBySelectedAccountMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              {startBySelectedAccountMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : null}
               {t('tradingPanel.confirmLive.confirmStart')}
             </Button>
           </DialogFooter>
@@ -12937,15 +15287,15 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('tradingPanel.startTrader.title')}</DialogTitle>
-            <DialogDescription>
-              {t('tradingPanel.startTrader.description')}
-            </DialogDescription>
+            <DialogDescription>{t('tradingPanel.startTrader.description')}</DialogDescription>
           </DialogHeader>
           {selectedTraderHasCopySource ? (
             <div className="rounded-md border border-border p-3 space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <p className="text-xs font-medium">{t('tradingPanel.startTrader.copyOpenPositions')}</p>
+                  <p className="text-xs font-medium">
+                    {t('tradingPanel.startTrader.copyOpenPositions')}
+                  </p>
                   <p className="text-[11px] text-muted-foreground">
                     {t('tradingPanel.startTrader.copyDescription')}
                   </p>
@@ -12956,7 +15306,11 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                 />
               </div>
               <p className="text-[11px] text-muted-foreground">
-                {t('tradingPanel.startTrader.strategyDefault')}: {selectedTraderCopyExistingOnStartDefault ? t('tradingPanel.startTrader.enabled') : t('tradingPanel.startTrader.disabled')}.
+                {t('tradingPanel.startTrader.strategyDefault')}:{' '}
+                {selectedTraderCopyExistingOnStartDefault
+                  ? t('tradingPanel.startTrader.enabled')
+                  : t('tradingPanel.startTrader.disabled')}
+                .
               </p>
             </div>
           ) : null}
@@ -12968,7 +15322,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
               onClick={confirmStartTrader}
               disabled={traderStartMutation.isPending || !selectedTrader}
             >
-              {traderStartMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              {traderStartMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : null}
               {t('tradingPanel.startTrader.title')}
             </Button>
           </DialogFooter>
@@ -12979,9 +15335,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('tradingPanel.stopTrader.title')}</DialogTitle>
-            <DialogDescription>
-              {t('tradingPanel.stopTrader.description')}
-            </DialogDescription>
+            <DialogDescription>{t('tradingPanel.stopTrader.description')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
@@ -12997,9 +15351,15 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="keep_positions">{t('tradingPanel.stopTrader.keepPositions')}</SelectItem>
-                  <SelectItem value="close_shadow_positions">{t('tradingPanel.stopTrader.closeShadow')}</SelectItem>
-                  <SelectItem value="close_all_positions">{t('tradingPanel.stopTrader.closeLiveShadow')}</SelectItem>
+                  <SelectItem value="keep_positions">
+                    {t('tradingPanel.stopTrader.keepPositions')}
+                  </SelectItem>
+                  <SelectItem value="close_shadow_positions">
+                    {t('tradingPanel.stopTrader.closeShadow')}
+                  </SelectItem>
+                  <SelectItem value="close_all_positions">
+                    {t('tradingPanel.stopTrader.closeLiveShadow')}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -13007,12 +15367,17 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
               <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2">
                 <div className="flex items-center justify-between gap-2">
                   <div>
-                    <p className="text-xs font-medium text-amber-700 dark:text-amber-100">{t('tradingPanel.stopTrader.confirmLiveClose')}</p>
+                    <p className="text-xs font-medium text-amber-700 dark:text-amber-100">
+                      {t('tradingPanel.stopTrader.confirmLiveClose')}
+                    </p>
                     <p className="text-[11px] text-amber-700/90 dark:text-amber-100/90">
                       {t('tradingPanel.stopTrader.confirmLiveCloseHint')}
                     </p>
                   </div>
-                  <Switch checked={stopConfirmLiveClose} onCheckedChange={setStopConfirmLiveClose} />
+                  <Switch
+                    checked={stopConfirmLiveClose}
+                    onCheckedChange={setStopConfirmLiveClose}
+                  />
                 </div>
               </div>
             ) : null}
@@ -13025,12 +15390,14 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
               variant="destructive"
               onClick={confirmStopTrader}
               disabled={
-                traderStopMutation.isPending
-                || !selectedTrader
-                || (stopLifecycleNeedsLiveConfirm && !stopConfirmLiveClose)
+                traderStopMutation.isPending ||
+                !selectedTrader ||
+                (stopLifecycleNeedsLiveConfirm && !stopConfirmLiveClose)
               }
             >
-              {traderStopMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              {traderStopMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : null}
               {t('tradingPanel.stopTrader.title')}
             </Button>
           </DialogFooter>
@@ -13050,17 +15417,19 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
           <div className="h-full min-h-0 flex flex-col">
             <div className="border-b border-border px-4 py-3">
               <SheetHeader className="space-y-1 text-left">
-                <SheetTitle className="text-base">{t('tradingPanel.globalSettings.title')}</SheetTitle>
-                <SheetDescription>
-                  {t('tradingPanel.globalSettings.description')}
-                </SheetDescription>
+                <SheetTitle className="text-base">
+                  {t('tradingPanel.globalSettings.title')}
+                </SheetTitle>
+                <SheetDescription>{t('tradingPanel.globalSettings.description')}</SheetDescription>
               </SheetHeader>
             </div>
 
             <ScrollArea className="flex-1 min-h-0 px-4 py-3">
               <div className="space-y-3 pb-2">
                 <div className="rounded-md border border-border p-3 space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('tradingPanel.globalSettings.loop')}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {t('tradingPanel.globalSettings.loop')}
+                  </p>
                   <div>
                     <Label>{t('tradingPanel.globalSettings.runIntervalSeconds')}</Label>
                     <Input
@@ -13068,7 +15437,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                       min={1}
                       max={300}
                       value={globalSettingsDraft.runIntervalSeconds}
-                      onChange={(event) => setGlobalSettingsField('runIntervalSeconds', event.target.value)}
+                      onChange={(event) =>
+                        setGlobalSettingsField('runIntervalSeconds', event.target.value)
+                      }
                       className="mt-1"
                     />
                   </div>
@@ -13080,7 +15451,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                       max={120}
                       placeholder={t('tradingPanel.globalSettings.autoPlaceholder')}
                       value={globalSettingsDraft.traderCycleTimeoutSeconds}
-                      onChange={(event) => setGlobalSettingsField('traderCycleTimeoutSeconds', event.target.value)}
+                      onChange={(event) =>
+                        setGlobalSettingsField('traderCycleTimeoutSeconds', event.target.value)
+                      }
                       className="mt-1"
                     />
                     <p className="mt-1 text-[10px] text-muted-foreground/75 leading-tight">
@@ -13095,7 +15468,12 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                       max={60}
                       placeholder="10"
                       value={globalSettingsDraft.runtimeTriggerCycleTimeoutSeconds}
-                      onChange={(event) => setGlobalSettingsField('runtimeTriggerCycleTimeoutSeconds', event.target.value)}
+                      onChange={(event) =>
+                        setGlobalSettingsField(
+                          'runtimeTriggerCycleTimeoutSeconds',
+                          event.target.value,
+                        )
+                      }
                       className="mt-1"
                     />
                     <p className="mt-1 text-[10px] text-muted-foreground/75 leading-tight">
@@ -13105,7 +15483,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                 </div>
 
                 <div className="rounded-md border border-border p-3 space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('tradingPanel.globalSettings.globalRisk')}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {t('tradingPanel.globalSettings.globalRisk')}
+                  </p>
                   <div className="grid gap-2 sm:grid-cols-3">
                     <div>
                       <Label>{t('tradingPanel.globalSettings.maxGrossExposure')}</Label>
@@ -13113,7 +15493,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                         type="number"
                         min={1}
                         value={globalSettingsDraft.maxGrossExposureUsd}
-                        onChange={(event) => setGlobalSettingsField('maxGrossExposureUsd', event.target.value)}
+                        onChange={(event) =>
+                          setGlobalSettingsField('maxGrossExposureUsd', event.target.value)
+                        }
                         className="mt-1"
                       />
                     </div>
@@ -13123,7 +15505,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                         type="number"
                         min={0}
                         value={globalSettingsDraft.maxDailyLossUsd}
-                        onChange={(event) => setGlobalSettingsField('maxDailyLossUsd', event.target.value)}
+                        onChange={(event) =>
+                          setGlobalSettingsField('maxDailyLossUsd', event.target.value)
+                        }
                         className="mt-1"
                       />
                     </div>
@@ -13133,7 +15517,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                         type="number"
                         min={1}
                         value={globalSettingsDraft.maxOrdersPerCycle}
-                        onChange={(event) => setGlobalSettingsField('maxOrdersPerCycle', event.target.value)}
+                        onChange={(event) =>
+                          setGlobalSettingsField('maxOrdersPerCycle', event.target.value)
+                        }
                         className="mt-1"
                       />
                     </div>
@@ -13141,7 +15527,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                 </div>
 
                 <div className="rounded-md border border-border p-3 space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('tradingPanel.globalSettings.liveExecutionLimits')}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {t('tradingPanel.globalSettings.liveExecutionLimits')}
+                  </p>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <div>
                       <Label>{t('tradingPanel.globalSettings.maxTradeSize')}</Label>
@@ -13149,7 +15537,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                         type="number"
                         min={1}
                         value={globalSettingsDraft.maxTradeSizeUsd}
-                        onChange={(event) => setGlobalSettingsField('maxTradeSizeUsd', event.target.value)}
+                        onChange={(event) =>
+                          setGlobalSettingsField('maxTradeSizeUsd', event.target.value)
+                        }
                         className="mt-1"
                       />
                     </div>
@@ -13159,7 +15549,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                         type="number"
                         min={10}
                         value={globalSettingsDraft.maxDailyTradeVolumeUsd}
-                        onChange={(event) => setGlobalSettingsField('maxDailyTradeVolumeUsd', event.target.value)}
+                        onChange={(event) =>
+                          setGlobalSettingsField('maxDailyTradeVolumeUsd', event.target.value)
+                        }
                         className="mt-1"
                       />
                     </div>
@@ -13169,7 +15561,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                         type="number"
                         min={0}
                         value={globalSettingsDraft.minAccountBalanceUsd}
-                        onChange={(event) => setGlobalSettingsField('minAccountBalanceUsd', event.target.value)}
+                        onChange={(event) =>
+                          setGlobalSettingsField('minAccountBalanceUsd', event.target.value)
+                        }
                         className="mt-1"
                       />
                     </div>
@@ -13180,7 +15574,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                         min={1}
                         max={100}
                         value={globalSettingsDraft.maxOpenPositions}
-                        onChange={(event) => setGlobalSettingsField('maxOpenPositions', event.target.value)}
+                        onChange={(event) =>
+                          setGlobalSettingsField('maxOpenPositions', event.target.value)
+                        }
                         className="mt-1"
                       />
                     </div>
@@ -13192,7 +15588,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                         max={10}
                         step={0.1}
                         value={globalSettingsDraft.maxSlippagePercent}
-                        onChange={(event) => setGlobalSettingsField('maxSlippagePercent', event.target.value)}
+                        onChange={(event) =>
+                          setGlobalSettingsField('maxSlippagePercent', event.target.value)
+                        }
                         className="mt-1"
                       />
                     </div>
@@ -13200,7 +15598,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                 </div>
 
                 <div className="rounded-md border border-border p-3 space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('tradingPanel.globalSettings.pendingLiveExits')}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {t('tradingPanel.globalSettings.pendingLiveExits')}
+                  </p>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <div>
                       <Label>{t('tradingPanel.globalSettings.maxPendingExits')}</Label>
@@ -13208,15 +15608,21 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                         type="number"
                         min={0}
                         value={globalSettingsDraft.pendingExitMaxAllowed}
-                        onChange={(event) => setGlobalSettingsField('pendingExitMaxAllowed', event.target.value)}
+                        onChange={(event) =>
+                          setGlobalSettingsField('pendingExitMaxAllowed', event.target.value)
+                        }
                         className="mt-1"
                       />
                     </div>
                     <label className="rounded-md border border-border/60 bg-muted/15 px-2.5 py-2 flex items-center justify-between gap-2">
-                      <span className="text-xs text-muted-foreground">{t('tradingPanel.globalSettings.identityGuardEnabled')}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {t('tradingPanel.globalSettings.identityGuardEnabled')}
+                      </span>
                       <Switch
                         checked={globalSettingsDraft.pendingExitIdentityGuardEnabled}
-                        onCheckedChange={(checked) => setGlobalSettingsField('pendingExitIdentityGuardEnabled', checked)}
+                        onCheckedChange={(checked) =>
+                          setGlobalSettingsField('pendingExitIdentityGuardEnabled', checked)
+                        }
                       />
                     </label>
                   </div>
@@ -13224,27 +15630,39 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                     <Label>{t('tradingPanel.globalSettings.terminalPendingExitStatuses')}</Label>
                     <Input
                       value={globalSettingsDraft.pendingExitTerminalStatuses}
-                      onChange={(event) => setGlobalSettingsField('pendingExitTerminalStatuses', event.target.value)}
+                      onChange={(event) =>
+                        setGlobalSettingsField('pendingExitTerminalStatuses', event.target.value)
+                      }
                       className="mt-1 font-mono text-xs"
                     />
                   </div>
                 </div>
 
                 <div className="rounded-md border border-border p-3 space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('tradingPanel.globalSettings.liveRiskClamps')}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {t('tradingPanel.globalSettings.liveRiskClamps')}
+                  </p>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <label className="rounded-md border border-border/60 bg-muted/15 px-2.5 py-2 flex items-center justify-between gap-2">
-                      <span className="text-xs text-muted-foreground">{t('tradingPanel.globalSettings.forceAveragingOff')}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {t('tradingPanel.globalSettings.forceAveragingOff')}
+                      </span>
                       <Switch
                         checked={globalSettingsDraft.enforceAllowAveragingOff}
-                        onCheckedChange={(checked) => setGlobalSettingsField('enforceAllowAveragingOff', checked)}
+                        onCheckedChange={(checked) =>
+                          setGlobalSettingsField('enforceAllowAveragingOff', checked)
+                        }
                       />
                     </label>
                     <label className="rounded-md border border-border/60 bg-muted/15 px-2.5 py-2 flex items-center justify-between gap-2">
-                      <span className="text-xs text-muted-foreground">{t('tradingPanel.globalSettings.forceHaltLossStreak')}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {t('tradingPanel.globalSettings.forceHaltLossStreak')}
+                      </span>
                       <Switch
                         checked={globalSettingsDraft.enforceHaltOnConsecutiveLosses}
-                        onCheckedChange={(checked) => setGlobalSettingsField('enforceHaltOnConsecutiveLosses', checked)}
+                        onCheckedChange={(checked) =>
+                          setGlobalSettingsField('enforceHaltOnConsecutiveLosses', checked)
+                        }
                       />
                     </label>
                   </div>
@@ -13255,7 +15673,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                         type="number"
                         min={0}
                         value={globalSettingsDraft.minCooldownSeconds}
-                        onChange={(event) => setGlobalSettingsField('minCooldownSeconds', event.target.value)}
+                        onChange={(event) =>
+                          setGlobalSettingsField('minCooldownSeconds', event.target.value)
+                        }
                         className="mt-1"
                       />
                     </div>
@@ -13265,7 +15685,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                         type="number"
                         min={1}
                         value={globalSettingsDraft.maxConsecutiveLossesCap}
-                        onChange={(event) => setGlobalSettingsField('maxConsecutiveLossesCap', event.target.value)}
+                        onChange={(event) =>
+                          setGlobalSettingsField('maxConsecutiveLossesCap', event.target.value)
+                        }
                         className="mt-1"
                       />
                     </div>
@@ -13275,7 +15697,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                         type="number"
                         min={1}
                         value={globalSettingsDraft.maxOpenOrdersCap}
-                        onChange={(event) => setGlobalSettingsField('maxOpenOrdersCap', event.target.value)}
+                        onChange={(event) =>
+                          setGlobalSettingsField('maxOpenOrdersCap', event.target.value)
+                        }
                         className="mt-1"
                       />
                     </div>
@@ -13285,7 +15709,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                         type="number"
                         min={1}
                         value={globalSettingsDraft.maxTradeNotionalUsdCap}
-                        onChange={(event) => setGlobalSettingsField('maxTradeNotionalUsdCap', event.target.value)}
+                        onChange={(event) =>
+                          setGlobalSettingsField('maxTradeNotionalUsdCap', event.target.value)
+                        }
                         className="mt-1"
                       />
                     </div>
@@ -13295,7 +15721,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                         type="number"
                         min={1}
                         value={globalSettingsDraft.maxOrdersPerCycleCap}
-                        onChange={(event) => setGlobalSettingsField('maxOrdersPerCycleCap', event.target.value)}
+                        onChange={(event) =>
+                          setGlobalSettingsField('maxOrdersPerCycleCap', event.target.value)
+                        }
                         className="mt-1"
                       />
                     </div>
@@ -13306,7 +15734,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                         min={1}
                         max={100_000_000}
                         value={globalSettingsDraft.maxDailySpendUsdCap}
-                        onChange={(event) => setGlobalSettingsField('maxDailySpendUsdCap', event.target.value)}
+                        onChange={(event) =>
+                          setGlobalSettingsField('maxDailySpendUsdCap', event.target.value)
+                        }
                         className="mt-1"
                         placeholder="Unset → per-trader value applies"
                       />
@@ -13318,7 +15748,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                         min={0}
                         max={10_000}
                         value={globalSettingsDraft.maxSpreadBpsCap}
-                        onChange={(event) => setGlobalSettingsField('maxSpreadBpsCap', event.target.value)}
+                        onChange={(event) =>
+                          setGlobalSettingsField('maxSpreadBpsCap', event.target.value)
+                        }
                         className="mt-1"
                         placeholder="Unset → per-trader value applies"
                       />
@@ -13330,7 +15762,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                         min={0}
                         max={10_000}
                         value={globalSettingsDraft.slippageBpsCap}
-                        onChange={(event) => setGlobalSettingsField('slippageBpsCap', event.target.value)}
+                        onChange={(event) =>
+                          setGlobalSettingsField('slippageBpsCap', event.target.value)
+                        }
                         className="mt-1"
                         placeholder="Unset → per-trader value applies"
                       />
@@ -13342,7 +15776,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                         min={0}
                         max={50}
                         value={globalSettingsDraft.retryLimitCap}
-                        onChange={(event) => setGlobalSettingsField('retryLimitCap', event.target.value)}
+                        onChange={(event) =>
+                          setGlobalSettingsField('retryLimitCap', event.target.value)
+                        }
                         className="mt-1"
                         placeholder="Unset → per-trader value applies"
                       />
@@ -13354,7 +15790,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                         min={0}
                         max={60_000}
                         value={globalSettingsDraft.retryBackoffMsCap}
-                        onChange={(event) => setGlobalSettingsField('retryBackoffMsCap', event.target.value)}
+                        onChange={(event) =>
+                          setGlobalSettingsField('retryBackoffMsCap', event.target.value)
+                        }
                         className="mt-1"
                         placeholder="Unset → per-trader value applies"
                       />
@@ -13366,7 +15804,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                         min={1}
                         max={86_400}
                         value={globalSettingsDraft.orderTtlSecondsCap}
-                        onChange={(event) => setGlobalSettingsField('orderTtlSecondsCap', event.target.value)}
+                        onChange={(event) =>
+                          setGlobalSettingsField('orderTtlSecondsCap', event.target.value)
+                        }
                         className="mt-1"
                         placeholder="Unset → per-trader value applies"
                       />
@@ -13375,20 +15815,30 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                 </div>
 
                 <div className="rounded-md border border-border p-3 space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('tradingPanel.globalSettings.liveMarketContext')}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {t('tradingPanel.globalSettings.liveMarketContext')}
+                  </p>
                   <label className="rounded-md border border-border/60 bg-muted/15 px-2.5 py-2 flex items-center justify-between gap-2">
-                    <span className="text-xs text-muted-foreground">{t('tradingPanel.startTrader.enabled')}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {t('tradingPanel.startTrader.enabled')}
+                    </span>
                     <Switch
                       checked={globalSettingsDraft.liveMarketContextEnabled}
-                      onCheckedChange={(checked) => setGlobalSettingsField('liveMarketContextEnabled', checked)}
+                      onCheckedChange={(checked) =>
+                        setGlobalSettingsField('liveMarketContextEnabled', checked)
+                      }
                     />
                   </label>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <label className="rounded-md border border-border/60 bg-muted/15 px-2.5 py-2 flex items-center justify-between gap-2">
-                      <span className="text-xs text-muted-foreground">{t('tradingPanel.globalSettings.strictWsPricing')}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {t('tradingPanel.globalSettings.strictWsPricing')}
+                      </span>
                       <Switch
                         checked={globalSettingsDraft.liveMarketStrictWsPricingOnly}
-                        onCheckedChange={(checked) => setGlobalSettingsField('liveMarketStrictWsPricingOnly', checked)}
+                        onCheckedChange={(checked) =>
+                          setGlobalSettingsField('liveMarketStrictWsPricingOnly', checked)
+                        }
                       />
                     </label>
                     <div>
@@ -13398,7 +15848,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                         min={25}
                         max={30000}
                         value={globalSettingsDraft.liveMarketMaxMarketDataAgeMs}
-                        onChange={(event) => setGlobalSettingsField('liveMarketMaxMarketDataAgeMs', event.target.value)}
+                        onChange={(event) =>
+                          setGlobalSettingsField('liveMarketMaxMarketDataAgeMs', event.target.value)
+                        }
                         className="mt-1"
                       />
                     </div>
@@ -13413,7 +15865,12 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                         type="number"
                         min={300}
                         value={globalSettingsDraft.liveMarketHistoryWindowSeconds}
-                        onChange={(event) => setGlobalSettingsField('liveMarketHistoryWindowSeconds', event.target.value)}
+                        onChange={(event) =>
+                          setGlobalSettingsField(
+                            'liveMarketHistoryWindowSeconds',
+                            event.target.value,
+                          )
+                        }
                         className="mt-1"
                       />
                     </div>
@@ -13423,7 +15880,12 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                         type="number"
                         min={30}
                         value={globalSettingsDraft.liveMarketHistoryFidelitySeconds}
-                        onChange={(event) => setGlobalSettingsField('liveMarketHistoryFidelitySeconds', event.target.value)}
+                        onChange={(event) =>
+                          setGlobalSettingsField(
+                            'liveMarketHistoryFidelitySeconds',
+                            event.target.value,
+                          )
+                        }
                         className="mt-1"
                       />
                     </div>
@@ -13433,7 +15895,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                         type="number"
                         min={20}
                         value={globalSettingsDraft.liveMarketHistoryMaxPoints}
-                        onChange={(event) => setGlobalSettingsField('liveMarketHistoryMaxPoints', event.target.value)}
+                        onChange={(event) =>
+                          setGlobalSettingsField('liveMarketHistoryMaxPoints', event.target.value)
+                        }
                         className="mt-1"
                       />
                     </div>
@@ -13443,7 +15907,12 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                         type="number"
                         min={1}
                         value={globalSettingsDraft.liveMarketContextTimeoutSeconds}
-                        onChange={(event) => setGlobalSettingsField('liveMarketContextTimeoutSeconds', event.target.value)}
+                        onChange={(event) =>
+                          setGlobalSettingsField(
+                            'liveMarketContextTimeoutSeconds',
+                            event.target.value,
+                          )
+                        }
                         className="mt-1"
                       />
                     </div>
@@ -13451,7 +15920,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                 </div>
 
                 <div className="rounded-md border border-border p-3 space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('tradingPanel.globalSettings.providerHealthGuard')}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {t('tradingPanel.globalSettings.providerHealthGuard')}
+                  </p>
                   <div className="grid gap-2 sm:grid-cols-3">
                     <div>
                       <Label>{t('tradingPanel.globalSettings.windowSeconds')}</Label>
@@ -13459,7 +15930,12 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                         type="number"
                         min={30}
                         value={globalSettingsDraft.liveProviderHealthWindowSeconds}
-                        onChange={(event) => setGlobalSettingsField('liveProviderHealthWindowSeconds', event.target.value)}
+                        onChange={(event) =>
+                          setGlobalSettingsField(
+                            'liveProviderHealthWindowSeconds',
+                            event.target.value,
+                          )
+                        }
                         className="mt-1"
                       />
                     </div>
@@ -13469,7 +15945,9 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                         type="number"
                         min={1}
                         value={globalSettingsDraft.liveProviderHealthMinErrors}
-                        onChange={(event) => setGlobalSettingsField('liveProviderHealthMinErrors', event.target.value)}
+                        onChange={(event) =>
+                          setGlobalSettingsField('liveProviderHealthMinErrors', event.target.value)
+                        }
                         className="mt-1"
                       />
                     </div>
@@ -13479,7 +15957,12 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                         type="number"
                         min={15}
                         value={globalSettingsDraft.liveProviderHealthBlockSeconds}
-                        onChange={(event) => setGlobalSettingsField('liveProviderHealthBlockSeconds', event.target.value)}
+                        onChange={(event) =>
+                          setGlobalSettingsField(
+                            'liveProviderHealthBlockSeconds',
+                            event.target.value,
+                          )
+                        }
                         className="mt-1"
                       />
                     </div>
@@ -13490,7 +15973,10 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
 
             <div className="border-t border-border px-4 py-3 flex flex-wrap items-center justify-end gap-2">
               {globalSettingsSaveError ? (
-                <div className="mr-auto text-xs text-red-500 max-w-[65%] break-words leading-tight" title={globalSettingsSaveError}>
+                <div
+                  className="mr-auto text-xs text-red-500 max-w-[65%] break-words leading-tight"
+                  title={globalSettingsSaveError}
+                >
                   {globalSettingsSaveError}
                 </div>
               ) : null}
@@ -13510,11 +15996,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
               >
                 {t('tradingPanel.common.close')}
               </Button>
-              <Button
-                type="button"
-                onClick={saveGlobalSettings}
-                disabled={globalSettingsBusy}
-              >
+              <Button type="button" onClick={saveGlobalSettings} disabled={globalSettingsBusy}>
                 {globalSettingsBusy ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                 {t('tradingPanel.globalSettings.saveSettings')}
               </Button>
@@ -13583,13 +16065,17 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                   <Brain className="w-4 h-4 text-orange-400" />
                   {t('tradingPanel.controls.cortex')}
                 </SheetTitle>
-                <SheetDescription>
-                  {t('tradingPanel.cortex.description')}
-                </SheetDescription>
+                <SheetDescription>{t('tradingPanel.cortex.description')}</SheetDescription>
               </SheetHeader>
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto p-4">
-              <Suspense fallback={<div className="flex items-center justify-center py-16"><Loader2 className="w-5 h-5 animate-spin text-orange-400" /></div>}>
+              <Suspense
+                fallback={
+                  <div className="flex items-center justify-center py-16">
+                    <Loader2 className="w-5 h-5 animate-spin text-orange-400" />
+                  </div>
+                }
+              >
                 <CortexView />
               </Suspense>
             </div>
@@ -13599,6 +16085,3 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     </div>
   )
 }
-
-
-

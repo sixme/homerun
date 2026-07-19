@@ -117,12 +117,8 @@ class SimulationService:
                     tokens = [str(t or "").strip() for t in raw if str(t or "").strip()]
                     if tokens:
                         break
-            yes_token = str(
-                (market_info or {}).get("yes_token_id") or payload.get("yes_token_id") or ""
-            ).strip()
-            no_token = str(
-                (market_info or {}).get("no_token_id") or payload.get("no_token_id") or ""
-            ).strip()
+            yes_token = str((market_info or {}).get("yes_token_id") or payload.get("yes_token_id") or "").strip()
+            no_token = str((market_info or {}).get("no_token_id") or payload.get("no_token_id") or "").strip()
             if token_id and yes_token and token_id == yes_token:
                 return PositionSide.YES, "YES"
             if token_id and no_token and token_id == no_token:
@@ -137,8 +133,7 @@ class SimulationService:
                     idx = tokens.index(token_id)
                 except ValueError as exc:
                     raise ValueError(
-                        f"Unsupported direction '{direction}'; token_id={token_id} "
-                        f"not in market tokens={tokens}"
+                        f"Unsupported direction '{direction}'; token_id={token_id} not in market tokens={tokens}"
                     ) from exc
                 if idx == 0:
                     return PositionSide.YES, "YES"

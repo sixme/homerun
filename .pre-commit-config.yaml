@@ -1,0 +1,108 @@
+# Pre-commit hooks for Homerun (Python backend + React frontend).
+# Install once per clone:
+#   cd backend && source venv/bin/activate && pip install -r requirements.txt
+#   pre-commit install
+# Run on all files:
+#   pre-commit run --all-files
+
+default_language_version:
+  python: python3.12
+
+ci:
+  autofix_prs: true
+  autoupdate_schedule: monthly
+
+repos:
+  # ── Generic hygiene ────────────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: |
+          (?x)^(
+            .*\.md|
+            frontend/src/i18n/locales/.*\.json|
+            .*\.svg
+          )$
+      - id: end-of-file-fixer
+        exclude: |
+          (?x)^(
+            frontend/src/i18n/locales/.*\.json|
+            .*\.svg
+          )$
+      - id: check-yaml
+        args: [--unsafe]
+      - id: check-toml
+      - id: check-json
+        exclude: |
+          (?x)^(
+            frontend/tsconfig.*\.json|
+            frontend/package-lock\.json|
+            \.vscode/.*
+          )$
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+      - id: check-symlinks
+      - id: destroyed-symlinks
+      - id: detect-private-key
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: debug-statements
+        files: \.py$
+      - id: name-tests-test
+        files: ^backend/tests/
+        args: [--pytest-test-first]
+
+  # ── Python: Ruff lint + format ─────────────────────────────────────────
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.22
+    hooks:
+      - id: ruff
+        name: ruff (lint)
+        args: [--config, backend/pyproject.toml, --fix, --exit-non-zero-on-fix]
+        files: ^(backend/|scripts/|gui\.py$)
+      - id: ruff-format
+        name: ruff (format)
+        args: [--config, backend/pyproject.toml]
+        files: ^(backend/|scripts/|gui\.py$)
+
+  # ── Frontend: Prettier + ESLint (React / TypeScript) ───────────────────
+  # Uses the project's node_modules so versions stay in lockstep with
+  # package.json (run `npm ci` in frontend/ after clone).
+  - repo: local
+    hooks:
+      - id: frontend-prettier
+        name: prettier (frontend)
+        language: system
+        files: ^frontend/.*\.(js|jsx|ts|tsx|css|json|md|html)$
+        exclude: |
+          (?x)^(
+            frontend/package-lock\.json|
+            frontend/src/i18n/locales/.*\.json|
+            frontend/dist/.*
+          )$
+        # pre-commit passes repo-root paths; strip the frontend/ prefix.
+        entry: >-
+          bash -c 'cd frontend && rel=(); for f in "$@"; do rel+=("${f#frontend/}"); done;
+          npx prettier --write --ignore-unknown "${rel[@]}"' --
+        pass_filenames: true
+
+      - id: frontend-eslint
+        name: eslint (frontend)
+        language: system
+        files: ^frontend/.*\.(js|jsx|ts|tsx)$
+        exclude: ^frontend/(dist|node_modules)/
+        # Fail on errors only; warnings (exhaustive-deps, etc.) do not block commits.
+        entry: >-
+          bash -c 'cd frontend && rel=(); for f in "$@"; do rel+=("${f#frontend/}"); done;
+          npx eslint --fix --quiet "${rel[@]}"' --
+        pass_filenames: true
+
+      - id: frontend-tsc
+        name: tsc --noEmit (frontend)
+        language: system
+        files: ^frontend/.*\.(ts|tsx)$
+        pass_filenames: false
+        entry: bash -c 'cd frontend && npx tsc --noEmit'

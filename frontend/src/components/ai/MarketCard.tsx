@@ -6,14 +6,7 @@
 import { defineComponent } from '@openuidev/react-lang'
 import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
-import {
-  TrendingUp,
-  TrendingDown,
-  Clock,
-  BarChart3,
-  Droplets,
-  ExternalLink,
-} from 'lucide-react'
+import { TrendingUp, TrendingDown, Clock, BarChart3, Droplets, ExternalLink } from 'lucide-react'
 
 export const MarketCard = defineComponent({
   name: 'MarketCard',
@@ -30,18 +23,9 @@ export const MarketCard = defineComponent({
   description:
     'Rich market opportunity card with prices, metadata, and a link to Polymarket. ' +
     'Use when presenting individual market opportunities or recommendations.',
-  component: ({ props }) => {
+  component: function MarketCardComponent({ props }) {
     const { t } = useTranslation()
-    const {
-      question,
-      slug,
-      yes_price,
-      no_price,
-      volume,
-      liquidity,
-      end_date,
-      commentary,
-    } = props
+    const { question, slug, yes_price, no_price, volume, liquidity, end_date, commentary } = props
 
     const polymarketUrl = `https://polymarket.com/event/${slug}`
     const yesIsLeading = yes_price >= no_price
@@ -50,9 +34,7 @@ export const MarketCard = defineComponent({
       <div className="my-1.5 rounded-lg border border-purple-500/20 bg-purple-500/5 overflow-hidden">
         {/* Header */}
         <div className="px-3 py-2 border-b border-purple-500/10">
-          <p className="text-xs font-medium text-foreground/90 leading-snug">
-            {question}
-          </p>
+          <p className="text-xs font-medium text-foreground/90 leading-snug">{question}</p>
         </div>
 
         {/* Price pills */}
@@ -98,9 +80,7 @@ export const MarketCard = defineComponent({
         {/* Commentary */}
         {commentary && (
           <div className="px-3 py-2 border-t border-purple-500/10">
-            <p className="text-[11px] text-muted-foreground/80 leading-relaxed">
-              {commentary}
-            </p>
+            <p className="text-[11px] text-muted-foreground/80 leading-relaxed">{commentary}</p>
           </div>
         )}
 

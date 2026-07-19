@@ -1,4 +1,9 @@
-import { api, getStrategyManagerItems, unwrapApiData, unwrapStrategyManagerPayload } from './apiClient'
+import {
+  api,
+  getStrategyManagerItems,
+  unwrapApiData,
+  unwrapStrategyManagerPayload,
+} from './apiClient'
 import type { TradingPosition } from './apiCore'
 
 // ==================== TRADER DISCOVERY ====================
@@ -21,7 +26,16 @@ export interface DiscoveredTrader {
 
 export type TimePeriod = 'DAY' | 'WEEK' | 'MONTH' | 'ALL'
 export type OrderBy = 'PNL' | 'VOL'
-export type Category = 'OVERALL' | 'POLITICS' | 'SPORTS' | 'CRYPTO' | 'CULTURE' | 'WEATHER' | 'ECONOMICS' | 'TECH' | 'FINANCE'
+export type Category =
+  | 'OVERALL'
+  | 'POLITICS'
+  | 'SPORTS'
+  | 'CRYPTO'
+  | 'CULTURE'
+  | 'WEATHER'
+  | 'ECONOMICS'
+  | 'TECH'
+  | 'FINANCE'
 
 export interface LeaderboardFilters {
   limit?: number
@@ -81,7 +95,9 @@ function toDiscoveryTimePeriod(value?: TimePeriod): string | undefined {
 }
 
 function toDiscoveryCategory(value?: Category): string | undefined {
-  const normalized = String(value || '').trim().toLowerCase()
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase()
   if (!normalized || normalized === 'overall') return undefined
   return normalized
 }
@@ -139,7 +155,7 @@ export const getLeaderboard = async (filters?: LeaderboardFilters) => {
 export const discoverTopTraders = async (
   limit = 50,
   minTrades = 10,
-  filters?: Omit<LeaderboardFilters, 'limit'>
+  filters?: Omit<LeaderboardFilters, 'limit'>,
 ): Promise<DiscoveredTrader[]> => {
   const { data } = await api.get('/discovery/leaderboard', {
     params: {
@@ -149,7 +165,7 @@ export const discoverTopTraders = async (
       sort_dir: 'desc',
       time_period: toDiscoveryTimePeriod(filters?.time_period),
       market_category: toDiscoveryCategory(filters?.category),
-    }
+    },
   })
   const rows = unwrapApiData(data)?.wallets || []
   return toDiscoveredTraderRows(rows)
@@ -184,16 +200,22 @@ export const discoverByWinRate = async (filters?: WinRateFilters): Promise<Disco
   return filtered.slice(0, requestedLimit)
 }
 
-export const getWalletWinRate = async (address: string, timePeriod?: TimePeriod): Promise<WalletWinRate> => {
+export const getWalletWinRate = async (
+  address: string,
+  timePeriod?: TimePeriod,
+): Promise<WalletWinRate> => {
   const { data } = await api.get(`/discovery/wallet/${address}/win-rate`, {
-    params: timePeriod ? { time_period: timePeriod } : undefined
+    params: timePeriod ? { time_period: timePeriod } : undefined,
   })
   return unwrapApiData(data)
 }
 
-export const analyzeWalletPnL = async (address: string, timePeriod?: TimePeriod): Promise<WalletPnL> => {
+export const analyzeWalletPnL = async (
+  address: string,
+  timePeriod?: TimePeriod,
+): Promise<WalletPnL> => {
   const { data } = await api.get(`/discovery/wallet/${address}/pnl`, {
-    params: timePeriod ? { time_period: timePeriod } : undefined
+    params: timePeriod ? { time_period: timePeriod } : undefined,
   })
   return unwrapApiData(data)
 }
@@ -211,13 +233,10 @@ export const getWalletProfile = async (address: string): Promise<WalletProfile> 
   return unwrapApiData(data)
 }
 
-export const analyzeAndTrackWallet = async (params: {
-  address: string
-  label?: string
-}) => {
+export const analyzeAndTrackWallet = async (params: { address: string; label?: string }) => {
   const { data } = await api.post(
     `/discovery/wallet/${params.address}/track`,
-    params.label ? { label: params.label } : {}
+    params.label ? { label: params.label } : {},
   )
   return unwrapApiData(data)
 }
@@ -396,7 +415,9 @@ export const getOpenOrders = async (): Promise<Order[]> => {
   return unwrapApiData(data)
 }
 
-export const cancelOrder = async (orderId: string): Promise<{ status: string; order_id: string }> => {
+export const cancelOrder = async (
+  orderId: string,
+): Promise<{ status: string; order_id: string }> => {
   const { data } = await api.delete(`/trader-orchestrator/live/orders/${orderId}`)
   return unwrapApiData(data)
 }
@@ -411,7 +432,13 @@ export const getTradingPositions = async (): Promise<TradingPosition[]> => {
   return unwrapApiData(data)
 }
 
-export const getTradingBalance = async (): Promise<{ balance: number; available: number; reserved: number; currency: string; timestamp: string }> => {
+export const getTradingBalance = async (): Promise<{
+  balance: number
+  available: number
+  reserved: number
+  currency: string
+  timestamp: string
+}> => {
   const { data } = await api.get('/trader-orchestrator/live/balance')
   return unwrapApiData(data)
 }
@@ -829,7 +856,9 @@ const mapOverviewToStatus = (overview: TraderOrchestratorOverview): TraderOrches
   const worker = overview.worker || ({} as TraderOrchestratorOverview['worker'])
   const metrics = overview.metrics || ({} as TraderOrchestratorOverview['metrics'])
   const runtimeState = overview.runtime_state
-  const tradingActive = Boolean(runtimeState?.desired_active ?? (Boolean(control.is_enabled) && !Boolean(control.is_paused))) && !Boolean(control.kill_switch)
+  const tradingActive =
+    Boolean(runtimeState?.desired_active ?? (Boolean(control.is_enabled) && !control.is_paused)) &&
+    !control.kill_switch
   const workerRunning = Boolean(runtimeState?.worker_running ?? worker.running)
   const workerActivity = worker.current_activity || null
   const workerLastRunAt = worker.last_run_at || null
@@ -879,7 +908,10 @@ const mapOverviewToStatus = (overview: TraderOrchestratorOverview): TraderOrches
       last_trade_at: workerLastRunAt,
       opportunities_seen: Number(metrics.decisions_count || 0),
       opportunities_executed: Number(metrics.orders_count || 0),
-      opportunities_skipped: Math.max(0, Number(metrics.decisions_count || 0) - Number(metrics.orders_count || 0)),
+      opportunities_skipped: Math.max(
+        0,
+        Number(metrics.decisions_count || 0) - Number(metrics.orders_count || 0),
+      ),
     },
   }
 }
@@ -958,7 +990,10 @@ export const stopTraderOrchestratorLive = async (requestedBy?: string) => {
   return unwrapApiData(data)
 }
 
-export const setTraderOrchestratorLiveKillSwitch = async (enabled: boolean, requestedBy?: string) => {
+export const setTraderOrchestratorLiveKillSwitch = async (
+  enabled: boolean,
+  requestedBy?: string,
+) => {
   const { data } = await api.post('/trader-orchestrator/kill-switch', {
     enabled,
     requested_by: requestedBy,
@@ -966,7 +1001,9 @@ export const setTraderOrchestratorLiveKillSwitch = async (enabled: boolean, requ
   return unwrapApiData(data)
 }
 
-export const updateTraderOrchestratorSettings = async (payload: TraderOrchestratorSettingsUpdatePayload) => {
+export const updateTraderOrchestratorSettings = async (
+  payload: TraderOrchestratorSettingsUpdatePayload,
+) => {
   const { data } = await api.put('/trader-orchestrator/settings', payload)
   return unwrapApiData(data)
 }
@@ -1372,17 +1409,23 @@ const DEFAULT_STRATEGY_BY_SOURCE: Record<string, string> = {
 const DEFAULT_STRATEGY_KEY = 'btc_eth_maker_quote'
 
 function normalizeTraderSourceKey(value: unknown): string {
-  return String(value || '').trim().toLowerCase()
+  return String(value || '')
+    .trim()
+    .toLowerCase()
 }
 
 function normalizeTraderStrategyKey(value: unknown): string {
-  const key = String(value || '').trim().toLowerCase()
+  const key = String(value || '')
+    .trim()
+    .toLowerCase()
   return key || DEFAULT_STRATEGY_KEY
 }
 
 function normalizeStrategyVersionValue(value: unknown): number | null {
   if (value === null || value === undefined) return null
-  const raw = String(value || '').trim().toLowerCase()
+  const raw = String(value || '')
+    .trim()
+    .toLowerCase()
   if (!raw || raw === 'latest') return null
   const parsed = Number(raw.startsWith('v') ? raw.slice(1) : raw)
   if (!Number.isFinite(parsed) || parsed <= 0) return null
@@ -1390,7 +1433,9 @@ function normalizeStrategyVersionValue(value: unknown): number | null {
 }
 
 function normalizeTraderMode(value: unknown): 'shadow' | 'live' {
-  const mode = String(value || '').trim().toLowerCase()
+  const mode = String(value || '')
+    .trim()
+    .toLowerCase()
   if (mode === 'live') return 'live'
   return 'shadow'
 }
@@ -1414,7 +1459,10 @@ function normalizeTraderFields(raw: any): Trader {
         source_key: sourceKey,
         strategy_key: normalizeTraderStrategyKeyForSource(sourceKey, item.strategy_key),
         strategy_version: normalizeStrategyVersionValue(item.strategy_version),
-        strategy_params: item.strategy_params && typeof item.strategy_params === 'object' ? item.strategy_params : {},
+        strategy_params:
+          item.strategy_params && typeof item.strategy_params === 'object'
+            ? item.strategy_params
+            : {},
       }
     })
 
@@ -1440,7 +1488,10 @@ export const getTrader = async (traderId: string): Promise<Trader> => {
   return normalizeTraderFields(data)
 }
 
-export const updateTrader = async (traderId: string, payload: Record<string, any>): Promise<Trader> => {
+export const updateTrader = async (
+  traderId: string,
+  payload: Record<string, any>,
+): Promise<Trader> => {
   const { data } = await api.put(`/traders/${traderId}`, payload)
   return normalizeTraderFields(data)
 }
@@ -1450,7 +1501,8 @@ export interface TraderStartPayload {
   requested_by?: string
 }
 
-export type TraderStopLifecycleMode = 'keep_positions' | 'close_shadow_positions' | 'close_all_positions'
+export type TraderStopLifecycleMode =
+  'keep_positions' | 'close_shadow_positions' | 'close_all_positions'
 
 export interface TraderStopPayload {
   stop_lifecycle?: TraderStopLifecycleMode
@@ -1475,12 +1527,18 @@ export interface TraderManualSellOrderResponse {
   }
 }
 
-export const startTrader = async (traderId: string, payload?: TraderStartPayload): Promise<Trader> => {
+export const startTrader = async (
+  traderId: string,
+  payload?: TraderStartPayload,
+): Promise<Trader> => {
   const { data } = await api.post(`/traders/${traderId}/start`, payload || {})
   return normalizeTraderFields(data)
 }
 
-export const stopTrader = async (traderId: string, payload?: TraderStopPayload): Promise<Trader> => {
+export const stopTrader = async (
+  traderId: string,
+  payload?: TraderStopPayload,
+): Promise<Trader> => {
   const { data } = await api.post(`/traders/${traderId}/stop`, payload || {})
   return normalizeTraderFields(data)
 }
@@ -1488,7 +1546,7 @@ export const stopTrader = async (traderId: string, payload?: TraderStopPayload):
 export const sellTraderOrderNow = async (
   traderId: string,
   orderId: string,
-  payload?: { requested_by?: string; reason?: string }
+  payload?: { requested_by?: string; reason?: string },
 ): Promise<TraderManualSellOrderResponse> => {
   const { data } = await api.post(`/traders/${traderId}/orders/${orderId}/sell`, payload || {})
   return unwrapApiData(data)
@@ -1506,18 +1564,24 @@ export interface ReconcileOrderResponse {
 export const reconcileTraderOrder = async (
   traderId: string,
   orderId: string,
-  payload?: { requested_by?: string }
+  payload?: { requested_by?: string },
 ): Promise<ReconcileOrderResponse> => {
   const { data } = await api.post(`/traders/${traderId}/orders/${orderId}/reconcile`, payload || {})
   return unwrapApiData(data)
 }
 
-export const activateTrader = async (traderId: string, payload?: { requested_by?: string; reason?: string }): Promise<Trader> => {
+export const activateTrader = async (
+  traderId: string,
+  payload?: { requested_by?: string; reason?: string },
+): Promise<Trader> => {
   const { data } = await api.post(`/traders/${traderId}/activate`, payload || {})
   return normalizeTraderFields(data)
 }
 
-export const deactivateTrader = async (traderId: string, payload?: { requested_by?: string; reason?: string }): Promise<Trader> => {
+export const deactivateTrader = async (
+  traderId: string,
+  payload?: { requested_by?: string; reason?: string },
+): Promise<Trader> => {
   const { data } = await api.post(`/traders/${traderId}/deactivate`, payload || {})
   return normalizeTraderFields(data)
 }
@@ -1538,7 +1602,7 @@ export type TraderDeleteAction = 'block' | 'disable' | 'force_delete' | 'transfe
 
 export const deleteTrader = async (
   traderId: string,
-  options?: { action?: TraderDeleteAction; transfer_to_trader_id?: string }
+  options?: { action?: TraderDeleteAction; transfer_to_trader_id?: string },
 ): Promise<{
   status: string
   trader_id: string
@@ -1598,7 +1662,7 @@ export const traderManualBuy = async (
     positions: TraderManualBuyPosition[]
     size_usd: number
     opportunity_id?: string
-  }
+  },
 ): Promise<TraderManualBuyResponse> => {
   const { data } = await api.post(`/traders/${traderId}/manual-buy`, params)
   return unwrapApiData(data)
@@ -1606,7 +1670,7 @@ export const traderManualBuy = async (
 
 export const getTraderDecisions = async (
   traderId: string,
-  params?: { decision?: string; limit?: number }
+  params?: { decision?: string; limit?: number },
 ): Promise<TraderDecision[]> => {
   const { data } = await api.get(`/traders/${traderId}/decisions`, { params })
   const rows = Array.isArray(data.decisions) ? data.decisions : []
@@ -1619,14 +1683,10 @@ export const getTraderDecisions = async (
 
 export const getAllTraderDecisions = async (
   traderIds: string[],
-  params?: { decision?: string; limit?: number; per_trader_limit?: number }
+  params?: { decision?: string; limit?: number; per_trader_limit?: number },
 ): Promise<TraderDecision[]> => {
   const normalizedTraderIds = Array.from(
-    new Set(
-      traderIds
-        .map((value) => String(value || '').trim())
-        .filter(Boolean)
-    )
+    new Set(traderIds.map((value) => String(value || '').trim()).filter(Boolean)),
   )
   if (normalizedTraderIds.length === 0) return []
   const { data } = await api.get('/traders/decisions/all', {
@@ -1647,7 +1707,7 @@ export const getAllTraderDecisions = async (
 
 export const getTraderOrders = async (
   traderId: string,
-  params?: { status?: string; mode?: string; limit?: number }
+  params?: { status?: string; mode?: string; limit?: number },
 ): Promise<TraderOrder[]> => {
   const { data } = await api.get(`/traders/${traderId}/orders`, { params })
   return data.orders || []
@@ -1655,7 +1715,7 @@ export const getTraderOrders = async (
 
 export const getTraderCopyAnalytics = async (
   traderId: string,
-  params?: { mode?: 'shadow' | 'live'; limit?: number; leader_limit?: number }
+  params?: { mode?: 'shadow' | 'live'; limit?: number; leader_limit?: number },
 ): Promise<TraderCopyAnalytics> => {
   const { data } = await api.get(`/traders/${traderId}/copy-analytics`, { params })
   return unwrapApiData(data)
@@ -1740,9 +1800,11 @@ export const getTraderOrdersSummary = async (mode?: string): Promise<TraderOrder
 
 export const getAllTraderEventsBulk = async (
   traderIds: string[],
-  params?: { limit?: number; types?: string[] }
+  params?: { limit?: number; types?: string[] },
 ): Promise<TraderEvent[]> => {
-  const normalizedIds = Array.from(new Set(traderIds.map((id) => String(id).trim()).filter(Boolean)))
+  const normalizedIds = Array.from(
+    new Set(traderIds.map((id) => String(id).trim()).filter(Boolean)),
+  )
   if (normalizedIds.length === 0) return []
   const { data } = await api.get('/traders/events/all', {
     params: {
@@ -1754,9 +1816,10 @@ export const getAllTraderEventsBulk = async (
   return data.events || []
 }
 
-export const getRecentFirehoseEvents = async (
-  params?: { sourceKey?: string; limit?: number }
-): Promise<TraderEvent[]> => {
+export const getRecentFirehoseEvents = async (params?: {
+  sourceKey?: string
+  limit?: number
+}): Promise<TraderEvent[]> => {
   const { data } = await api.get('/traders/firehose/recent', {
     params: {
       source_key: params?.sourceKey || undefined,
@@ -1768,14 +1831,18 @@ export const getRecentFirehoseEvents = async (
 
 export const getTraderMarketHistory = async (
   marketIds: string[],
-  limit = 120
+  limit = 120,
 ): Promise<Record<string, TraderMarketHistoryPoint[]>> => {
   const normalizedIds = Array.from(
     new Set(
       marketIds
-        .map((value) => String(value || '').trim().toLowerCase())
-        .filter(Boolean)
-    )
+        .map((value) =>
+          String(value || '')
+            .trim()
+            .toLowerCase(),
+        )
+        .filter(Boolean),
+    ),
   )
   if (normalizedIds.length === 0) return {}
   const { data } = await api.get('/traders/market-history', {
@@ -1785,14 +1852,14 @@ export const getTraderMarketHistory = async (
     },
   })
   const payload = unwrapApiData(data)
-  return (payload?.histories && typeof payload.histories === 'object')
-    ? payload.histories as Record<string, TraderMarketHistoryPoint[]>
+  return payload?.histories && typeof payload.histories === 'object'
+    ? (payload.histories as Record<string, TraderMarketHistoryPoint[]>)
     : {}
 }
 
 export const getTraderEvents = async (
   traderId: string,
-  params?: { cursor?: string; limit?: number; types?: string[] }
+  params?: { cursor?: string; limit?: number; types?: string[] },
 ): Promise<{ events: TraderEvent[]; next_cursor: string | null }> => {
   const { data } = await api.get(`/traders/${traderId}/events`, {
     params: {
@@ -1807,12 +1874,16 @@ export const getTraderEvents = async (
   }
 }
 
-export const getTraderDecisionDetail = async (decisionId: string): Promise<TraderDecisionDetail> => {
+export const getTraderDecisionDetail = async (
+  decisionId: string,
+): Promise<TraderDecisionDetail> => {
   const { data } = await api.get(`/traders/decisions/${decisionId}`)
   const normalized = unwrapApiData(data)
   const checks = Array.isArray(normalized.checks) ? normalized.checks : []
   normalized.checks = checks.map((check: any) => {
-    const label = String(check?.check_label || check?.check_name || check?.label || check?.check_key || 'Check')
+    const label = String(
+      check?.check_label || check?.check_name || check?.label || check?.check_key || 'Check',
+    )
     const detail = check?.detail ?? check?.message ?? null
     return {
       ...check,
@@ -1820,7 +1891,8 @@ export const getTraderDecisionDetail = async (decisionId: string): Promise<Trade
       check_label: label,
       detail,
       message: detail,
-      payload: check && typeof check.payload === 'object' && check.payload !== null ? check.payload : {},
+      payload:
+        check && typeof check.payload === 'object' && check.payload !== null ? check.payload : {},
     }
   })
   return normalized
@@ -1917,7 +1989,7 @@ export const updateTraderStrategy = async (
     param_schema_json: Record<string, any>
     enabled: boolean
     unlock_system: boolean
-  }>
+  }>,
 ): Promise<TraderStrategyDefinition> => {
   const unified: Record<string, any> = {}
   if (payload.strategy_key !== undefined) unified.slug = payload.strategy_key
@@ -1937,7 +2009,7 @@ export const validateTraderStrategy = async (
   _id: string,
   payload?: {
     source_code?: string
-  }
+  },
 ): Promise<TraderStrategyValidationResult> => {
   const { data } = await api.post('/strategy-manager/validate', {
     source_code: payload?.source_code || '',
@@ -1950,7 +2022,9 @@ export const validateTraderStrategy = async (
   }
 }
 
-export const reloadTraderStrategy = async (id: string): Promise<{
+export const reloadTraderStrategy = async (
+  id: string,
+): Promise<{
   status: string
   reload: Record<string, any>
   strategy: TraderStrategyDefinition
@@ -1961,7 +2035,7 @@ export const reloadTraderStrategy = async (id: string): Promise<{
 
 export const cloneTraderStrategy = async (
   id: string,
-  payload?: { strategy_key?: string; label?: string; enabled?: boolean }
+  payload?: { strategy_key?: string; label?: string; enabled?: boolean },
 ): Promise<TraderStrategyDefinition> => {
   // Clone: create a new strategy based on the existing one
   const original = await getTraderStrategy(id)
@@ -1999,7 +2073,10 @@ export const getTraderOrchestratorStats = async (): Promise<TraderOrchestratorSt
     last_trade_at: worker.last_run_at || null,
     opportunities_seen: Number(metrics.decisions_count || 0),
     opportunities_executed: Number(metrics.orders_count || 0),
-    opportunities_skipped: Math.max(0, Number(metrics.decisions_count || 0) - Number(metrics.orders_count || 0)),
+    opportunities_skipped: Math.max(
+      0,
+      Number(metrics.decisions_count || 0) - Number(metrics.orders_count || 0),
+    ),
   }
 }
 
@@ -2112,7 +2189,9 @@ export interface DatabaseMaintenanceStats {
   table_bloat?: TableBloatEntry[] | null
 }
 
-export const flushDatabaseData = async (target: DatabaseFlushTarget): Promise<DatabaseFlushResponse> => {
+export const flushDatabaseData = async (
+  target: DatabaseFlushTarget,
+): Promise<DatabaseFlushResponse> => {
   const { data } = await api.post('/maintenance/flush', {
     target,
     confirm: true,
@@ -2127,7 +2206,10 @@ export const getDatabaseMaintenanceStats = async (): Promise<DatabaseMaintenance
 }
 
 export const runVacuumAnalyze = async (full: boolean = false): Promise<Record<string, unknown>> => {
-  const { data } = await api.post('/maintenance/vacuum', null, { params: { full }, timeout: 300_000 })
+  const { data } = await api.post('/maintenance/vacuum', null, {
+    params: { full },
+    timeout: 300_000,
+  })
   return unwrapApiData(data)
 }
 

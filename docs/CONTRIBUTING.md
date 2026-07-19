@@ -34,7 +34,6 @@ cd backend
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-pip install ruff pytest  # dev tools
 uvicorn main:app --reload --port 8000
 ```
 
@@ -45,6 +44,21 @@ cd frontend
 npm install
 npm run dev
 ```
+
+### Pre-commit hooks
+
+Hooks live in `.pre-commit-config.yaml` (Ruff + Prettier + ESLint + `tsc`).
+
+```bash
+cd backend && source venv/bin/activate
+pip install -r requirements.txt
+cd ../frontend && npm install
+cd ..
+pre-commit install
+pre-commit run --all-files   # optional full-repo check
+```
+
+Hooks run automatically on `git commit`. To skip in an emergency: `git commit --no-verify`.
 
 ### Running Tests
 
@@ -58,11 +72,13 @@ pytest tests/ -v  # verbose output
 
 ### Python (Backend)
 
-- **Linter/Formatter**: [Ruff](https://docs.astral.sh/ruff/) — enforced in CI
-- Run before committing:
+- **Linter/Formatter**: [Ruff](https://docs.astral.sh/ruff/) — enforced in CI and pre-commit
+- Config: `backend/pyproject.toml` (`[tool.ruff]`)
+- Run manually:
   ```bash
-  ruff check backend/
-  ruff format backend/
+  cd backend
+  ruff check .
+  ruff format .
   ```
 - Follow existing code patterns and conventions
 - Use type hints for function signatures
@@ -70,11 +86,13 @@ pytest tests/ -v  # verbose output
 
 ### TypeScript (Frontend)
 
-- **Type checking**: `tsc --noEmit` — enforced in CI
-- Run before committing:
+- **ESLint** + **Prettier** + **`tsc --noEmit`** — pre-commit; typecheck also in CI
+- Run manually:
   ```bash
   cd frontend
-  npx tsc --noEmit
+  npm run lint
+  npm run format
+  npm run typecheck
   ```
 - Use TypeScript strict mode
 - Define types for API responses in `services/api.ts`

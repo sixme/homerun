@@ -2,7 +2,6 @@
 // the native API is unavailable.  OpenUI's useTransformedKeys hook
 // relies on it for chart CSS-variable names.
 if (typeof crypto !== 'undefined' && typeof crypto.randomUUID !== 'function') {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ;(crypto as any).randomUUID = (): string => {
     // RFC-4122 v4 UUID via getRandomValues (available in all modern browsers)
     const bytes = new Uint8Array(16)

@@ -22,14 +22,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
-import {
-  Loader2,
-  RefreshCw,
-  Play,
-  Power,
-  Trash2,
-  HardDrive,
-} from 'lucide-react'
+import { Loader2, RefreshCw, Play, Power, Trash2, HardDrive } from 'lucide-react'
 
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
@@ -87,7 +80,8 @@ export default function DataLabTopics() {
         <div>
           <h3 className="text-sm font-semibold tracking-tight">Topic catalog</h3>
           <p className="text-[11px] text-muted-foreground">
-            Single source of truth for every recorded data topic — what publishes, what subscribes, where it&apos;s stored.
+            Single source of truth for every recorded data topic — what publishes, what subscribes,
+            where it&apos;s stored.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -141,19 +135,30 @@ export default function DataLabTopics() {
 
       {/* Summary strip */}
       <div className="flex flex-wrap gap-3 rounded-md border border-border/30 bg-card/30 px-3 py-2 text-[11px]">
-        <span><b>{stats.total}</b> topics</span>
+        <span>
+          <b>{stats.total}</b> topics
+        </span>
         <span className="text-muted-foreground">·</span>
-        <span>parquet: <b>{(stats.byKind['parquet'] ?? 0) + (stats.byKind['external_parquet'] ?? 0)}</b></span>
-        <span>sql_table: <b>{stats.byKind['sql_table'] ?? 0}</b></span>
-        <span>memory: <b>{stats.byKind['memory'] ?? 0}</b></span>
+        <span>
+          parquet: <b>{(stats.byKind['parquet'] ?? 0) + (stats.byKind['external_parquet'] ?? 0)}</b>
+        </span>
+        <span>
+          sql_table: <b>{stats.byKind['sql_table'] ?? 0}</b>
+        </span>
+        <span>
+          memory: <b>{stats.byKind['memory'] ?? 0}</b>
+        </span>
         <span className="text-muted-foreground">·</span>
-        <span><b>{stats.totalEvents.toLocaleString()}</b> events recorded</span>
-        <span><b>{(stats.totalBytes / (1024 * 1024)).toFixed(1)}</b> MB on disk</span>
+        <span>
+          <b>{stats.totalEvents.toLocaleString()}</b> events recorded
+        </span>
+        <span>
+          <b>{(stats.totalBytes / (1024 * 1024)).toFixed(1)}</b> MB on disk
+        </span>
       </div>
 
       {/* Global rotation controls */}
       <BusRotationControls />
-
 
       {/* Topic list */}
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-3">
@@ -194,20 +199,29 @@ export default function DataLabTopics() {
                     >
                       <td className="py-2 px-3 align-top">
                         <div className="font-mono text-[11px]">{t.slug}</div>
-                        <div className="text-[10px] text-muted-foreground line-clamp-1">{t.title}</div>
+                        <div className="text-[10px] text-muted-foreground line-clamp-1">
+                          {t.title}
+                        </div>
                       </td>
                       <td className="py-2 px-2 align-top">
                         <Badge
-                          style={{ backgroundColor: topicStorageBadgeColor(t.storage_kind) + '22', color: topicStorageBadgeColor(t.storage_kind) }}
+                          style={{
+                            backgroundColor: topicStorageBadgeColor(t.storage_kind) + '22',
+                            color: topicStorageBadgeColor(t.storage_kind),
+                          }}
                           className="text-[10px] font-mono"
                         >
                           {t.storage_kind}
                         </Badge>
                         {!t.enabled && (
-                          <Badge variant="outline" className="ml-1 text-[9px]">disabled</Badge>
+                          <Badge variant="outline" className="ml-1 text-[9px]">
+                            disabled
+                          </Badge>
                         )}
                         {!t.is_replayable && (
-                          <Badge variant="outline" className="ml-1 text-[9px]">live-only</Badge>
+                          <Badge variant="outline" className="ml-1 text-[9px]">
+                            live-only
+                          </Badge>
                         )}
                       </td>
                       <td className="py-2 px-2 align-top text-[10px]">
@@ -216,15 +230,21 @@ export default function DataLabTopics() {
                         </div>
                         <div className="text-muted-foreground">
                           ← {(t.subscribers ?? []).slice(0, 3).join(', ') || '—'}
-                          {t.subscribers && t.subscribers.length > 3 ? ` (+${t.subscribers.length - 3})` : ''}
+                          {t.subscribers && t.subscribers.length > 3
+                            ? ` (+${t.subscribers.length - 3})`
+                            : ''}
                         </div>
                       </td>
                       <td className="py-2 px-2 align-top text-right font-mono text-[10px]">
                         {formatTopicVolume(t)}
                       </td>
                       <td className="py-2 px-2 align-top text-[10px] text-muted-foreground">
-                        {t.last_published_at ? `pub ${formatDistanceToNow(new Date(t.last_published_at))} ago` : '—'}
-                        {t.last_replayed_at ? <div>rep {formatDistanceToNow(new Date(t.last_replayed_at))} ago</div> : null}
+                        {t.last_published_at
+                          ? `pub ${formatDistanceToNow(new Date(t.last_published_at))} ago`
+                          : '—'}
+                        {t.last_replayed_at ? (
+                          <div>rep {formatDistanceToNow(new Date(t.last_replayed_at))} ago</div>
+                        ) : null}
                       </td>
                     </tr>
                   ))
@@ -306,7 +326,9 @@ function BusRotationControls() {
           className="h-6 w-24 text-[11px] py-0 px-2"
         />
         <Button
-          size="sm" variant="outline" className="h-6 text-[10px] px-2"
+          size="sm"
+          variant="outline"
+          className="h-6 text-[10px] px-2"
           onClick={() => {
             const mb = parseInt(globalCapMB || '0', 10)
             updateSettings.mutate({ global_max_bytes: mb > 0 ? mb * 1024 * 1024 : 0 })
@@ -322,16 +344,29 @@ function BusRotationControls() {
       </span>
       <span className="text-muted-foreground">·</span>
       <Button
-        size="sm" variant="outline" className="h-6 gap-1 text-[10px]"
+        size="sm"
+        variant="outline"
+        className="h-6 gap-1 text-[10px]"
         disabled={pruneNow.isPending}
         onClick={() => pruneNow.mutate()}
       >
-        {pruneNow.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+        {pruneNow.isPending ? (
+          <Loader2 className="h-3 w-3 animate-spin" />
+        ) : (
+          <Trash2 className="h-3 w-3" />
+        )}
         prune now
       </Button>
       {pruneNow.data && (
         <span className="text-[10px] text-muted-foreground">
-          last run freed {(((pruneNow.data.freed_bytes_age || 0) + (pruneNow.data.freed_bytes_per_topic || 0) + (pruneNow.data.freed_bytes_global || 0)) / (1024 * 1024)).toFixed(1)} MB
+          last run freed{' '}
+          {(
+            ((pruneNow.data.freed_bytes_age || 0) +
+              (pruneNow.data.freed_bytes_per_topic || 0) +
+              (pruneNow.data.freed_bytes_global || 0)) /
+            (1024 * 1024)
+          ).toFixed(1)}{' '}
+          MB
         </span>
       )}
     </div>
@@ -378,7 +413,7 @@ function TopicDetail({ spec }: { spec: TopicSpec | null }) {
         limit: 25,
       })
       setPreview({ topic: spec.slug, samples: r.samples, n: r.n_seen })
-    } catch (e: any) {
+    } catch (_e: unknown) {
       setPreview({ topic: spec.slug, samples: [], n: 0 })
     } finally {
       setPreviewing(false)
@@ -391,7 +426,10 @@ function TopicDetail({ spec }: { spec: TopicSpec | null }) {
         <div className="flex items-center justify-between gap-2">
           <div className="font-mono text-[12px] font-semibold">{spec.slug}</div>
           <Badge
-            style={{ backgroundColor: topicStorageBadgeColor(spec.storage_kind) + '22', color: topicStorageBadgeColor(spec.storage_kind) }}
+            style={{
+              backgroundColor: topicStorageBadgeColor(spec.storage_kind) + '22',
+              color: topicStorageBadgeColor(spec.storage_kind),
+            }}
             className="text-[10px] font-mono"
           >
             {spec.storage_kind}
@@ -414,7 +452,9 @@ function TopicDetail({ spec }: { spec: TopicSpec | null }) {
         </div>
         <div>
           <div className="text-[9px] uppercase text-muted-foreground">retention</div>
-          <div className="font-mono">{spec.retention_days != null ? `${spec.retention_days} days` : 'forever'}</div>
+          <div className="font-mono">
+            {spec.retention_days != null ? `${spec.retention_days} days` : 'forever'}
+          </div>
         </div>
         <div>
           <div className="text-[9px] uppercase text-muted-foreground">cumulative volume</div>
@@ -449,7 +489,9 @@ function TopicDetail({ spec }: { spec: TopicSpec | null }) {
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <div className="text-[9px] uppercase text-muted-foreground mb-1">retention (days)</div>
+              <div className="text-[9px] uppercase text-muted-foreground mb-1">
+                retention (days)
+              </div>
               <div className="flex gap-1">
                 <Input
                   value={retentionDays}
@@ -458,9 +500,15 @@ function TopicDetail({ spec }: { spec: TopicSpec | null }) {
                   className="h-6 text-[11px] py-0 px-2"
                 />
                 <Button
-                  size="sm" variant="outline" className="h-6 text-[10px] px-2"
-                  onClick={() => patch.mutate({ retention_days: parseInt(retentionDays || '0', 10) })}
-                >set</Button>
+                  size="sm"
+                  variant="outline"
+                  className="h-6 text-[10px] px-2"
+                  onClick={() =>
+                    patch.mutate({ retention_days: parseInt(retentionDays || '0', 10) })
+                  }
+                >
+                  set
+                </Button>
               </div>
             </div>
             <div>
@@ -473,17 +521,23 @@ function TopicDetail({ spec }: { spec: TopicSpec | null }) {
                   className="h-6 text-[11px] py-0 px-2"
                 />
                 <Button
-                  size="sm" variant="outline" className="h-6 text-[10px] px-2"
+                  size="sm"
+                  variant="outline"
+                  className="h-6 text-[10px] px-2"
                   onClick={() => {
                     const mb = parseInt(maxBytesMB || '0', 10)
                     patch.mutate({ max_bytes: mb > 0 ? mb * 1024 * 1024 : 0 })
                   }}
-                >set</Button>
+                >
+                  set
+                </Button>
               </div>
             </div>
           </div>
           {patch.isError && (
-            <div className="text-[10px] text-red-600">patch failed: {String((patch.error as any)?.message || patch.error)}</div>
+            <div className="text-[10px] text-red-600">
+              patch failed: {String((patch.error as any)?.message || patch.error)}
+            </div>
           )}
         </div>
       )}
@@ -510,7 +564,8 @@ function TopicDetail({ spec }: { spec: TopicSpec | null }) {
               preview.samples.map((s, i) => (
                 <div key={i} className="border-b border-border/10 py-1.5 text-[10px]">
                   <div className="font-mono text-muted-foreground">
-                    {s.entity_id.slice(0, 32)}{s.entity_id.length > 32 ? '…' : ''} · t={s.observed_at_us}
+                    {s.entity_id.slice(0, 32)}
+                    {s.entity_id.length > 32 ? '…' : ''} · t={s.observed_at_us}
                   </div>
                   <div className="font-mono whitespace-pre-wrap break-all leading-snug">
                     {JSON.stringify(s.payload)}

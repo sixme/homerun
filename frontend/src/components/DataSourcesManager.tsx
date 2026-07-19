@@ -92,11 +92,14 @@ function applySourceMetadataToCode(
   }: {
     sourceName: string
     sourceDescription: string
-  }
+  },
 ): string {
   let out = String(sourceCode || '')
   out = out.replace(/^\s*name\s*=\s*".*"$/m, `    name = ${pythonStringLiteral(sourceName)}`)
-  out = out.replace(/^\s*description\s*=\s*".*"$/m, `    description = ${pythonStringLiteral(sourceDescription)}`)
+  out = out.replace(
+    /^\s*description\s*=\s*".*"$/m,
+    `    description = ${pythonStringLiteral(sourceDescription)}`,
+  )
   return out
 }
 
@@ -110,7 +113,7 @@ function inferClassName(sourceCode: string): string | null {
       .map((item) => item.trim())
       .filter(Boolean)
     const isSourceClass = bases.some(
-      (base) => base === 'BaseDataSource' || base.endsWith('.BaseDataSource')
+      (base) => base === 'BaseDataSource' || base.endsWith('.BaseDataSource'),
     )
     if (className && isSourceClass) {
       return className
@@ -135,7 +138,7 @@ function errorMessage(error: unknown, fallback: string): string {
 }
 
 function normalizeRetentionPolicy(input: unknown): { max_records?: number; max_age_days?: number } {
-  const value = input && typeof input === 'object' ? input as Record<string, unknown> : {}
+  const value = input && typeof input === 'object' ? (input as Record<string, unknown>) : {}
   const next: { max_records?: number; max_age_days?: number } = {}
 
   const maxRecords = Number(value.max_records)
@@ -189,18 +192,29 @@ function sourceToneClasses(tone: 'ok' | 'degraded' | 'error'): string {
   return 'text-red-400'
 }
 
-function sourceToneLabel(tone: 'ok' | 'degraded' | 'error', count: number, t: (k: string, opts?: Record<string, unknown>) => string): string {
+function sourceToneLabel(
+  tone: 'ok' | 'degraded' | 'error',
+  count: number,
+  t: (k: string, opts?: Record<string, unknown>) => string,
+): string {
   if (tone === 'ok') return t('dataSourcesManager.toneOk', { count })
   if (tone === 'degraded') return t('dataSourcesManager.toneDegraded', { count })
   return t('dataSourcesManager.toneError')
 }
 
 function resolveLiveHealthSourceName(source: UnifiedDataSource): string | null {
-  const slug = String(source.slug || '').trim().toLowerCase()
+  const slug = String(source.slug || '')
+    .trim()
+    .toLowerCase()
   if (!slug) return null
   const mapped = EVENT_SOURCE_HEALTH_KEY_BY_SLUG[slug]
   if (mapped) return mapped
-  if (String(source.source_key || '').trim().toLowerCase() !== 'events') return null
+  if (
+    String(source.source_key || '')
+      .trim()
+      .toLowerCase() !== 'events'
+  )
+    return null
   if (!slug.startsWith('events_')) return null
   const suffix = slug.slice('events_'.length).trim().toLowerCase()
   return suffix || null
@@ -302,7 +316,9 @@ export default function DataSourcesManager({
   const [sourceFilter, setSourceFilter] = useState<string>('all')
 
   const [newSourceName, setNewSourceName] = useState('Custom Data Source')
-  const [newSourceSlug, setNewSourceSlug] = useState(() => `custom_source_${Date.now().toString().slice(-6)}`)
+  const [newSourceSlug, setNewSourceSlug] = useState(
+    () => `custom_source_${Date.now().toString().slice(-6)}`,
+  )
   const [newSourceDescription, setNewSourceDescription] = useState('')
   const [newSourceSourceKey, setNewSourceSourceKey] = useState('custom')
   const [newSourceTemplateKind, setNewSourceTemplateKind] = useState('python')
@@ -310,7 +326,8 @@ export default function DataSourcesManager({
   const [newSourceSlugDirty, setNewSourceSlugDirty] = useState(false)
   const [newSourceError, setNewSourceError] = useState<string | null>(null)
   const [newSourceAiPrompt, setNewSourceAiPrompt] = useState('')
-  const [newSourceAiDraft, setNewSourceAiDraft] = useState<AIDataSourceDraftGenerationResponse | null>(null)
+  const [newSourceAiDraft, setNewSourceAiDraft] =
+    useState<AIDataSourceDraftGenerationResponse | null>(null)
   const [newSourceUseAiDraft, setNewSourceUseAiDraft] = useState(false)
 
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null)
@@ -323,7 +340,10 @@ export default function DataSourcesManager({
   const [editorSourceKind, setEditorSourceKind] = useState('python')
   const [editorEnabled, setEditorEnabled] = useState(true)
   const [editorCode, setEditorCode] = useState('')
-  const [editorRetention, setEditorRetention] = useState<{ max_records?: number; max_age_days?: number }>({})
+  const [editorRetention, setEditorRetention] = useState<{
+    max_records?: number
+    max_age_days?: number
+  }>({})
   const [editorConfigJson, setEditorConfigJson] = useState('{}')
   const [editorSchemaJson, setEditorSchemaJson] = useState('{}')
   const [editorError, setEditorError] = useState<string | null>(null)
@@ -357,7 +377,8 @@ export default function DataSourcesManager({
   })
 
   const catalog = useMemo(() => {
-    const payload = sourcesQuery.data as UnifiedDataSource[] | { items?: UnifiedDataSource[] } | undefined
+    const payload = sourcesQuery.data as
+      UnifiedDataSource[] | { items?: UnifiedDataSource[] } | undefined
     if (Array.isArray(payload)) return payload
     if (payload && Array.isArray(payload.items)) return payload.items
     return []
@@ -370,9 +391,15 @@ export default function DataSourcesManager({
         slug_prefix: String(mapped.slug_prefix || mapped.id || '').trim(),
         name: String(mapped.name || '').trim() || 'Custom Data Source',
         description: String(mapped.description || '').trim() || 'Custom data source template',
-        source_key: String(mapped.source_key || 'custom').trim().toLowerCase(),
-        source_kind: String(mapped.source_kind || 'python').trim().toLowerCase(),
-        source_code: String(mapped.source_code || templateQuery.data?.template || FALLBACK_TEMPLATE),
+        source_key: String(mapped.source_key || 'custom')
+          .trim()
+          .toLowerCase(),
+        source_kind: String(mapped.source_kind || 'python')
+          .trim()
+          .toLowerCase(),
+        source_code: String(
+          mapped.source_code || templateQuery.data?.template || FALLBACK_TEMPLATE,
+        ),
         retention: normalizeRetentionPolicy(mapped.retention || {}),
         config: mapped.config || {},
         config_schema: mapped.config_schema || { param_fields: [] },
@@ -453,7 +480,11 @@ export default function DataSourcesManager({
   const templateKinds = useMemo(() => {
     const seen = new Set<string>()
     const present = new Set(
-      templatePresets.map((preset) => String(preset.source_kind || '').trim().toLowerCase())
+      templatePresets.map((preset) =>
+        String(preset.source_kind || '')
+          .trim()
+          .toLowerCase(),
+      ),
     )
     const ordered = [...CREATE_SOURCE_KIND_ORDER]
     for (const kind of present) {
@@ -461,7 +492,9 @@ export default function DataSourcesManager({
     }
     const unique: string[] = []
     for (const kind of ordered) {
-      const normalized = String(kind || '').trim().toLowerCase()
+      const normalized = String(kind || '')
+        .trim()
+        .toLowerCase()
       if (!normalized || seen.has(normalized)) continue
       seen.add(normalized)
       unique.push(normalized)
@@ -470,40 +503,44 @@ export default function DataSourcesManager({
   }, [templatePresets])
 
   const templatesForCreateKind = useMemo(() => {
-    const normalizedKind = String(newSourceTemplateKind || '').trim().toLowerCase()
-    return templatePresets.filter((preset) => String(preset.source_kind || '').trim().toLowerCase() === normalizedKind)
+    const normalizedKind = String(newSourceTemplateKind || '')
+      .trim()
+      .toLowerCase()
+    return templatePresets.filter(
+      (preset) =>
+        String(preset.source_kind || '')
+          .trim()
+          .toLowerCase() === normalizedKind,
+    )
   }, [templatePresets, newSourceTemplateKind])
 
   const selectedCreateTemplate = useMemo(() => {
     return (
-      templatePresets.find((preset) => preset.id === newSourceTemplateKey)
-      || templatesForCreateKind[0]
-      || templatePresets[0]
-      || null
+      templatePresets.find((preset) => preset.id === newSourceTemplateKey) ||
+      templatesForCreateKind[0] ||
+      templatePresets[0] ||
+      null
     )
   }, [newSourceTemplateKey, templatesForCreateKind, templatePresets])
 
-  const newSourceTemplatePreviewCode = useMemo(
-    () => {
-      if (newSourceUseAiDraft && newSourceAiDraft?.source_code) {
-        const title = String(newSourceName || '').trim() || 'Custom Data Source'
-        const description = String(newSourceDescription || '').trim() || `${title} source`
-        return applySourceMetadataToCode(String(newSourceAiDraft.source_code || ''), {
-          sourceName: title,
-          sourceDescription: description,
-        })
-      }
-      return selectedCreateTemplate?.source_code || templateQuery.data?.template || FALLBACK_TEMPLATE
-    },
-    [
-      selectedCreateTemplate?.source_code,
-      templateQuery.data?.template,
-      newSourceUseAiDraft,
-      newSourceAiDraft?.source_code,
-      newSourceName,
-      newSourceDescription,
-    ]
-  )
+  const newSourceTemplatePreviewCode = useMemo(() => {
+    if (newSourceUseAiDraft && newSourceAiDraft?.source_code) {
+      const title = String(newSourceName || '').trim() || 'Custom Data Source'
+      const description = String(newSourceDescription || '').trim() || `${title} source`
+      return applySourceMetadataToCode(String(newSourceAiDraft.source_code || ''), {
+        sourceName: title,
+        sourceDescription: description,
+      })
+    }
+    return selectedCreateTemplate?.source_code || templateQuery.data?.template || FALLBACK_TEMPLATE
+  }, [
+    selectedCreateTemplate?.source_code,
+    templateQuery.data?.template,
+    newSourceUseAiDraft,
+    newSourceAiDraft?.source_code,
+    newSourceName,
+    newSourceDescription,
+  ])
 
   const sourceKeys = useMemo(() => {
     const known = ['custom', 'stories', 'events']
@@ -513,7 +550,7 @@ export default function DataSourcesManager({
           ...catalog.map((s) => String(s.source_key || '').toLowerCase()),
           String(newSourceSourceKey || '').toLowerCase(),
           String(editorSourceKey || '').toLowerCase(),
-        ].filter(Boolean)
+        ].filter(Boolean),
       ),
     ]
     return [...new Set([...known, ...dynamic])]
@@ -528,11 +565,11 @@ export default function DataSourcesManager({
       const q = searchQuery.trim().toLowerCase()
       rows = rows.filter(
         (s) =>
-          (s.name || '').toLowerCase().includes(q)
-          || (s.slug || '').toLowerCase().includes(q)
-          || (s.source_key || '').toLowerCase().includes(q)
-          || (s.source_kind || '').toLowerCase().includes(q)
-          || (s.description || '').toLowerCase().includes(q)
+          (s.name || '').toLowerCase().includes(q) ||
+          (s.slug || '').toLowerCase().includes(q) ||
+          (s.source_key || '').toLowerCase().includes(q) ||
+          (s.source_kind || '').toLowerCase().includes(q) ||
+          (s.description || '').toLowerCase().includes(q),
       )
     }
 
@@ -549,7 +586,7 @@ export default function DataSourcesManager({
 
   const selectedSource = useMemo(
     () => catalog.find((source) => source.id === selectedSourceId) || null,
-    [catalog, selectedSourceId]
+    [catalog, selectedSourceId],
   )
 
   const selectedSourceQuery = useQuery({
@@ -595,10 +632,18 @@ export default function DataSourcesManager({
     if (templatePresets.length === 0 || templateDefaultsAppliedRef.current) return
     templateDefaultsAppliedRef.current = true
     const defaultKind = String(templateQuery.data?.default_preset || '').trim()
-    const defaultTemplate = templatePresets.find((preset) => preset.id === defaultKind)
-      || templatePresets[0]
-    const normalizedKind = String(defaultTemplate.source_kind || 'python').trim().toLowerCase() || 'python'
-    const kindTemplates = templatePresets.filter((preset) => String(preset.source_kind || '').trim().toLowerCase() === normalizedKind)
+    const defaultTemplate =
+      templatePresets.find((preset) => preset.id === defaultKind) || templatePresets[0]
+    const normalizedKind =
+      String(defaultTemplate.source_kind || 'python')
+        .trim()
+        .toLowerCase() || 'python'
+    const kindTemplates = templatePresets.filter(
+      (preset) =>
+        String(preset.source_kind || '')
+          .trim()
+          .toLowerCase() === normalizedKind,
+    )
     setNewSourceTemplateKind(normalizedKind)
     setNewSourceTemplateKey(kindTemplates[0]?.id || templatePresets[0]?.id || '')
   }, [templatePresets, templateQuery.data?.default_preset])
@@ -611,7 +656,9 @@ export default function DataSourcesManager({
     const source = selectedSourceResolved
     if (!source) return
     const sourceVersion = Number(source.version || 0)
-    const hasDetailPayload = Boolean(selectedSourceQuery.data && selectedSourceQuery.data.id === source.id)
+    const hasDetailPayload = Boolean(
+      selectedSourceQuery.data && selectedSourceQuery.data.id === source.id,
+    )
     const nextLoadedKey = `${source.id}:${sourceVersion}:${hasDetailPayload ? 'detail' : 'summary'}`
     if (loadedEditorSourceKeyRef.current === nextLoadedKey) return
     loadedEditorSourceKeyRef.current = nextLoadedKey
@@ -652,8 +699,12 @@ export default function DataSourcesManager({
 
       const payload = {
         slug: normalizeSlug(editorSlug),
-        source_key: String(editorSourceKey || '').trim().toLowerCase(),
-        source_kind: String(editorSourceKind || '').trim().toLowerCase(),
+        source_key: String(editorSourceKey || '')
+          .trim()
+          .toLowerCase(),
+        source_kind: String(editorSourceKind || '')
+          .trim()
+          .toLowerCase(),
         name: String(editorName || '').trim(),
         description: editorDescription.trim() || undefined,
         source_code: editorCode,
@@ -727,7 +778,9 @@ export default function DataSourcesManager({
     onSuccess: () => {
       setEditorError(null)
       queryClient.invalidateQueries({ queryKey: ['unified-data-source-runs', selectedSourceId] })
-      queryClient.invalidateQueries({ queryKey: ['unified-data-source-records-preview', selectedSourceId] })
+      queryClient.invalidateQueries({
+        queryKey: ['unified-data-source-records-preview', selectedSourceId],
+      })
       refreshCatalog()
     },
     onError: (error: unknown) => {
@@ -758,16 +811,28 @@ export default function DataSourcesManager({
       if (!prompt) throw new Error(t('dataSourcesManager.errors.describeForAi'))
       return generateAIDataSourceDraft({
         description: prompt,
-        source_key: String(newSourceSourceKey || '').trim().toLowerCase() || 'custom',
-        source_kind: String(newSourceTemplateKind || '').trim().toLowerCase() || 'python',
+        source_key:
+          String(newSourceSourceKey || '')
+            .trim()
+            .toLowerCase() || 'custom',
+        source_kind:
+          String(newSourceTemplateKind || '')
+            .trim()
+            .toLowerCase() || 'python',
       })
     },
     onSuccess: (draft) => {
       setNewSourceAiDraft(draft)
       setNewSourceUseAiDraft(true)
-      const requestedKind = String(draft.source_kind || 'python').trim().toLowerCase() || 'python'
+      const requestedKind =
+        String(draft.source_kind || 'python')
+          .trim()
+          .toLowerCase() || 'python'
       const normalizedKind = templateKinds.includes(requestedKind) ? requestedKind : 'python'
-      const normalizedSourceKey = String(draft.source_key || 'custom').trim().toLowerCase() || 'custom'
+      const normalizedSourceKey =
+        String(draft.source_key || 'custom')
+          .trim()
+          .toLowerCase() || 'custom'
       const normalizedSlug = normalizeSlug(String(draft.slug || '').trim() || 'custom_source')
       setNewSourceName(String(draft.name || '').trim() || 'Custom Data Source')
       setNewSourceSlug(normalizedSlug)
@@ -775,7 +840,12 @@ export default function DataSourcesManager({
       setNewSourceDescription(String(draft.description || '').trim())
       setNewSourceTemplateKind(normalizedKind)
       setNewSourceSourceKey(normalizedSourceKey)
-      const preferredTemplate = templatePresets.find((preset) => String(preset.source_kind || '').trim().toLowerCase() === normalizedKind)
+      const preferredTemplate = templatePresets.find(
+        (preset) =>
+          String(preset.source_kind || '')
+            .trim()
+            .toLowerCase() === normalizedKind,
+      )
       if (preferredTemplate) {
         setNewSourceTemplateKey(preferredTemplate.id)
       }
@@ -787,21 +857,30 @@ export default function DataSourcesManager({
   })
 
   const busy =
-    generateAiDraftMutation.isPending
-    || templateQuery.isFetching
-    saveMutation.isPending
-    || validateMutation.isPending
-    || reloadMutation.isPending
-    || runMutation.isPending
-    || deleteMutation.isPending
+    generateAiDraftMutation.isPending ||
+    templateQuery.isFetching ||
+    saveMutation.isPending ||
+    validateMutation.isPending ||
+    reloadMutation.isPending ||
+    runMutation.isPending ||
+    deleteMutation.isPending
 
   const openCreateModal = () => {
     const defaultPresetId = String(templateQuery.data?.default_preset || '').trim()
-    const fallback = templatePresets.find((item) => item.id === defaultPresetId) || selectedCreateTemplate || templatePresets[0]
+    const fallback =
+      templatePresets.find((item) => item.id === defaultPresetId) ||
+      selectedCreateTemplate ||
+      templatePresets[0]
     const nonce = Date.now().toString().slice(-6)
     const slugPrefix = normalizeSlug(fallback?.slug_prefix || fallback?.id || 'source')
-    const normalizedKind = String(fallback?.source_kind || 'python').trim().toLowerCase() || 'python'
-    const normalizedSourceKey = String(fallback?.source_key || 'custom').trim().toLowerCase() || 'custom'
+    const normalizedKind =
+      String(fallback?.source_kind || 'python')
+        .trim()
+        .toLowerCase() || 'python'
+    const normalizedSourceKey =
+      String(fallback?.source_key || 'custom')
+        .trim()
+        .toLowerCase() || 'custom'
 
     templateDefaultsAppliedRef.current = true
     setShowCreateModal(true)
@@ -821,8 +900,13 @@ export default function DataSourcesManager({
   const createDraftFromModal = () => {
     const trimmedName = String(newSourceName || '').trim()
     const normalizedSlug = normalizeSlug(newSourceSlug)
-    const normalizedSourceKind = String(newSourceTemplateKind || '').trim().toLowerCase()
-    const normalizedSourceKey = String(newSourceSourceKey || '').trim().toLowerCase() || 'custom'
+    const normalizedSourceKind = String(newSourceTemplateKind || '')
+      .trim()
+      .toLowerCase()
+    const normalizedSourceKey =
+      String(newSourceSourceKey || '')
+        .trim()
+        .toLowerCase() || 'custom'
     const selectedTemplate = selectedCreateTemplate
     const useAiDraft = Boolean(newSourceUseAiDraft && newSourceAiDraft)
 
@@ -840,15 +924,26 @@ export default function DataSourcesManager({
     }
 
     const aiDraft = newSourceAiDraft
-    const templateConfig = useAiDraft && aiDraft && aiDraft.config && typeof aiDraft.config === 'object' && !Array.isArray(aiDraft.config)
-      ? (aiDraft.config as Record<string, unknown>)
-      : selectedTemplate.config || {}
-    const templateSchema = useAiDraft && aiDraft && aiDraft.config_schema && typeof aiDraft.config_schema === 'object' && !Array.isArray(aiDraft.config_schema)
-      ? (aiDraft.config_schema as Record<string, unknown>)
-      : selectedTemplate.config_schema || { param_fields: [] }
-    const templateRetention = useAiDraft && aiDraft
-      ? normalizeRetentionPolicy(aiDraft.retention || {})
-      : normalizeRetentionPolicy(selectedTemplate.retention || {})
+    const templateConfig =
+      useAiDraft &&
+      aiDraft &&
+      aiDraft.config &&
+      typeof aiDraft.config === 'object' &&
+      !Array.isArray(aiDraft.config)
+        ? (aiDraft.config as Record<string, unknown>)
+        : selectedTemplate.config || {}
+    const templateSchema =
+      useAiDraft &&
+      aiDraft &&
+      aiDraft.config_schema &&
+      typeof aiDraft.config_schema === 'object' &&
+      !Array.isArray(aiDraft.config_schema)
+        ? (aiDraft.config_schema as Record<string, unknown>)
+        : selectedTemplate.config_schema || { param_fields: [] }
+    const templateRetention =
+      useAiDraft && aiDraft
+        ? normalizeRetentionPolicy(aiDraft.retention || {})
+        : normalizeRetentionPolicy(selectedTemplate.retention || {})
     const nextLimit = Number((templateConfig as Record<string, unknown>).limit)
     const baseSourceCode = useAiDraft
       ? String(aiDraft?.source_code || '').trim()
@@ -871,7 +966,9 @@ export default function DataSourcesManager({
     setEditorRetention(templateRetention)
     setEditorConfigJson(JSON.stringify(templateConfig, null, 2))
     setEditorSchemaJson(JSON.stringify(templateSchema, null, 2))
-    setRunLimit(Number.isFinite(nextLimit) ? Math.max(1, Math.min(5000, Math.round(nextLimit))) : 500)
+    setRunLimit(
+      Number.isFinite(nextLimit) ? Math.max(1, Math.min(5000, Math.round(nextLimit))) : 500,
+    )
     setEditorError(null)
     setValidation(null)
     setShowAdvancedCode(false)
@@ -898,8 +995,10 @@ export default function DataSourcesManager({
     }
   }, [editorSchemaJson])
 
-  const hasSimpleForm = editorSourceKind === 'rss' || editorSourceKind === 'rest_api' || editorSourceKind === 'twitter'
-  const saveDisabled = busy || !editorName.trim() || !editorSlug.trim() || (!hasSimpleForm && !editorCode.trim())
+  const hasSimpleForm =
+    editorSourceKind === 'rss' || editorSourceKind === 'rest_api' || editorSourceKind === 'twitter'
+  const saveDisabled =
+    busy || !editorName.trim() || !editorSlug.trim() || (!hasSimpleForm && !editorCode.trim())
 
   const latestRun = runsQuery.data?.runs?.[0] || null
   const sourceHealthStatus = worldSourceStatusQuery.data?.sources || {}
@@ -938,7 +1037,9 @@ export default function DataSourcesManager({
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="z-[180]">
-              <SelectItem value="all">{t('dataSourcesManager.allSources', { count: catalog.length })}</SelectItem>
+              <SelectItem value="all">
+                {t('dataSourcesManager.allSources', { count: catalog.length })}
+              </SelectItem>
               {sourceKeys.map((key) => {
                 const labelKey = SOURCE_LABEL_KEYS[key]
                 const label = labelKey ? t(`dataSourcesManager.sourceKeys.${labelKey}`) : key
@@ -995,7 +1096,9 @@ export default function DataSourcesManager({
                 ))}
               </div>
             ) : flatFiltered.length === 0 ? (
-              <p className="px-3 py-6 text-xs text-muted-foreground text-center">{t('dataSourcesManager.noSourcesFound')}</p>
+              <p className="px-3 py-6 text-xs text-muted-foreground text-center">
+                {t('dataSourcesManager.noSourcesFound')}
+              </p>
             ) : (
               Object.entries(grouped).map(([groupKey, sources]) => (
                 <div key={groupKey}>
@@ -1003,7 +1106,10 @@ export default function DataSourcesManager({
                     <div className="px-2.5 pt-2.5 pb-1 flex items-center gap-1.5">
                       <div className="flex-1 h-px bg-border/50" />
                       <p className="text-[9px] uppercase tracking-wider text-muted-foreground/60 font-medium shrink-0">
-                        {(SOURCE_LABEL_KEYS[groupKey] ? t(`dataSourcesManager.sourceKeys.${SOURCE_LABEL_KEYS[groupKey]}`) : groupKey)} ({sources.length})
+                        {SOURCE_LABEL_KEYS[groupKey]
+                          ? t(`dataSourcesManager.sourceKeys.${SOURCE_LABEL_KEYS[groupKey]}`)
+                          : groupKey}{' '}
+                        ({sources.length})
                       </p>
                       <div className="flex-1 h-px bg-border/50" />
                     </div>
@@ -1012,7 +1118,9 @@ export default function DataSourcesManager({
                     const active = selectedSourceId === source.id
                     const badgeColor = STATUS_COLORS[source.status] || STATUS_COLORS.draft
                     const healthSourceName = resolveLiveHealthSourceName(source)
-                    const healthDetails = healthSourceName ? sourceHealthStatus[healthSourceName] : null
+                    const healthDetails = healthSourceName
+                      ? sourceHealthStatus[healthSourceName]
+                      : null
                     const healthTone = healthDetails ? classifySourceTone(healthDetails) : null
                     const healthCount = Number(healthDetails?.count ?? 0)
                     return (
@@ -1025,15 +1133,23 @@ export default function DataSourcesManager({
                         }}
                         className={cn(
                           'w-full rounded-md px-2.5 py-2 text-left transition-all duration-150',
-                          active ? 'bg-cyan-500/10 ring-1 ring-cyan-500/30' : 'hover:bg-muted/50'
+                          active ? 'bg-cyan-500/10 ring-1 ring-cyan-500/30' : 'hover:bg-muted/50',
                         )}
                       >
                         <div className="flex items-center justify-between gap-2 min-w-0">
-                          <p className="min-w-0 flex-1 text-xs font-medium truncate" title={source.name}>
+                          <p
+                            className="min-w-0 flex-1 text-xs font-medium truncate"
+                            title={source.name}
+                          >
                             {source.name}
                           </p>
-                          <Badge variant="outline" className={cn('text-[9px] px-1.5 py-0 h-4 border shrink-0', badgeColor)}>
-                            {t(`dataSourcesManager.status.${source.status}`, { defaultValue: source.status })}
+                          <Badge
+                            variant="outline"
+                            className={cn('text-[9px] px-1.5 py-0 h-4 border shrink-0', badgeColor)}
+                          >
+                            {t(`dataSourcesManager.status.${source.status}`, {
+                              defaultValue: source.status,
+                            })}
                           </Badge>
                         </div>
                         <p className="text-[10px] font-mono text-muted-foreground mt-1 truncate">
@@ -1042,14 +1158,18 @@ export default function DataSourcesManager({
                         <div className="flex items-center justify-between gap-2 mt-0.5">
                           <p className="text-[10px] text-muted-foreground">
                             {SOURCE_KIND_LABEL_KEYS[source.source_kind]
-                              ? t(`dataSourcesManager.sourceKinds.${SOURCE_KIND_LABEL_KEYS[source.source_kind]}`)
+                              ? t(
+                                  `dataSourcesManager.sourceKinds.${SOURCE_KIND_LABEL_KEYS[source.source_kind]}`,
+                                )
                               : source.source_kind}
                           </p>
                           {source.record_count != null && (
                             <span
                               className={cn(
                                 'text-[10px] font-data shrink-0',
-                                source.record_count > 0 ? 'text-foreground' : 'text-muted-foreground/50'
+                                source.record_count > 0
+                                  ? 'text-foreground'
+                                  : 'text-muted-foreground/50',
                               )}
                             >
                               {t('dataSourcesManager.recordsCount', { count: source.record_count })}
@@ -1061,7 +1181,12 @@ export default function DataSourcesManager({
                             <span className="min-w-0 flex-1 truncate text-[10px] font-mono text-muted-foreground">
                               {healthSourceName}
                             </span>
-                            <span className={cn('text-[10px] font-mono shrink-0', sourceToneClasses(healthTone))}>
+                            <span
+                              className={cn(
+                                'text-[10px] font-mono shrink-0',
+                                sourceToneClasses(healthTone),
+                              )}
+                            >
                               {sourceToneLabel(healthTone, healthCount, t)}
                             </span>
                           </div>
@@ -1077,11 +1202,17 @@ export default function DataSourcesManager({
 
         <div className="shrink-0 px-3 py-2 border-t border-border/50 text-[10px] text-muted-foreground space-y-1">
           {sourceHealthError && (
-            <div className="text-red-400 truncate" title={sourceHealthError}>{sourceHealthError}</div>
+            <div className="text-red-400 truncate" title={sourceHealthError}>
+              {sourceHealthError}
+            </div>
           )}
           <div className="flex justify-between">
             <span>{t('dataSourcesManager.sourcesCount', { count: flatFiltered.length })}</span>
-            <span>{t('dataSourcesManager.enabledCount', { count: catalog.filter((source) => source.enabled).length })}</span>
+            <span>
+              {t('dataSourcesManager.enabledCount', {
+                count: catalog.filter((source) => source.enabled).length,
+              })}
+            </span>
           </div>
         </div>
       </div>
@@ -1100,33 +1231,49 @@ export default function DataSourcesManager({
               <div className="flex items-center gap-3 min-w-0">
                 <div className="flex items-center gap-2 min-w-0">
                   <Code2 className="w-4 h-4 text-cyan-400 shrink-0" />
-                  <span className="text-sm font-medium truncate">{editorName || t('dataSourcesManager.untitledSource')}</span>
+                  <span className="text-sm font-medium truncate">
+                    {editorName || t('dataSourcesManager.untitledSource')}
+                  </span>
                 </div>
                 <Badge variant="outline" className={cn('text-[10px] shrink-0 border', statusColor)}>
                   {t(`dataSourcesManager.status.${displayStatus}`, { defaultValue: displayStatus })}
                 </Badge>
                 {selectedSource?.is_system && (
-                  <Badge variant="secondary" className="text-[10px] shrink-0">{t('dataSourcesManager.systemBadge')}</Badge>
+                  <Badge variant="secondary" className="text-[10px] shrink-0">
+                    {t('dataSourcesManager.systemBadge')}
+                  </Badge>
                 )}
                 {selectedSource && (
-                  <span className="text-[10px] font-mono text-muted-foreground shrink-0">v{selectedSource.version}</span>
+                  <span className="text-[10px] font-mono text-muted-foreground shrink-0">
+                    v{selectedSource.version}
+                  </span>
                 )}
               </div>
 
               <div className="flex items-center gap-1.5 shrink-0">
                 <div className="flex items-center gap-2 mr-2 pr-2 border-r border-border/50">
-                  <span className="text-[10px] text-muted-foreground">{t('dataSourcesManager.enabled')}</span>
-                  <Switch checked={editorEnabled} onCheckedChange={setEditorEnabled} className="scale-75" />
+                  <span className="text-[10px] text-muted-foreground">
+                    {t('dataSourcesManager.enabled')}
+                  </span>
+                  <Switch
+                    checked={editorEnabled}
+                    onCheckedChange={setEditorEnabled}
+                    className="scale-75"
+                  />
                 </div>
 
                 <div className="flex items-center gap-1 rounded-md border border-border/50 px-1.5 h-7">
-                  <Label className="text-[10px] text-muted-foreground">{t('dataSourcesManager.runLabel')}</Label>
+                  <Label className="text-[10px] text-muted-foreground">
+                    {t('dataSourcesManager.runLabel')}
+                  </Label>
                   <Input
                     type="number"
                     min={1}
                     max={5000}
                     value={runLimit}
-                    onChange={(event) => setRunLimit(Math.max(1, Math.min(5000, Number(event.target.value) || 1)))}
+                    onChange={(event) =>
+                      setRunLimit(Math.max(1, Math.min(5000, Number(event.target.value) || 1)))
+                    }
                     className="h-5 w-[72px] text-[10px] px-1.5 border-0 bg-transparent"
                   />
                 </div>
@@ -1152,7 +1299,8 @@ export default function DataSourcesManager({
                         contextType: 'data_source',
                         contextId: selectedSource.id,
                         label: selectedSource.name || selectedSource.slug || 'Data Source',
-                        prompt: 'Review this data source and suggest robust parsing/normalization improvements. Apply direct changes when appropriate.',
+                        prompt:
+                          'Review this data source and suggest robust parsing/normalization improvements. Apply direct changes when appropriate.',
                         autoSend: false,
                       })
                     }
@@ -1170,7 +1318,11 @@ export default function DataSourcesManager({
                   onClick={() => validateMutation.mutate()}
                   disabled={busy || !editorCode.trim()}
                 >
-                  {validateMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                  {validateMutation.isPending ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <Check className="w-3 h-3" />
+                  )}
                   {t('dataSourcesManager.validate')}
                 </Button>
                 <Button
@@ -1181,7 +1333,11 @@ export default function DataSourcesManager({
                   onClick={() => reloadMutation.mutate()}
                   disabled={busy || !selectedSource}
                 >
-                  {reloadMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                  {reloadMutation.isPending ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-3 h-3" />
+                  )}
                   {t('dataSourcesManager.reload')}
                 </Button>
                 <Button
@@ -1192,7 +1348,11 @@ export default function DataSourcesManager({
                   onClick={() => runMutation.mutate()}
                   disabled={busy || !selectedSource}
                 >
-                  {runMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
+                  {runMutation.isPending ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <Play className="w-3 h-3" />
+                  )}
                   {t('dataSourcesManager.run')}
                 </Button>
                 <Button
@@ -1213,7 +1373,11 @@ export default function DataSourcesManager({
                   onClick={() => saveMutation.mutate()}
                   disabled={saveDisabled}
                 >
-                  {saveMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                  {saveMutation.isPending ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <Save className="w-3 h-3" />
+                  )}
                   {t('dataSourcesManager.save')}
                 </Button>
                 {selectedSource && (
@@ -1243,20 +1407,35 @@ export default function DataSourcesManager({
                   'shrink-0 px-4 py-2 text-xs flex items-start gap-2 border-b',
                   validation.valid
                     ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400'
-                    : 'bg-red-500/5 border-red-500/20 text-red-400'
+                    : 'bg-red-500/5 border-red-500/20 text-red-400',
                 )}
               >
-                {validation.valid ? <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0" /> : <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />}
+                {validation.valid ? (
+                  <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                ) : (
+                  <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                )}
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">
-                    {validation.valid ? t('dataSourcesManager.validationPassed') : t('dataSourcesManager.validationFailed')}
-                    {validation.class_name && <span className="font-mono ml-2 opacity-70">{validation.class_name}</span>}
+                    {validation.valid
+                      ? t('dataSourcesManager.validationPassed')
+                      : t('dataSourcesManager.validationFailed')}
+                    {validation.class_name && (
+                      <span className="font-mono ml-2 opacity-70">{validation.class_name}</span>
+                    )}
                   </p>
                   {validation.errors.map((error, index) => (
-                    <p key={`validation-error-${index}`} className="font-mono text-[11px] mt-0.5">{error}</p>
+                    <p key={`validation-error-${index}`} className="font-mono text-[11px] mt-0.5">
+                      {error}
+                    </p>
                   ))}
                   {validation.warnings.map((warning, index) => (
-                    <p key={`validation-warning-${index}`} className="font-mono text-[11px] mt-0.5 text-amber-400">{warning}</p>
+                    <p
+                      key={`validation-warning-${index}`}
+                      className="font-mono text-[11px] mt-0.5 text-amber-400"
+                    >
+                      {warning}
+                    </p>
                   ))}
                 </div>
                 <button
@@ -1286,18 +1465,28 @@ export default function DataSourcesManager({
             {(selectedSource || latestRun) && (
               <div className="shrink-0 px-4 py-2 border-b border-border/40 bg-card/30 text-[11px] flex items-center gap-4 text-muted-foreground">
                 <span>
-                  {t('dataSourcesManager.lastRun')}: <span className="font-data text-foreground">{latestRun?.status || t('dataSourcesManager.never')}</span>
+                  {t('dataSourcesManager.lastRun')}:{' '}
+                  <span className="font-data text-foreground">
+                    {latestRun?.status || t('dataSourcesManager.never')}
+                  </span>
                 </span>
                 <span>
-                  {t('dataSourcesManager.records')}: <span className="font-data text-foreground">{recordsPreviewQuery.data?.total ?? 0}</span>
+                  {t('dataSourcesManager.records')}:{' '}
+                  <span className="font-data text-foreground">
+                    {recordsPreviewQuery.data?.total ?? 0}
+                  </span>
                 </span>
                 {latestRun && (
                   <>
                     <span>
-                      {t('dataSourcesManager.upserts')}: <span className="font-data text-foreground">{latestRun.upserted_count}</span>
+                      {t('dataSourcesManager.upserts')}:{' '}
+                      <span className="font-data text-foreground">{latestRun.upserted_count}</span>
                     </span>
                     <span>
-                      {t('dataSourcesManager.duration')}: <span className="font-data text-foreground">{latestRun.duration_ms ?? 0}ms</span>
+                      {t('dataSourcesManager.duration')}:{' '}
+                      <span className="font-data text-foreground">
+                        {latestRun.duration_ms ?? 0}ms
+                      </span>
                     </span>
                   </>
                 )}
@@ -1311,17 +1500,25 @@ export default function DataSourcesManager({
                   onClick={() => setShowSettings((prev) => !prev)}
                   className="w-full px-4 py-2 flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  {showSettings ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                  {showSettings ? (
+                    <ChevronDown className="w-3 h-3" />
+                  ) : (
+                    <ChevronRight className="w-3 h-3" />
+                  )}
                   <Settings2 className="w-3 h-3" />
                   <span>{t('dataSourcesManager.sourceSettings')}</span>
-                  <span className="ml-auto font-mono text-[10px] opacity-60">{editorSlug || t('dataSourcesManager.noSlug')}</span>
+                  <span className="ml-auto font-mono text-[10px] opacity-60">
+                    {editorSlug || t('dataSourcesManager.noSlug')}
+                  </span>
                 </button>
 
                 {showSettings && (
                   <div className="px-4 pb-3 space-y-3 animate-in fade-in duration-200">
                     <div className="grid gap-3 grid-cols-2 xl:grid-cols-5">
                       <div>
-                        <Label className="text-[11px] text-muted-foreground">{t('dataSourcesManager.sourceSlug')}</Label>
+                        <Label className="text-[11px] text-muted-foreground">
+                          {t('dataSourcesManager.sourceSlug')}
+                        </Label>
                         <Input
                           value={editorSlug}
                           onChange={(event) => setEditorSlug(normalizeSlug(event.target.value))}
@@ -1329,7 +1526,9 @@ export default function DataSourcesManager({
                         />
                       </div>
                       <div>
-                        <Label className="text-[11px] text-muted-foreground">{t('dataSourcesManager.name')}</Label>
+                        <Label className="text-[11px] text-muted-foreground">
+                          {t('dataSourcesManager.name')}
+                        </Label>
                         <Input
                           value={editorName}
                           onChange={(event) => setEditorName(event.target.value)}
@@ -1337,7 +1536,9 @@ export default function DataSourcesManager({
                         />
                       </div>
                       <div>
-                        <Label className="text-[11px] text-muted-foreground">{t('dataSourcesManager.sourceKey')}</Label>
+                        <Label className="text-[11px] text-muted-foreground">
+                          {t('dataSourcesManager.sourceKey')}
+                        </Label>
                         <Select value={editorSourceKey} onValueChange={setEditorSourceKey}>
                           <SelectTrigger className="mt-1 h-8 text-xs">
                             <SelectValue />
@@ -1345,36 +1546,51 @@ export default function DataSourcesManager({
                           <SelectContent className="z-[180]">
                             {sourceKeys.map((key) => (
                               <SelectItem key={key} value={key}>
-                                {SOURCE_LABEL_KEYS[key] ? t(`dataSourcesManager.sourceKeys.${SOURCE_LABEL_KEYS[key]}`) : key}
+                                {SOURCE_LABEL_KEYS[key]
+                                  ? t(`dataSourcesManager.sourceKeys.${SOURCE_LABEL_KEYS[key]}`)
+                                  : key}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                       </div>
                       <div>
-                        <Label className="text-[11px] text-muted-foreground">{t('dataSourcesManager.kind')}</Label>
+                        <Label className="text-[11px] text-muted-foreground">
+                          {t('dataSourcesManager.kind')}
+                        </Label>
                         <Select value={editorSourceKind} onValueChange={setEditorSourceKind}>
                           <SelectTrigger className="mt-1 h-8 text-xs">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent className="z-[180]">
                             {Object.entries(SOURCE_KIND_LABEL_KEYS).map(([kind, labelKey]) => (
-                              <SelectItem key={kind} value={kind}>{t(`dataSourcesManager.sourceKinds.${labelKey}`)}</SelectItem>
+                              <SelectItem key={kind} value={kind}>
+                                {t(`dataSourcesManager.sourceKinds.${labelKey}`)}
+                              </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                       </div>
                       <div>
-                        <Label className="text-[11px] text-muted-foreground">{t('dataSourcesManager.className')}</Label>
+                        <Label className="text-[11px] text-muted-foreground">
+                          {t('dataSourcesManager.className')}
+                        </Label>
                         <Input
-                          value={validation?.class_name || inferredClassName || selectedSource?.class_name || t('dataSourcesManager.autoDetected')}
+                          value={
+                            validation?.class_name ||
+                            inferredClassName ||
+                            selectedSource?.class_name ||
+                            t('dataSourcesManager.autoDetected')
+                          }
                           className="mt-1 h-8 text-xs font-mono"
                           disabled
                         />
                       </div>
                     </div>
                     <div>
-                      <Label className="text-[11px] text-muted-foreground">{t('dataSourcesManager.description')}</Label>
+                      <Label className="text-[11px] text-muted-foreground">
+                        {t('dataSourcesManager.description')}
+                      </Label>
                       <Input
                         value={editorDescription}
                         onChange={(event) => setEditorDescription(event.target.value)}
@@ -1384,12 +1600,18 @@ export default function DataSourcesManager({
                     </div>
                     <div className="grid gap-3 grid-cols-2 xl:grid-cols-4">
                       <div>
-                        <Label className="text-[11px] text-muted-foreground">{t('dataSourcesManager.retentionMaxRecords')}</Label>
+                        <Label className="text-[11px] text-muted-foreground">
+                          {t('dataSourcesManager.retentionMaxRecords')}
+                        </Label>
                         <Input
                           type="number"
                           min={1}
                           max={250000}
-                          value={editorRetention.max_records != null ? String(editorRetention.max_records) : ''}
+                          value={
+                            editorRetention.max_records != null
+                              ? String(editorRetention.max_records)
+                              : ''
+                          }
                           onChange={(event) => {
                             const value = event.target.value
                             setEditorRetention((prev) => {
@@ -1412,12 +1634,18 @@ export default function DataSourcesManager({
                         />
                       </div>
                       <div>
-                        <Label className="text-[11px] text-muted-foreground">{t('dataSourcesManager.retentionMaxAge')}</Label>
+                        <Label className="text-[11px] text-muted-foreground">
+                          {t('dataSourcesManager.retentionMaxAge')}
+                        </Label>
                         <Input
                           type="number"
                           min={1}
                           max={3650}
-                          value={editorRetention.max_age_days != null ? String(editorRetention.max_age_days) : ''}
+                          value={
+                            editorRetention.max_age_days != null
+                              ? String(editorRetention.max_age_days)
+                              : ''
+                          }
                           onChange={(event) => {
                             const value = event.target.value
                             setEditorRetention((prev) => {
@@ -1451,7 +1679,11 @@ export default function DataSourcesManager({
                       <div className="flex items-center gap-2">
                         <Settings2 className="w-3.5 h-3.5 text-cyan-400" />
                         <span className="text-xs font-medium">
-                          {editorSourceKind === 'rss' ? t('dataSourcesManager.rssConfiguration') : editorSourceKind === 'twitter' ? t('dataSourcesManager.twitterConfiguration') : t('dataSourcesManager.restApiConfiguration')}
+                          {editorSourceKind === 'rss'
+                            ? t('dataSourcesManager.rssConfiguration')
+                            : editorSourceKind === 'twitter'
+                              ? t('dataSourcesManager.twitterConfiguration')
+                              : t('dataSourcesManager.restApiConfiguration')}
                         </span>
                       </div>
                       <button
@@ -1467,23 +1699,41 @@ export default function DataSourcesManager({
                       {editorSourceKind === 'rss' ? (
                         <RssSourceForm
                           config={(() => {
-                            try { return JSON.parse(editorConfigJson || '{}') } catch { return {} }
+                            try {
+                              return JSON.parse(editorConfigJson || '{}')
+                            } catch {
+                              return {}
+                            }
                           })()}
-                          onChange={(config) => setEditorConfigJson(JSON.stringify(config, null, 2))}
+                          onChange={(config) =>
+                            setEditorConfigJson(JSON.stringify(config, null, 2))
+                          }
                         />
                       ) : editorSourceKind === 'twitter' ? (
                         <TwitterSourceForm
                           config={(() => {
-                            try { return JSON.parse(editorConfigJson || '{}') } catch { return {} }
+                            try {
+                              return JSON.parse(editorConfigJson || '{}')
+                            } catch {
+                              return {}
+                            }
                           })()}
-                          onChange={(config) => setEditorConfigJson(JSON.stringify(config, null, 2))}
+                          onChange={(config) =>
+                            setEditorConfigJson(JSON.stringify(config, null, 2))
+                          }
                         />
                       ) : (
                         <RestApiSourceForm
                           config={(() => {
-                            try { return JSON.parse(editorConfigJson || '{}') } catch { return {} }
+                            try {
+                              return JSON.parse(editorConfigJson || '{}')
+                            } catch {
+                              return {}
+                            }
                           })()}
-                          onChange={(config) => setEditorConfigJson(JSON.stringify(config, null, 2))}
+                          onChange={(config) =>
+                            setEditorConfigJson(JSON.stringify(config, null, 2))
+                          }
                         />
                       )}
                     </div>
@@ -1493,12 +1743,16 @@ export default function DataSourcesManager({
                     <div className="px-4 py-2 flex items-center justify-between shrink-0">
                       <div className="flex items-center gap-2">
                         <Code2 className="w-3.5 h-3.5 text-cyan-400" />
-                        <span className="text-xs font-medium">{t('dataSourcesManager.sourceCode')}</span>
+                        <span className="text-xs font-medium">
+                          {t('dataSourcesManager.sourceCode')}
+                        </span>
                         <span className="text-[10px] text-muted-foreground font-mono">Python</span>
                       </div>
                       <div className="flex items-center gap-3">
                         {inferredClassName && (
-                          <span className="text-[10px] font-mono text-muted-foreground">class {inferredClassName}</span>
+                          <span className="text-[10px] font-mono text-muted-foreground">
+                            class {inferredClassName}
+                          </span>
                         )}
                         {hasSimpleForm && (
                           <button
@@ -1527,13 +1781,20 @@ export default function DataSourcesManager({
                 )}
               </div>
 
-              <div className="min-h-0 border-t border-border/50 flex flex-col" style={{ maxHeight: showConfig ? '50%' : undefined }}>
+              <div
+                className="min-h-0 border-t border-border/50 flex flex-col"
+                style={{ maxHeight: showConfig ? '50%' : undefined }}
+              >
                 <button
                   type="button"
                   onClick={() => setShowConfig((prev) => !prev)}
                   className="shrink-0 w-full px-4 py-2 flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  {showConfig ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                  {showConfig ? (
+                    <ChevronDown className="w-3 h-3" />
+                  ) : (
+                    <ChevronRight className="w-3 h-3" />
+                  )}
                   <Settings2 className="w-3 h-3" />
                   <span>{t('dataSourcesManager.runtimeConfig')}</span>
                   {configSchemaFields.length > 0 && (
@@ -1555,7 +1816,9 @@ export default function DataSourcesManager({
                               return {}
                             }
                           })()}
-                          onChange={(values) => setEditorConfigJson(JSON.stringify(values, null, 2))}
+                          onChange={(values) =>
+                            setEditorConfigJson(JSON.stringify(values, null, 2))
+                          }
                         />
                         <button
                           type="button"
@@ -1572,8 +1835,12 @@ export default function DataSourcesManager({
                         <div className="grid gap-3 grid-cols-1 lg:grid-cols-2">
                           <div>
                             <div className="flex items-center gap-2 mb-2">
-                              <span className="text-[11px] font-medium text-muted-foreground">{t('dataSourcesManager.config')}</span>
-                              <span className="text-[10px] text-muted-foreground font-mono">JSON</span>
+                              <span className="text-[11px] font-medium text-muted-foreground">
+                                {t('dataSourcesManager.config')}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground font-mono">
+                                JSON
+                              </span>
                             </div>
                             <CodeEditor
                               value={editorConfigJson}
@@ -1585,8 +1852,12 @@ export default function DataSourcesManager({
                           </div>
                           <div>
                             <div className="flex items-center gap-2 mb-2">
-                              <span className="text-[11px] font-medium text-muted-foreground">{t('dataSourcesManager.configSchema')}</span>
-                              <span className="text-[10px] text-muted-foreground font-mono">JSON</span>
+                              <span className="text-[11px] font-medium text-muted-foreground">
+                                {t('dataSourcesManager.configSchema')}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground font-mono">
+                                JSON
+                              </span>
                             </div>
                             <CodeEditor
                               value={editorSchemaJson}
@@ -1616,295 +1887,370 @@ export default function DataSourcesManager({
         )}
       </div>
 
-      {typeof document !== 'undefined' && createPortal(
-        <AnimatePresence>
-          {showCreateModal && (
-            <motion.div
-              key="create-data-source-modal"
-              className="fixed inset-0 z-[140] flex items-start sm:items-center justify-center overflow-y-auto p-3 sm:p-6"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <AnimatePresence>
+            {showCreateModal && (
               <motion.div
-                className="absolute inset-0 bg-black/35 dark:bg-black/75 backdrop-blur-[2px] dark:backdrop-blur-[3px]"
+                key="create-data-source-modal"
+                className="fixed inset-0 z-[140] flex items-start sm:items-center justify-center overflow-y-auto p-3 sm:p-6"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                onClick={() => setShowCreateModal(false)}
-                aria-hidden
-              />
-              <motion.div
-                role="dialog"
-                aria-modal="true"
-                aria-label={t('dataSourcesManager.createModalAriaLabel')}
-                className="relative z-10 flex max-h-[calc(100vh-1.5rem)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-background via-background to-cyan-50/70 dark:border-cyan-500/30 dark:from-card dark:via-card dark:to-cyan-950/20 shadow-[0_40px_120px_rgba(0,0,0,0.35)] dark:shadow-[0_40px_120px_rgba(0,0,0,0.55)] sm:max-h-[calc(100vh-3rem)]"
-                initial={{ scale: 0.94, opacity: 0, y: 20 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.98, opacity: 0, y: 12 }}
-                transition={{ type: 'spring', stiffness: 250, damping: 28, mass: 0.95 }}
               >
-                <div className="border-b border-border/60 px-5 py-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold">{t('dataSourcesManager.createDataSource')}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {t('dataSourcesManager.createSubtitle')}
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 w-7 p-0"
-                      onClick={() => setShowCreateModal(false)}
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 lg:grid-cols-[1.2fr_0.8fr]">
-                  <div className="space-y-4">
-                    <div className="rounded-lg border border-cyan-500/25 bg-cyan-500/5 px-3 py-3 space-y-2.5">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-xs font-semibold flex items-center gap-1.5">
-                            <Sparkles className="w-3.5 h-3.5 text-cyan-300" />
-                            {t('dataSourcesManager.generateWithAi')}
-                          </p>
-                          <p className="mt-0.5 text-[10px] text-muted-foreground">
-                            {t('dataSourcesManager.generateWithAiHint')}
-                          </p>
-                        </div>
-                        <Button
-                          type="button"
-                          size="sm"
-                          className="h-7 gap-1.5 text-[11px] bg-cyan-600 hover:bg-cyan-500 text-white"
-                          onClick={() => generateAiDraftMutation.mutate()}
-                          disabled={generateAiDraftMutation.isPending || !newSourceAiPrompt.trim()}
-                        >
-                          {generateAiDraftMutation.isPending ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <Sparkles className="w-3 h-3" />
-                          )}
-                          {t('dataSourcesManager.generate')}
-                        </Button>
+                <motion.div
+                  className="absolute inset-0 bg-black/35 dark:bg-black/75 backdrop-blur-[2px] dark:backdrop-blur-[3px]"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={() => setShowCreateModal(false)}
+                  aria-hidden
+                />
+                <motion.div
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label={t('dataSourcesManager.createModalAriaLabel')}
+                  className="relative z-10 flex max-h-[calc(100vh-1.5rem)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-background via-background to-cyan-50/70 dark:border-cyan-500/30 dark:from-card dark:via-card dark:to-cyan-950/20 shadow-[0_40px_120px_rgba(0,0,0,0.35)] dark:shadow-[0_40px_120px_rgba(0,0,0,0.55)] sm:max-h-[calc(100vh-3rem)]"
+                  initial={{ scale: 0.94, opacity: 0, y: 20 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  exit={{ scale: 0.98, opacity: 0, y: 12 }}
+                  transition={{ type: 'spring', stiffness: 250, damping: 28, mass: 0.95 }}
+                >
+                  <div className="border-b border-border/60 px-5 py-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold">
+                          {t('dataSourcesManager.createDataSource')}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {t('dataSourcesManager.createSubtitle')}
+                        </p>
                       </div>
-                      <textarea
-                        value={newSourceAiPrompt}
-                        onChange={(event) => {
-                          setNewSourceAiPrompt(event.target.value)
-                          setNewSourceError(null)
-                        }}
-                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs leading-5 text-foreground outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                        rows={3}
-                        placeholder={t('dataSourcesManager.aiPromptPlaceholder')}
-                      />
-                      {newSourceAiDraft && (
-                        <div className="rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-2 space-y-1.5">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="text-[10px] text-cyan-100">
-                              {t('dataSourcesManager.generatedBy', { model: newSourceAiDraft.model || 'AI' })}{newSourceAiDraft.used_repair_pass ? ` ${t('dataSourcesManager.withRepairPass')}` : ''}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        onClick={() => setShowCreateModal(false)}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 lg:grid-cols-[1.2fr_0.8fr]">
+                    <div className="space-y-4">
+                      <div className="rounded-lg border border-cyan-500/25 bg-cyan-500/5 px-3 py-3 space-y-2.5">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-semibold flex items-center gap-1.5">
+                              <Sparkles className="w-3.5 h-3.5 text-cyan-300" />
+                              {t('dataSourcesManager.generateWithAi')}
                             </p>
-                            <div className="flex items-center gap-1.5">
-                              <Badge
-                                variant="outline"
-                                className={cn(
-                                  'h-4 px-1.5 text-[9px] border',
-                                  newSourceAiDraft.validation?.valid
-                                    ? 'border-emerald-500/35 text-emerald-300 bg-emerald-500/10'
-                                    : 'border-amber-500/35 text-amber-300 bg-amber-500/10'
-                                )}
-                              >
-                                {newSourceAiDraft.validation?.valid ? t('dataSourcesManager.validated') : t('dataSourcesManager.needsReview')}
-                              </Badge>
-                              <div className="flex items-center gap-1">
-                                <span className="text-[10px] text-muted-foreground">{t('dataSourcesManager.useAiDraft')}</span>
-                                <Switch checked={newSourceUseAiDraft} onCheckedChange={setNewSourceUseAiDraft} />
+                            <p className="mt-0.5 text-[10px] text-muted-foreground">
+                              {t('dataSourcesManager.generateWithAiHint')}
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="h-7 gap-1.5 text-[11px] bg-cyan-600 hover:bg-cyan-500 text-white"
+                            onClick={() => generateAiDraftMutation.mutate()}
+                            disabled={
+                              generateAiDraftMutation.isPending || !newSourceAiPrompt.trim()
+                            }
+                          >
+                            {generateAiDraftMutation.isPending ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Sparkles className="w-3 h-3" />
+                            )}
+                            {t('dataSourcesManager.generate')}
+                          </Button>
+                        </div>
+                        <textarea
+                          value={newSourceAiPrompt}
+                          onChange={(event) => {
+                            setNewSourceAiPrompt(event.target.value)
+                            setNewSourceError(null)
+                          }}
+                          className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs leading-5 text-foreground outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                          rows={3}
+                          placeholder={t('dataSourcesManager.aiPromptPlaceholder')}
+                        />
+                        {newSourceAiDraft && (
+                          <div className="rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-2 space-y-1.5">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-[10px] text-cyan-100">
+                                {t('dataSourcesManager.generatedBy', {
+                                  model: newSourceAiDraft.model || 'AI',
+                                })}
+                                {newSourceAiDraft.used_repair_pass
+                                  ? ` ${t('dataSourcesManager.withRepairPass')}`
+                                  : ''}
+                              </p>
+                              <div className="flex items-center gap-1.5">
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    'h-4 px-1.5 text-[9px] border',
+                                    newSourceAiDraft.validation?.valid
+                                      ? 'border-emerald-500/35 text-emerald-300 bg-emerald-500/10'
+                                      : 'border-amber-500/35 text-amber-300 bg-amber-500/10',
+                                  )}
+                                >
+                                  {newSourceAiDraft.validation?.valid
+                                    ? t('dataSourcesManager.validated')
+                                    : t('dataSourcesManager.needsReview')}
+                                </Badge>
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[10px] text-muted-foreground">
+                                    {t('dataSourcesManager.useAiDraft')}
+                                  </span>
+                                  <Switch
+                                    checked={newSourceUseAiDraft}
+                                    onCheckedChange={setNewSourceUseAiDraft}
+                                  />
+                                </div>
                               </div>
                             </div>
+                            {!newSourceAiDraft.validation?.valid &&
+                              (newSourceAiDraft.validation?.errors || [])
+                                .slice(0, 2)
+                                .map((error, index) => (
+                                  <p
+                                    key={`source-ai-error-${index}`}
+                                    className="text-[10px] text-amber-300 font-mono"
+                                  >
+                                    {error}
+                                  </p>
+                                ))}
+                            {(newSourceAiDraft.validation?.warnings || [])
+                              .slice(0, 2)
+                              .map((warning, index) => (
+                                <p
+                                  key={`source-ai-warning-${index}`}
+                                  className="text-[10px] text-muted-foreground font-mono"
+                                >
+                                  {warning}
+                                </p>
+                              ))}
                           </div>
-                          {!newSourceAiDraft.validation?.valid && (newSourceAiDraft.validation?.errors || []).slice(0, 2).map((error, index) => (
-                            <p key={`source-ai-error-${index}`} className="text-[10px] text-amber-300 font-mono">
-                              {error}
-                            </p>
-                          ))}
-                          {(newSourceAiDraft.validation?.warnings || []).slice(0, 2).map((warning, index) => (
-                            <p key={`source-ai-warning-${index}`} className="text-[10px] text-muted-foreground font-mono">
-                              {warning}
-                            </p>
-                          ))}
+                        )}
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div>
+                          <Label className="text-[11px] text-muted-foreground">
+                            {t('dataSourcesManager.name')}
+                          </Label>
+                          <Input
+                            value={newSourceName}
+                            onChange={(event) => {
+                              const value = event.target.value
+                              setNewSourceName(value)
+                              setNewSourceError(null)
+                              if (!newSourceSlugDirty) {
+                                const autoSlug = normalizeSlug(value)
+                                setNewSourceSlug(
+                                  autoSlug || `custom_${Date.now().toString().slice(-6)}`,
+                                )
+                              }
+                            }}
+                            className="mt-1 h-9 text-xs"
+                            placeholder={t('dataSourcesManager.namePlaceholder')}
+                          />
                         </div>
-                      )}
-                    </div>
+                        <div>
+                          <Label className="text-[11px] text-muted-foreground">
+                            {t('dataSourcesManager.sourceSlug')}
+                          </Label>
+                          <Input
+                            value={newSourceSlug}
+                            onChange={(event) => {
+                              setNewSourceSlugDirty(true)
+                              setNewSourceSlug(normalizeSlug(event.target.value))
+                              setNewSourceError(null)
+                            }}
+                            className="mt-1 h-9 text-xs font-mono"
+                            placeholder="my_data_source"
+                          />
+                        </div>
+                      </div>
 
-                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div>
+                          <Label className="text-[11px] text-muted-foreground">
+                            {t('dataSourcesManager.source')}
+                          </Label>
+                          <Select value={newSourceSourceKey} onValueChange={setNewSourceSourceKey}>
+                            <SelectTrigger className="mt-1 h-9 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="z-[180]">
+                              {sourceKeys.map((sourceKey) => (
+                                <SelectItem key={sourceKey} value={sourceKey}>
+                                  {SOURCE_LABEL_KEYS[sourceKey]
+                                    ? t(
+                                        `dataSourcesManager.sourceKeys.${SOURCE_LABEL_KEYS[sourceKey]}`,
+                                      )
+                                    : sourceKey}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label className="text-[11px] text-muted-foreground">
+                            {t('dataSourcesManager.sourceKind')}
+                          </Label>
+                          <Select
+                            value={String(newSourceTemplateKind || 'python')}
+                            onValueChange={(value) => {
+                              setNewSourceTemplateKind(value)
+                              setNewSourceError(null)
+                            }}
+                          >
+                            <SelectTrigger className="mt-1 h-9 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="z-[180]">
+                              {templateKinds.map((kind) => (
+                                <SelectItem key={kind} value={kind}>
+                                  {SOURCE_KIND_LABEL_KEYS[kind]
+                                    ? t(
+                                        `dataSourcesManager.sourceKinds.${SOURCE_KIND_LABEL_KEYS[kind]}`,
+                                      )
+                                    : kind}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
                       <div>
-                        <Label className="text-[11px] text-muted-foreground">{t('dataSourcesManager.name')}</Label>
-                        <Input
-                          value={newSourceName}
+                        <Label className="text-[11px] text-muted-foreground">
+                          {t('dataSourcesManager.description')}
+                        </Label>
+                        <textarea
+                          value={newSourceDescription}
                           onChange={(event) => {
-                            const value = event.target.value
-                            setNewSourceName(value)
+                            setNewSourceDescription(event.target.value)
                             setNewSourceError(null)
-                            if (!newSourceSlugDirty) {
-                              const autoSlug = normalizeSlug(value)
-                              setNewSourceSlug(autoSlug || `custom_${Date.now().toString().slice(-6)}`)
-                            }
                           }}
-                          className="mt-1 h-9 text-xs"
-                          placeholder={t('dataSourcesManager.namePlaceholder')}
+                          className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-xs leading-5 text-foreground outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                          rows={3}
+                          placeholder={t('dataSourcesManager.descriptionPlaceholderShort')}
                         />
                       </div>
+
                       <div>
-                        <Label className="text-[11px] text-muted-foreground">{t('dataSourcesManager.sourceSlug')}</Label>
-                        <Input
-                          value={newSourceSlug}
-                          onChange={(event) => {
-                            setNewSourceSlugDirty(true)
-                            setNewSourceSlug(normalizeSlug(event.target.value))
-                            setNewSourceError(null)
-                          }}
-                          className="mt-1 h-9 text-xs font-mono"
-                          placeholder="my_data_source"
-                        />
+                        <Label className="text-[11px] text-muted-foreground">
+                          {t('dataSourcesManager.templateLabel', {
+                            count: templatesForCreateKind.length,
+                            type: SOURCE_KIND_LABEL_KEYS[newSourceTemplateKind]
+                              ? t(
+                                  `dataSourcesManager.sourceKinds.${SOURCE_KIND_LABEL_KEYS[newSourceTemplateKind]}`,
+                                )
+                              : newSourceTemplateKind,
+                          })}
+                        </Label>
+                        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                          {templatesForCreateKind.map((preset) => {
+                            const active = preset.id === (selectedCreateTemplate?.id || '')
+                            return (
+                              <button
+                                type="button"
+                                key={preset.id}
+                                onClick={() => {
+                                  setNewSourceTemplateKey(preset.id)
+                                  setNewSourceTemplateKind(
+                                    String(preset.source_kind || 'python')
+                                      .trim()
+                                      .toLowerCase(),
+                                  )
+                                  setNewSourceSourceKey(
+                                    String(preset.source_key || newSourceSourceKey)
+                                      .trim()
+                                      .toLowerCase() || 'custom',
+                                  )
+                                  setNewSourceError(null)
+                                }}
+                                className={cn(
+                                  'rounded-lg border px-3 py-2 text-left transition-all',
+                                  active
+                                    ? 'border-cyan-500/70 bg-cyan-500/10 shadow-[0_0_0_1px_rgba(6,182,212,0.22)]'
+                                    : 'border-border/70 bg-card/50 hover:border-border',
+                                )}
+                              >
+                                <p className="text-xs font-semibold">{preset.name}</p>
+                                <p className="text-[10px] text-muted-foreground leading-relaxed mt-1">
+                                  {preset.description}
+                                </p>
+                              </button>
+                            )
+                          })}
+                        </div>
                       </div>
                     </div>
 
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div>
-                        <Label className="text-[11px] text-muted-foreground">{t('dataSourcesManager.source')}</Label>
-                        <Select value={newSourceSourceKey} onValueChange={setNewSourceSourceKey}>
-                          <SelectTrigger className="mt-1 h-9 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="z-[180]">
-                            {sourceKeys.map((sourceKey) => (
-                              <SelectItem key={sourceKey} value={sourceKey}>
-                                {SOURCE_LABEL_KEYS[sourceKey] ? t(`dataSourcesManager.sourceKeys.${SOURCE_LABEL_KEYS[sourceKey]}`) : sourceKey}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                    <div className="min-h-0 rounded-xl border border-border/60 bg-muted/30 dark:bg-black/30">
+                      <div className="flex items-center justify-between border-b border-border/60 px-3 py-2">
+                        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                          {t('dataSourcesManager.templatePreview')}
+                        </span>
+                        <span className="text-[10px] font-mono text-muted-foreground">
+                          {t('dataSourcesManager.readOnly')}
+                        </span>
                       </div>
-                      <div>
-                        <Label className="text-[11px] text-muted-foreground">{t('dataSourcesManager.sourceKind')}</Label>
-                        <Select
-                          value={String(newSourceTemplateKind || 'python')}
-                          onValueChange={(value) => {
-                            setNewSourceTemplateKind(value)
-                            setNewSourceError(null)
-                          }}
-                        >
-                          <SelectTrigger className="mt-1 h-9 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="z-[180]">
-                            {templateKinds.map((kind) => (
-                              <SelectItem key={kind} value={kind}>
-                                {SOURCE_KIND_LABEL_KEYS[kind] ? t(`dataSourcesManager.sourceKinds.${SOURCE_KIND_LABEL_KEYS[kind]}`) : kind}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label className="text-[11px] text-muted-foreground">{t('dataSourcesManager.description')}</Label>
-                      <textarea
-                        value={newSourceDescription}
-                        onChange={(event) => {
-                          setNewSourceDescription(event.target.value)
-                          setNewSourceError(null)
-                        }}
-                        className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-xs leading-5 text-foreground outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                        rows={3}
-                        placeholder={t('dataSourcesManager.descriptionPlaceholderShort')}
-                      />
-                    </div>
-
-                    <div>
-                      <Label className="text-[11px] text-muted-foreground">
-                        {t('dataSourcesManager.templateLabel', {
-                          count: templatesForCreateKind.length,
-                          type: SOURCE_KIND_LABEL_KEYS[newSourceTemplateKind]
-                            ? t(`dataSourcesManager.sourceKinds.${SOURCE_KIND_LABEL_KEYS[newSourceTemplateKind]}`)
-                            : newSourceTemplateKind,
-                        })}
-                      </Label>
-                      <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                        {templatesForCreateKind.map((preset) => {
-                          const active = preset.id === (selectedCreateTemplate?.id || '')
-                          return (
-                            <button
-                              type="button"
-                              key={preset.id}
-                              onClick={() => {
-                                setNewSourceTemplateKey(preset.id)
-                                setNewSourceTemplateKind(String(preset.source_kind || 'python').trim().toLowerCase())
-                                setNewSourceSourceKey(String(preset.source_key || newSourceSourceKey).trim().toLowerCase() || 'custom')
-                                setNewSourceError(null)
-                              }}
-                              className={cn(
-                                'rounded-lg border px-3 py-2 text-left transition-all',
-                                active
-                                  ? 'border-cyan-500/70 bg-cyan-500/10 shadow-[0_0_0_1px_rgba(6,182,212,0.22)]'
-                                  : 'border-border/70 bg-card/50 hover:border-border'
-                              )}
-                            >
-                              <p className="text-xs font-semibold">{preset.name}</p>
-                              <p className="text-[10px] text-muted-foreground leading-relaxed mt-1">{preset.description}</p>
-                            </button>
-                          )
-                        })}
+                      <div className="max-h-[460px] overflow-auto px-3 py-2">
+                        <pre className="whitespace-pre-wrap text-[11px] leading-5 text-muted-foreground font-mono">
+                          {newSourceTemplatePreviewCode}
+                        </pre>
                       </div>
                     </div>
                   </div>
 
-                  <div className="min-h-0 rounded-xl border border-border/60 bg-muted/30 dark:bg-black/30">
-                    <div className="flex items-center justify-between border-b border-border/60 px-3 py-2">
-                      <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{t('dataSourcesManager.templatePreview')}</span>
-                      <span className="text-[10px] font-mono text-muted-foreground">{t('dataSourcesManager.readOnly')}</span>
+                  {newSourceError && (
+                    <div className="mx-4 mb-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+                      {newSourceError}
                     </div>
-                    <div className="max-h-[460px] overflow-auto px-3 py-2">
-                      <pre className="whitespace-pre-wrap text-[11px] leading-5 text-muted-foreground font-mono">{newSourceTemplatePreviewCode}</pre>
-                    </div>
-                  </div>
-                </div>
+                  )}
 
-                {newSourceError && (
-                  <div className="mx-4 mb-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
-                    {newSourceError}
+                  <div className="flex items-center justify-end gap-2 border-t border-border/60 px-4 py-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowCreateModal(false)}
+                    >
+                      {t('dataSourcesManager.cancel')}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="bg-cyan-600 hover:bg-cyan-500 text-white"
+                      onClick={createDraftFromModal}
+                      disabled={busy || !newSourceName.trim() || !normalizeSlug(newSourceSlug)}
+                    >
+                      {t('dataSourcesManager.continueToEditor')}
+                    </Button>
                   </div>
-                )}
-
-                <div className="flex items-center justify-end gap-2 border-t border-border/60 px-4 py-3">
-                  <Button type="button" variant="outline" size="sm" onClick={() => setShowCreateModal(false)}>
-                    {t('dataSourcesManager.cancel')}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="bg-cyan-600 hover:bg-cyan-500 text-white"
-                    onClick={createDraftFromModal}
-                    disabled={busy || !newSourceName.trim() || !normalizeSlug(newSourceSlug)}
-                  >
-                    {t('dataSourcesManager.continueToEditor')}
-                  </Button>
-                </div>
+                </motion.div>
               </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>,
-        document.body
-      )}
+            )}
+          </AnimatePresence>,
+          document.body,
+        )}
 
       <DataSourceApiDocsFlyout open={showApiDocs} onOpenChange={setShowApiDocs} />
-      <DataSourcePreviewFlyout open={showPreview} onOpenChange={setShowPreview} sourceId={selectedSourceId} />
+      <DataSourcePreviewFlyout
+        open={showPreview}
+        onOpenChange={setShowPreview}
+        sourceId={selectedSourceId}
+      />
     </div>
   )
 }

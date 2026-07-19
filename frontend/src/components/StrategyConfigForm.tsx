@@ -26,15 +26,16 @@ interface StrategyConfigFormProps {
 }
 
 export default function StrategyConfigForm({ schema, values, onChange }: StrategyConfigFormProps) {
-  const fields = schema?.param_fields
-  if (!fields || fields.length === 0) return null
+  const fields = schema?.param_fields ?? []
 
   const updateField = useCallback(
     (key: string, value: unknown) => {
       onChange({ ...values, [key]: value })
     },
-    [values, onChange]
+    [values, onChange],
   )
+
+  if (fields.length === 0) return null
 
   return (
     <div className="grid gap-3 grid-cols-2 xl:grid-cols-3">
@@ -52,9 +53,7 @@ export default function StrategyConfigForm({ schema, values, onChange }: Strateg
 
 function _csvListFromValue(value: unknown): string[] {
   if (Array.isArray(value)) {
-    return value
-      .map((item) => String(item ?? '').trim())
-      .filter(Boolean)
+    return value.map((item) => String(item ?? '').trim()).filter(Boolean)
   }
   if (typeof value === 'string') {
     return value
@@ -127,11 +126,12 @@ function JsonArrayField({
   const [expanded, setExpanded] = useState(false)
   const items: Record<string, unknown>[] = Array.isArray(value) ? value : []
   const schema = field.item_schema || {}
-  const keys = Object.keys(schema).length > 0
-    ? Object.keys(schema)
-    : items.length > 0
-      ? Object.keys(items[0])
-      : ['value']
+  const keys =
+    Object.keys(schema).length > 0
+      ? Object.keys(schema)
+      : items.length > 0
+        ? Object.keys(items[0])
+        : ['value']
 
   const updateItem = (idx: number, key: string, val: unknown) => {
     const next = items.map((item, i) => (i === idx ? { ...item, [key]: val } : item))
@@ -168,7 +168,9 @@ function JsonArrayField({
         </svg>
         {field.label}
         <span className="ml-1 inline-flex items-center rounded-full bg-blue-100 dark:bg-blue-900 px-2 py-0.5 text-xs font-medium text-blue-800 dark:text-blue-200">
-          {items.length === 1 ? t('strategyConfigForm.itemSingle', { n: items.length }) : t('strategyConfigForm.itemPlural', { n: items.length })}
+          {items.length === 1
+            ? t('strategyConfigForm.itemSingle', { n: items.length })
+            : t('strategyConfigForm.itemPlural', { n: items.length })}
         </span>
       </button>
       {field.description && (
@@ -188,7 +190,12 @@ function JsonArrayField({
                 title={t('strategyConfigForm.removeItem')}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
               <div className="grid grid-cols-2 gap-2 pr-6">
@@ -197,7 +204,10 @@ function JsonArrayField({
                   const itemValue = item[key]
                   if (stype === 'boolean') {
                     return (
-                      <label key={key} className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                      <label
+                        key={key}
+                        className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400"
+                      >
                         <input
                           type="checkbox"
                           checked={Boolean(itemValue)}
@@ -211,10 +221,16 @@ function JsonArrayField({
                   if (stype === 'json') {
                     return (
                       <div key={key} className="space-y-1">
-                        <label className="block text-xs text-gray-500 dark:text-gray-400">{key}</label>
+                        <label className="block text-xs text-gray-500 dark:text-gray-400">
+                          {key}
+                        </label>
                         <input
                           type="text"
-                          value={typeof itemValue === 'object' ? JSON.stringify(itemValue) : String(itemValue ?? '')}
+                          value={
+                            typeof itemValue === 'object'
+                              ? JSON.stringify(itemValue)
+                              : String(itemValue ?? '')
+                          }
                           onChange={(e) => {
                             try {
                               updateItem(idx, key, JSON.parse(e.target.value))
@@ -230,7 +246,9 @@ function JsonArrayField({
                   }
                   return (
                     <div key={key} className="space-y-1">
-                      <label className="block text-xs text-gray-500 dark:text-gray-400">{key}</label>
+                      <label className="block text-xs text-gray-500 dark:text-gray-400">
+                        {key}
+                      </label>
                       <input
                         type="text"
                         value={String(itemValue ?? '')}
@@ -250,7 +268,12 @@ function JsonArrayField({
             className="inline-flex items-center gap-1 rounded-md border border-dashed border-gray-300 dark:border-gray-600 px-3 py-1.5 text-xs text-gray-600 dark:text-gray-400 hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
             </svg>
             {t('strategyConfigForm.addItem')}
           </button>
@@ -274,11 +297,7 @@ function ArrayStringOptionsInput({
   const { t } = useTranslation()
   const selectedValues = useMemo(() => {
     if (!Array.isArray(value)) return new Set<string>()
-    return new Set(
-      value
-        .map((item) => String(item || '').trim())
-        .filter(Boolean)
-    )
+    return new Set(value.map((item) => String(item || '').trim()).filter(Boolean))
   }, [value])
   const [filterText, setFilterText] = useState('')
   const filteredOptions = useMemo(() => {
@@ -308,7 +327,9 @@ function ArrayStringOptionsInput({
       <div className="flex items-center justify-between gap-2">
         <Label className="text-[11px] text-muted-foreground">{field.label}</Label>
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-muted-foreground">{t('strategyConfigForm.selectedCount', { n: selectedValues.size })}</span>
+          <span className="text-[10px] text-muted-foreground">
+            {t('strategyConfigForm.selectedCount', { n: selectedValues.size })}
+          </span>
           {selectedValues.size > 0 ? (
             <button
               type="button"
@@ -341,12 +362,16 @@ function ArrayStringOptionsInput({
                   onChange={() => toggleValue(option.value)}
                   className="h-3.5 w-3.5 rounded border-border bg-background"
                 />
-                <span className="truncate" title={option.label}>{option.label}</span>
+                <span className="truncate" title={option.label}>
+                  {option.label}
+                </span>
               </label>
             )
           })
         ) : (
-          <p className="text-[11px] text-muted-foreground">{t('strategyConfigForm.noOptionsMatch')}</p>
+          <p className="text-[11px] text-muted-foreground">
+            {t('strategyConfigForm.noOptionsMatch')}
+          </p>
         )}
       </div>
     </div>
@@ -364,28 +389,24 @@ function ConfigField({
 }) {
   const enumOptions: Array<{ value: string; label: string }> = Array.isArray(field.options)
     ? field.options
-      .map((option) => {
-        if (typeof option === 'string') {
-          const v = option.trim()
-          return v ? { value: v, label: v } : null
-        }
-        const v = String(option.value || '').trim()
-        if (!v) return null
-        const label = String(option.label || v).trim() || v
-        return { value: v, label }
-      })
-      .filter((option): option is { value: string; label: string } => Boolean(option))
+        .map((option) => {
+          if (typeof option === 'string') {
+            const v = option.trim()
+            return v ? { value: v, label: v } : null
+          }
+          const v = String(option.value || '').trim()
+          if (!v) return null
+          const label = String(option.label || v).trim() || v
+          return { value: v, label }
+        })
+        .filter((option): option is { value: string; label: string } => Boolean(option))
     : []
   switch (field.type) {
     case 'boolean':
       return (
         <div className="flex items-center justify-between gap-2 rounded-md bg-muted/30 px-3 py-2">
           <Label className="text-[11px] text-muted-foreground cursor-pointer">{field.label}</Label>
-          <Switch
-            checked={Boolean(value)}
-            onCheckedChange={onChange}
-            className="scale-75"
-          />
+          <Switch checked={Boolean(value)} onCheckedChange={onChange} className="scale-75" />
         </div>
       )
 
@@ -486,13 +507,7 @@ function ConfigField({
       return <CommaSeparatedListInput field={field} value={value} onChange={onChange} />
 
     case 'json':
-      return (
-        <JsonArrayField
-          field={field}
-          value={value}
-          onChange={(val) => onChange(val)}
-        />
-      )
+      return <JsonArrayField field={field} value={value} onChange={(val) => onChange(val)} />
 
     case 'url':
       return (

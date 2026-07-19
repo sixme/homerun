@@ -1,4 +1,4 @@
-.PHONY: setup run dev clean help stop kill backend frontend build
+.PHONY: setup run dev clean help stop kill backend frontend build lint format pre-commit-install
 
 # Default target
 help:
@@ -11,6 +11,9 @@ help:
 	@echo "  make stop       - Stop all running services"
 	@echo "  make restart    - Stop then start in dev mode"
 	@echo "  make clean      - Remove generated files"
+	@echo "  make lint       - Run Ruff + ESLint + tsc"
+	@echo "  make format     - Auto-format with Ruff + Prettier"
+	@echo "  make pre-commit-install - Install git pre-commit hooks"
 	@echo ""
 
 # Kill processes on a port (usage: $(call kill-port,8000))
@@ -59,6 +62,22 @@ frontend:
 # Build frontend
 build:
 	@cd frontend && npm run build
+
+# Lint (mirrors pre-commit / CI)
+lint:
+	@cd backend && . venv/bin/activate && ruff check .
+	@cd frontend && npm run lint
+	@cd frontend && npm run typecheck
+
+# Format Python + frontend sources
+format:
+	@cd backend && . venv/bin/activate && ruff check --fix . && ruff format .
+	@cd frontend && npm run format && npm run lint:fix
+
+# Install pre-commit git hooks (requires backend venv + frontend node_modules)
+pre-commit-install:
+	@cd backend && . venv/bin/activate && pre-commit install
+	@echo "pre-commit hooks installed. Run: pre-commit run --all-files"
 
 # Clean generated files
 clean: stop

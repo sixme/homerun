@@ -1,4 +1,9 @@
-import { api, getStrategyManagerItems, unwrapApiData, unwrapStrategyManagerPayload } from './apiClient'
+import {
+  api,
+  getStrategyManagerItems,
+  unwrapApiData,
+  unwrapStrategyManagerPayload,
+} from './apiClient'
 import type { MLMarketRuntimePayload } from './apiMachineLearning'
 
 // ==================== TYPES ====================
@@ -93,7 +98,7 @@ export interface Market {
   }>
   liquidity: number
   volume?: number
-  platform?: string  // "polymarket" | "kalshi"
+  platform?: string // "polymarket" | "kalshi"
   weather?: WeatherMarketDetails
   price_history?: Array<Record<string, unknown> | unknown[]>
 }
@@ -146,8 +151,8 @@ export interface Position {
   market: string
   price: number
   token_id?: string
-  platform?: string  // "polymarket" | "kalshi"
-  ticker?: string    // Kalshi market ticker
+  platform?: string // "polymarket" | "kalshi"
+  ticker?: string // Kalshi market ticker
   market_id?: string
 }
 
@@ -174,7 +179,7 @@ export interface Strategy {
   plugin_slug?: string
   source_key?: string
   enabled?: boolean
-  status?: string  // For plugins: loaded, error, unloaded
+  status?: string // For plugins: loaded, error, unloaded
   error_message?: string | null
   domain?: 'event_markets' | 'crypto' | string
   timeframe?: string
@@ -411,19 +416,24 @@ export const getOpportunities = async (params?: {
   const payload = unwrapApiData(response.data)
   const opportunities = Array.isArray(payload)
     ? payload
-    : (payload && typeof payload === 'object' && Array.isArray((payload as { opportunities?: unknown }).opportunities)
+    : payload &&
+        typeof payload === 'object' &&
+        Array.isArray((payload as { opportunities?: unknown }).opportunities)
       ? (payload as { opportunities: Opportunity[] }).opportunities
-      : [])
+      : []
   const headerTotal = parseInt(response.headers['x-total-count'] || '', 10)
-  const payloadTotal = payload && typeof payload === 'object'
-    ? Number((payload as { total?: unknown }).total)
-    : Number.NaN
+  const payloadTotal =
+    payload && typeof payload === 'object'
+      ? Number((payload as { total?: unknown }).total)
+      : Number.NaN
   const total = Number.isFinite(headerTotal)
     ? headerTotal
-    : (Number.isFinite(payloadTotal) ? payloadTotal : opportunities.length)
+    : Number.isFinite(payloadTotal)
+      ? payloadTotal
+      : opportunities.length
   return {
     opportunities,
-    total
+    total,
   }
 }
 
@@ -499,18 +509,23 @@ export interface CryptoMarket {
   oracle_source: string | null
   oracle_updated_at_ms: number | null
   oracle_age_seconds: number | null
-  oracle_prices_by_source?: Record<string, {
-    source: string
-    price: number | null
-    updated_at_ms: number | null
-    age_seconds: number | null
-  }>
+  oracle_prices_by_source?: Record<
+    string,
+    {
+      source: string
+      price: number | null
+      updated_at_ms: number | null
+      age_seconds: number | null
+    }
+  >
   price_to_beat: number | null
   oracle_history: { t: number; p: number }[]
   machine_learning?: MLMarketRuntimePayload | null
 }
 
-export const getCryptoMarkets = async (params?: { viewer_active?: boolean }): Promise<CryptoMarket[]> => {
+export const getCryptoMarkets = async (params?: {
+  viewer_active?: boolean
+}): Promise<CryptoMarket[]> => {
   const { data } = await api.get('/crypto/markets', { params })
   return unwrapApiData(data)
 }
@@ -545,12 +560,16 @@ export const searchPolymarketOpportunities = async (params: {
   const total = parseInt(response.headers['x-total-count'] || '0', 10)
   return {
     opportunities: response.data,
-    total
+    total,
   }
 }
 
-export const evaluateSearchResults = async (conditionIds: string[]): Promise<{ status: string; count: number; message: string }> => {
-  const { data } = await api.post('/opportunities/search-polymarket/evaluate', { condition_ids: conditionIds })
+export const evaluateSearchResults = async (
+  conditionIds: string[],
+): Promise<{ status: string; count: number; message: string }> => {
+  const { data } = await api.post('/opportunities/search-polymarket/evaluate', {
+    condition_ids: conditionIds,
+  })
   return unwrapApiData(data)
 }
 
@@ -583,7 +602,7 @@ export const pauseScanner = async (): Promise<ScannerStatus> => {
 
 export const setScannerInterval = async (intervalSeconds: number): Promise<ScannerStatus> => {
   const { data } = await api.post('/scanner/interval', null, {
-    params: { interval_seconds: intervalSeconds }
+    params: { interval_seconds: intervalSeconds },
   })
   return unwrapApiData(data)
 }
@@ -622,7 +641,16 @@ export interface StrategyPlugin {
   status: 'unloaded' | 'loaded' | 'error'
   error_message: string | null
   config: Record<string, unknown>
-  config_schema: { param_fields: { key: string; label: string; type: string; min?: number; max?: number; options?: string[] }[] } | null
+  config_schema: {
+    param_fields: {
+      key: string
+      label: string
+      type: string
+      min?: number
+      max?: number
+      options?: string[]
+    }[]
+  } | null
   version: number
   sort_order: number
   created_at: string | null
@@ -668,7 +696,7 @@ export const updatePlugin = async (
     name: string
     description: string
     unlock_system: boolean
-  }>
+  }>,
 ): Promise<StrategyPlugin> => {
   const { data } = await api.put(`/strategy-manager/${id}`, updates)
   return unwrapApiData(data)
@@ -692,7 +720,9 @@ export const getPluginTemplate = async (): Promise<{
   return unwrapApiData(data)
 }
 
-export const reloadPlugin = async (id: string): Promise<{
+export const reloadPlugin = async (
+  id: string,
+): Promise<{
   status: string
   message: string
   runtime: PluginRuntime | null
@@ -701,7 +731,6 @@ export const reloadPlugin = async (id: string): Promise<{
   return unwrapApiData(data)
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const getPluginDocs = async (): Promise<Record<string, any>> => {
   const { data } = await api.get('/strategy-manager/docs')
   if (Array.isArray(data)) {
@@ -738,16 +767,20 @@ export const updateOpportunityStrategy = async (
     source_key: string
     name: string
     description: string
-  }>
+  }>,
 ): Promise<OpportunityStrategyDefinition> => {
   return updatePlugin(id, payload)
 }
 
-export const validateOpportunityStrategy = async (source_code: string): Promise<PluginValidation> => {
+export const validateOpportunityStrategy = async (
+  source_code: string,
+): Promise<PluginValidation> => {
   return validatePlugin(source_code)
 }
 
-export const reloadOpportunityStrategy = async (id: string): Promise<{
+export const reloadOpportunityStrategy = async (
+  id: string,
+): Promise<{
   status: string
   message: string
   runtime: PluginRuntime | null
@@ -759,7 +792,6 @@ export const deleteOpportunityStrategy = async (id: string): Promise<void> => {
   return deletePlugin(id)
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const getTraderStrategyDocs = async (): Promise<Record<string, any>> => {
   const { data } = await api.get('/strategy-manager/docs')
   const payload = unwrapStrategyManagerPayload(data)
@@ -776,14 +808,19 @@ export const getWallets = async (): Promise<Wallet[]> => {
   return unwrapApiData(data)
 }
 
-export const addWallet = async (address: string, label?: string): Promise<{ status: string; address: string; label: string | null }> => {
+export const addWallet = async (
+  address: string,
+  label?: string,
+): Promise<{ status: string; address: string; label: string | null }> => {
   const { data } = await api.post('/wallets', null, {
-    params: { address, label }
+    params: { address, label },
   })
   return unwrapApiData(data)
 }
 
-export const removeWallet = async (address: string): Promise<{ status: string; message: string }> => {
+export const removeWallet = async (
+  address: string,
+): Promise<{ status: string; message: string }> => {
   const { data } = await api.delete(`/wallets/${address}`)
   return unwrapApiData(data)
 }
@@ -827,14 +864,19 @@ export const getRecentTradesFromWallets = async (params?: {
   return unwrapApiData(data)
 }
 
-export const getWalletPositions = async (address: string): Promise<{ address: string; positions: WalletPosition[] }> => {
+export const getWalletPositions = async (
+  address: string,
+): Promise<{ address: string; positions: WalletPosition[] }> => {
   const { data } = await api.get(`/wallets/${address}/positions`)
   return unwrapApiData(data)
 }
 
-export const getWalletTrades = async (address: string, limit = 100): Promise<{ address: string; trades: WalletTrade[] }> => {
+export const getWalletTrades = async (
+  address: string,
+  limit = 100,
+): Promise<{ address: string; trades: WalletTrade[] }> => {
   const { data } = await api.get(`/wallets/${address}/trades`, {
-    params: { limit }
+    params: { limit },
   })
   return unwrapApiData(data)
 }
@@ -881,7 +923,9 @@ export const getSimulationAccount = async (accountId: string): Promise<Simulatio
   return unwrapApiData(data)
 }
 
-export const deleteSimulationAccount = async (accountId: string): Promise<{ message: string; account_id: string }> => {
+export const deleteSimulationAccount = async (
+  accountId: string,
+): Promise<{ message: string; account_id: string }> => {
   const { data } = await api.delete(`/simulation/accounts/${accountId}`)
   return unwrapApiData(data)
 }
@@ -891,7 +935,10 @@ export const getAccountPositions = async (accountId: string): Promise<Simulation
   return unwrapApiData(data)
 }
 
-export const getAccountTrades = async (accountId: string, limit = 50): Promise<SimulationTrade[]> => {
+export const getAccountTrades = async (
+  accountId: string,
+  limit = 50,
+): Promise<SimulationTrade[]> => {
   const { data } = await api.get(`/simulation/accounts/${accountId}/trades`, { params: { limit } })
   return unwrapApiData(data)
 }
@@ -901,13 +948,20 @@ export const executeOpportunity = async (
   opportunityId: string,
   positionSize?: number,
   takeProfitPrice?: number,
-  stopLossPrice?: number
-): Promise<{ trade_id: string; status: string; total_cost: number; expected_profit: number; slippage: number; message: string }> => {
+  stopLossPrice?: number,
+): Promise<{
+  trade_id: string
+  status: string
+  total_cost: number
+  expected_profit: number
+  slippage: number
+  message: string
+}> => {
   const { data } = await api.post(`/simulation/accounts/${accountId}/execute`, {
     opportunity_id: opportunityId,
     position_size: positionSize,
     take_profit_price: takeProfitPrice,
-    stop_loss_price: stopLossPrice
+    stop_loss_price: stopLossPrice,
   })
   return unwrapApiData(data)
 }
@@ -917,7 +971,9 @@ export const getAccountPerformance = async (accountId: string): Promise<Record<s
   return unwrapApiData(data)
 }
 
-export const getAccountEquityHistory = async (accountId: string): Promise<EquityHistoryResponse> => {
+export const getAccountEquityHistory = async (
+  accountId: string,
+): Promise<EquityHistoryResponse> => {
   const { data } = await api.get(`/simulation/accounts/${accountId}/equity-history`)
   return unwrapApiData(data)
 }
@@ -948,17 +1004,39 @@ export const getAnomalies = async (params?: {
   return unwrapApiData(data)
 }
 
-export const quickCheckWallet = async (address: string): Promise<{ wallet: string; is_suspicious: boolean; anomaly_score: number; critical_anomalies: number; win_rate: number; total_pnl: number; verdict: string; summary: string }> => {
+export const quickCheckWallet = async (
+  address: string,
+): Promise<{
+  wallet: string
+  is_suspicious: boolean
+  anomaly_score: number
+  critical_anomalies: number
+  win_rate: number
+  total_pnl: number
+  verdict: string
+  summary: string
+}> => {
   const { data } = await api.get(`/anomaly/check/${address}`)
   return unwrapApiData(data)
 }
 
-export const getWalletTradesAnalysis = async (address: string, limit = 100): Promise<{ wallet: string; total: number; trades: WalletTrade[] }> => {
+export const getWalletTradesAnalysis = async (
+  address: string,
+  limit = 100,
+): Promise<{ wallet: string; total: number; trades: WalletTrade[] }> => {
   const { data } = await api.get(`/anomaly/wallet/${address}/trades`, { params: { limit } })
   return unwrapApiData(data)
 }
 
-export const getWalletPositionsAnalysis = async (address: string): Promise<{ wallet: string; total_positions: number; total_value: number; total_unrealized_pnl: number; positions: WalletPosition[] }> => {
+export const getWalletPositionsAnalysis = async (
+  address: string,
+): Promise<{
+  wallet: string
+  total_positions: number
+  total_value: number
+  total_unrealized_pnl: number
+  positions: WalletPosition[]
+}> => {
   const { data } = await api.get(`/anomaly/wallet/${address}/positions`)
   return unwrapApiData(data)
 }

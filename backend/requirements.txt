@@ -89,3 +89,7 @@ jinja2>=3.1.0
 # GUI uses tkinter (ships with Python, no pip install needed)
 pytest-asyncio>=0.23.0,<1.0
 pytest-timeout>=2.3.0,<3.0
+
+# Dev / pre-commit (hooks also pin their own tool versions)
+pre-commit>=4.0.0,<5.0
+ruff>=0.9.0,<1.0
