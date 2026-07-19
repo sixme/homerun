@@ -128,12 +128,6 @@ export interface EventsSummary {
   last_collection: string | null
 }
 
-export interface EventsStatus {
-  status: Record<string, any>
-  stats: Record<string, any>
-  updated_at: string | null
-}
-
 export interface WorldSourceStatusResponse {
   sources: Record<string, any>
   errors: string[]
@@ -243,22 +237,7 @@ export async function getEventsSummary(): Promise<EventsSummary> {
   return data
 }
 
-export async function getEventsStatus(): Promise<EventsStatus> {
-  const { data } = await api.get('/events/status')
-  return data
-}
-
 export async function getWorldSourceStatus(): Promise<WorldSourceStatusResponse> {
   const { data } = await api.get('/events/sources')
-  return data
-}
-
-export async function getMilitaryActivity(): Promise<Record<string, any>> {
-  const { data } = await api.get('/events/military')
-  return data
-}
-
-export async function getInfrastructureEvents(): Promise<Record<string, any>> {
-  const { data } = await api.get('/events/infrastructure')
   return data
 }
