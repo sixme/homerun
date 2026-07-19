@@ -84,3 +84,6 @@ backend/scripts/_*_results*.json
 secrets.json
 .claude/worktrees/
 .cutover-snapshots/
+
+# Playwright MCP local smoke artifacts
+.playwright-mcp/
