@@ -2157,7 +2157,7 @@ function App() {
             <div className="text-border/60 mx-0.5">|</div>
             <div className="stat-pill flex items-center gap-1 px-2 py-1 rounded-md">
               <Wallet className="w-3 h-3 text-blue-400" />
-              <span className="text-muted-foreground">Bal</span>
+              <span className="text-muted-foreground">Available Cash</span>
               <FlashNumber value={headerStats.balance} prefix="$" decimals={2} className="font-data font-semibold text-foreground data-glow-blue" />
             </div>
             <div className="stat-pill flex items-center gap-1 px-2 py-1 rounded-md">

@@ -80,7 +80,6 @@ class SimulationService:
         if normalized in {"buy_no", "sell_no"}:
             return PositionSide.NO, "NO"
         if normalized in {"buy", "sell"} and isinstance(payload, dict):
-            token_id = str(payload.get("token_id") or "").strip()
             market_info: Optional[dict[str, Any]] = None
             for key in ("market", "live_market"):
                 candidate = payload.get(key)
@@ -89,6 +88,28 @@ class SimulationService:
                     break
             if not isinstance(market_info, dict):
                 market_info = payload
+            leg = payload.get("leg") if isinstance(payload.get("leg"), dict) else {}
+
+            # Explicit outcome labels first (common on copy-trade / merge legs).
+            outcome_raw = (
+                payload.get("selected_outcome")
+                or payload.get("outcome")
+                or (market_info or {}).get("selected_outcome")
+                or leg.get("outcome")
+            )
+            outcome_key = str(outcome_raw or "").strip().lower()
+            if outcome_key in {"yes", "y", "true", "1"}:
+                return PositionSide.YES, "YES"
+            if outcome_key in {"no", "n", "false", "0"}:
+                return PositionSide.NO, "NO"
+
+            token_id = str(
+                payload.get("token_id")
+                or payload.get("selected_token_id")
+                or (market_info or {}).get("selected_token_id")
+                or leg.get("token_id")
+                or ""
+            ).strip()
             tokens: list[str] = []
             for key in ("token_ids", "tokenIds", "clob_token_ids", "clobTokenIds"):
                 raw = market_info.get(key) if isinstance(market_info, dict) else None
@@ -96,6 +117,16 @@ class SimulationService:
                     tokens = [str(t or "").strip() for t in raw if str(t or "").strip()]
                     if tokens:
                         break
+            yes_token = str(
+                (market_info or {}).get("yes_token_id") or payload.get("yes_token_id") or ""
+            ).strip()
+            no_token = str(
+                (market_info or {}).get("no_token_id") or payload.get("no_token_id") or ""
+            ).strip()
+            if token_id and yes_token and token_id == yes_token:
+                return PositionSide.YES, "YES"
+            if token_id and no_token and token_id == no_token:
+                return PositionSide.NO, "NO"
             if token_id and tokens:
                 if len(tokens) > 2:
                     raise ValueError(
@@ -113,6 +144,12 @@ class SimulationService:
                     return PositionSide.YES, "YES"
                 if idx == 1:
                     return PositionSide.NO, "NO"
+            # Binary market with no token/outcome on the leg: default YES for
+            # capital accounting (merge/CTF bundle legs often omit token_id).
+            if tokens and len(tokens) == 2:
+                return PositionSide.YES, "YES"
+            if yes_token or no_token:
+                return PositionSide.YES, "YES"
         raise ValueError(f"Unsupported direction '{direction}'")
 
     @staticmethod

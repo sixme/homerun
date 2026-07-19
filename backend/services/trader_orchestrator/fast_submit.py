@@ -65,6 +65,7 @@ from services.trader_orchestrator_state import (
     _now,
     build_trader_order_row,
     create_trader_decision,
+    ensure_shadow_simulation_ledger,
     record_signal_consumption,
     upsert_trader_signal_cursor,
 )
@@ -555,6 +556,25 @@ async def execute_fast_signal(
         session.add(order)
         await session.flush()
         order_id = str(order.id)
+
+        # Shadow fills must debit paper capital immediately (same contract as
+        # create_trader_order). Fast path used to skip the sandbox ledger.
+        if mode_key == "shadow" and _is_active_order_status(mode_key, order.status):
+            try:
+                await ensure_shadow_simulation_ledger(session, order=order, commit=False)
+            except ValueError as capital_exc:
+                order.status = "cancelled"
+                order.error_message = str(capital_exc)
+                order.reason = (
+                    str(order.reason or "") + " | insufficient_shadow_capital"
+                ).strip(" |")
+                order.updated_at = now
+                capital_payload = dict(order.payload_json or {})
+                capital_payload["shadow_capital_reject"] = {
+                    "error": str(capital_exc),
+                    "rejected_at": now.isoformat() + "Z",
+                }
+                order.payload_json = capital_payload
 
         event_payload = dict(order.payload_json or {})
         event_payload.update({"status": str(order.status or ""), "mode": str(order.mode or "")})

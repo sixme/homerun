@@ -53,6 +53,7 @@ from services.trader_orchestrator.venue_gates import (
 from services.trader_orchestrator_state import (
     _extract_copy_source_wallet_from_payload,
     _extract_live_fill_metrics,
+    _is_active_order_status,
     _serialize_execution_event,
     _serialize_execution_leg,
     _serialize_execution_order,
@@ -64,6 +65,7 @@ from services.trader_orchestrator_state import (
     build_execution_session_rows,
     build_trader_order_row,
     create_execution_session_event,
+    ensure_shadow_simulation_ledger,
     get_execution_session_detail,
     get_execution_session_leg_rollups,
     list_active_execution_sessions,
@@ -1429,6 +1431,30 @@ class ExecutionSessionEngine:
             for trader_order in trader_orders:
                 self.db.add(trader_order)
             await self.db.flush()
+            # Debit paper capital for newly filled shadow legs before commit.
+            # Pre-submit "placing" rows have no notional yet and are skipped.
+            for trader_order in trader_orders:
+                order_mode = str(getattr(trader_order, "mode", "") or "").strip().lower()
+                if order_mode != "shadow":
+                    continue
+                if not _is_active_order_status(order_mode, getattr(trader_order, "status", None)):
+                    continue
+                try:
+                    await ensure_shadow_simulation_ledger(
+                        self.db, order=trader_order, commit=False
+                    )
+                except ValueError as capital_exc:
+                    trader_order.status = "cancelled"
+                    trader_order.error_message = str(capital_exc)
+                    trader_order.reason = (
+                        str(trader_order.reason or "") + " | insufficient_shadow_capital"
+                    ).strip(" |")
+                    capital_payload = dict(trader_order.payload_json or {})
+                    capital_payload["shadow_capital_reject"] = {
+                        "error": str(capital_exc),
+                        "rejected_at": utcnow().isoformat() + "Z",
+                    }
+                    trader_order.payload_json = capital_payload
             for execution_order in execution_orders:
                 self.db.add(execution_order)
             if execution_orders:

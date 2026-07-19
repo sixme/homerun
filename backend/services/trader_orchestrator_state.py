@@ -28,6 +28,8 @@ from models.database import (
     ExecutionSessionOrder,
     LiveTradingOrder,
     LiveTradingPosition,
+    SimulationPosition,
+    SimulationTrade,
     TradeSignal,
     Strategy,
     Trader,
@@ -6265,6 +6267,27 @@ async def create_trader_order(
         created_at=now,
     )
     session.add(row)
+    await session.flush()
+
+    # Shadow fills must debit the paper account immediately so free cash is
+    # real. Without this, risk limits allow multi-bot notional while the
+    # sandbox bankroll never shrinks.
+    if str(mode or "").strip().lower() == "shadow" and _is_active_order_status(mode, status):
+        try:
+            await ensure_shadow_simulation_ledger(session, order=row, commit=False)
+        except ValueError as capital_exc:
+            # Insufficient capital: do not leave an unfunded open order.
+            row.status = "cancelled"
+            row.error_message = str(capital_exc)
+            row.reason = (str(row.reason or "") + " | insufficient_shadow_capital").strip(" |")
+            row.updated_at = now
+            payload = dict(row.payload_json or {})
+            payload["shadow_capital_reject"] = {
+                "error": str(capital_exc),
+                "rejected_at": now.isoformat() + "Z",
+            }
+            row.payload_json = payload
+
     event_payload = dict(row.payload_json or {})
     event_payload.update({"status": str(row.status or ""), "mode": str(row.mode or "")})
     append_trader_order_verification_event(
@@ -6288,7 +6311,7 @@ async def create_trader_order(
         except Exception:
             pass
     await session.flush()
-    if _is_active_order_status(mode, status):
+    if _is_active_order_status(mode, str(row.status or status)):
         await sync_trader_position_inventory(
             session,
             trader_id=trader_id,
@@ -6304,6 +6327,132 @@ async def create_trader_order(
             pass
 
     return row
+
+
+async def ensure_shadow_simulation_ledger(
+    session: AsyncSession,
+    *,
+    order: TraderOrder,
+    shadow_account_id: str | None = None,
+    commit: bool = False,
+) -> dict[str, Any] | None:
+    """Debit sandbox capital and stamp simulation_ledger on a shadow fill.
+
+    Raises ValueError on insufficient capital (caller may cancel the order).
+    Returns existing ledger dict when already fully stamped and still present
+    in simulation_trades / simulation_positions (orphaned stamps are rebuilt).
+    """
+    mode_key = str(getattr(order, "mode", "") or "").strip().lower()
+    if mode_key != "shadow":
+        return None
+    status_key = str(getattr(order, "status", "") or "").strip().lower()
+    if status_key not in {
+        "open",
+        "submitted",
+        "executed",
+        "completed",
+        "working",
+        "partial",
+        "filled",
+    }:
+        return None
+
+    payload = dict(getattr(order, "payload_json", None) or {})
+    existing = payload.get("simulation_ledger")
+    if isinstance(existing, dict):
+        trade_id = str(existing.get("trade_id") or "").strip()
+        position_id = str(existing.get("position_id") or "").strip()
+        account_id_existing = str(existing.get("account_id") or "").strip()
+        if trade_id and position_id and account_id_existing:
+            trade_row = await session.get(SimulationTrade, trade_id)
+            position_row = await session.get(SimulationPosition, position_id)
+            if trade_row is not None and position_row is not None:
+                return existing
+            # Stale stamp (trade/position deleted or never committed). Rebuild.
+            payload.pop("simulation_ledger", None)
+            order.payload_json = payload
+            existing = None
+
+    account_id = str(shadow_account_id or "").strip()
+    if not account_id and isinstance(existing, dict):
+        account_id = str(existing.get("account_id") or "").strip()
+    if not account_id:
+        control = (
+            await session.execute(
+                select(TraderOrchestratorControl).where(TraderOrchestratorControl.id == "default")
+            )
+        ).scalar_one_or_none()
+        settings_payload = (
+            dict(getattr(control, "settings_json", None) or {}) if control is not None else {}
+        )
+        account_id = str(
+            settings_payload.get("shadow_account_id") or settings_payload.get("selected_account_id") or ""
+        ).strip()
+    if not account_id:
+        return None
+
+    notional = safe_float(payload.get("filled_notional_usd"), None)
+    if notional is None or notional <= 0.0:
+        notional = safe_float(payload.get("effective_notional_usd"), None)
+    if notional is None or notional <= 0.0:
+        notional = safe_float(getattr(order, "notional_usd", None), 0.0) or 0.0
+
+    entry_price = safe_float(getattr(order, "entry_price", None), None)
+    effective = safe_float(getattr(order, "effective_price", None), None)
+    avg = safe_float(payload.get("average_fill_price"), None)
+    if avg is not None and avg >= 0.01:
+        entry_price = avg
+    elif entry_price is not None and entry_price > 0 and effective is not None and effective > 0:
+        ratio = max(entry_price, effective) / max(min(entry_price, effective), 1e-9)
+        entry_price = float(effective) if ratio <= 3.0 and effective >= 0.01 else float(entry_price)
+    elif effective is not None and effective > 0:
+        entry_price = float(effective)
+    if entry_price is None or entry_price <= 0.0 or notional <= 0.0:
+        return None
+
+    from services.simulation import simulation_service
+
+    direction = str(getattr(order, "direction", "") or "").strip().lower()
+    shadow_sim = payload.get("shadow_simulation") or payload.get("paper_simulation")
+    shadow_sim = shadow_sim if isinstance(shadow_sim, dict) else {}
+    token_id = str(
+        payload.get("token_id")
+        or payload.get("selected_token_id")
+        or ""
+    ).strip() or None
+    signal_id = str(getattr(order, "signal_id", "") or "").strip() or str(order.id)
+    strategy_type = str(
+        getattr(order, "strategy_key", "") or payload.get("strategy_type") or "trader_orchestrator"
+    )
+
+    ledger_row = await simulation_service.record_orchestrator_shadow_fill(
+        account_id=account_id,
+        trader_id=str(getattr(order, "trader_id", "") or ""),
+        signal_id=signal_id,
+        market_id=str(getattr(order, "market_id", "") or ""),
+        market_question=str(
+            getattr(order, "market_question", "") or payload.get("market_question") or ""
+        ),
+        direction=direction,
+        notional_usd=float(notional),
+        entry_price=float(entry_price),
+        strategy_type=strategy_type,
+        token_id=token_id,
+        payload=payload,
+        execution_fee_usd=safe_float(shadow_sim.get("estimated_fee_usd"), None),
+        execution_slippage_usd=safe_float(shadow_sim.get("slippage_usd"), None),
+        session=session,
+        commit=commit,
+    )
+    stamped = {
+        **dict(ledger_row or {}),
+        "mode": "shadow",
+        "recorded_at": _now().isoformat() + "Z",
+    }
+    payload["simulation_ledger"] = stamped
+    order.payload_json = payload
+    order.updated_at = _now()
+    return stamped
 
 
 def build_trader_order_row(

@@ -2795,6 +2795,8 @@ async def _backfill_simulation_ledger_for_active_shadow_orders(
     if not trader_id or not account_id:
         return {"attempted": 0, "backfilled": 0, "skipped": 0, "errors": []}
 
+    from services.trader_orchestrator_state import ensure_shadow_simulation_ledger
+
     mode_expr = func.lower(func.coalesce(TraderOrder.mode, ""))
     status_expr = func.lower(func.coalesce(TraderOrder.status, ""))
     rows = list(
@@ -2815,69 +2817,41 @@ async def _backfill_simulation_ledger_for_active_shadow_orders(
     backfilled = 0
     skipped = 0
     errors: list[dict[str, Any]] = []
-    now_utc = utcnow()
     for row in rows:
-        payload = dict(row.payload_json or {})
-        if isinstance(payload.get("simulation_ledger"), dict):
-            skipped += 1
-            continue
+        payload_before = dict(row.payload_json or {})
+        had_complete = False
+        existing = payload_before.get("simulation_ledger")
+        if isinstance(existing, dict):
+            had_complete = bool(
+                str(existing.get("trade_id") or "").strip()
+                and str(existing.get("position_id") or "").strip()
+            )
         attempted += 1
-        notional = safe_float(payload.get("filled_notional_usd"), None)
-        if notional is None or notional <= 0.0:
-            notional = safe_float(payload.get("effective_notional_usd"), None)
-        if notional is None or notional <= 0.0:
-            notional = safe_float(row.notional_usd, 0.0) or 0.0
-        entry_price = safe_float(row.effective_price, None)
-        if entry_price is None or entry_price <= 0.0:
-            entry_price = safe_float(payload.get("average_fill_price"), None)
-        if entry_price is None or entry_price <= 0.0:
-            entry_price = safe_float(row.entry_price, None)
-        if entry_price is None or entry_price <= 0.0 or notional <= 0.0:
-            skipped += 1
+        try:
+            stamped = await ensure_shadow_simulation_ledger(
+                session,
+                order=row,
+                shadow_account_id=account_id,
+                commit=False,
+            )
+            if stamped is None:
+                skipped += 1
+                continue
+            trade_id = str(stamped.get("trade_id") or "").strip()
+            if had_complete and trade_id == str((existing or {}).get("trade_id") or "").strip():
+                skipped += 1
+            else:
+                backfilled += 1
+        except ValueError as capital_exc:
+            # Leave the open order; capital gate rejects new fills at create time.
+            # Backfill must not cancel live inventory mid-loop.
             errors.append(
                 {
                     "order_id": str(row.id),
-                    "reason": "invalid_fill_metrics",
-                    "entry_price": entry_price,
-                    "notional_usd": notional,
+                    "reason": "insufficient_shadow_capital",
+                    "error": str(capital_exc),
                 }
             )
-            continue
-
-        direction = str(row.direction or "").strip().lower()
-        shadow_sim = payload.get("shadow_simulation") or payload.get("paper_simulation")
-        shadow_sim = shadow_sim if isinstance(shadow_sim, dict) else {}
-        execution_fee_usd = safe_float(shadow_sim.get("estimated_fee_usd"), None)
-        execution_slippage_usd = safe_float(shadow_sim.get("slippage_usd"), None)
-        token_id = _shadow_ledger_token_id(payload, direction)
-        signal_id = str(row.signal_id or "").strip() or str(row.id)
-        strategy_type = str(row.strategy_key or payload.get("strategy_type") or "").strip() or "trader_orchestrator"
-        try:
-            ledger_row = await simulation_service.record_orchestrator_shadow_fill(
-                account_id=account_id,
-                trader_id=str(trader_id),
-                signal_id=signal_id,
-                market_id=str(row.market_id or ""),
-                market_question=str(row.market_question or payload.get("market_question") or ""),
-                direction=direction,
-                notional_usd=float(notional),
-                entry_price=float(entry_price),
-                strategy_type=strategy_type,
-                token_id=token_id or None,
-                payload=payload,
-                execution_fee_usd=execution_fee_usd,
-                execution_slippage_usd=execution_slippage_usd,
-                session=session,
-                commit=False,
-            )
-            payload["simulation_ledger"] = {
-                **dict(ledger_row or {}),
-                "backfilled_at": now_utc.isoformat(),
-                "mode": _canonical_trader_mode(row.mode, default="shadow"),
-            }
-            row.payload_json = payload
-            row.updated_at = now_utc
-            backfilled += 1
         except Exception as exc:
             errors.append(
                 {
