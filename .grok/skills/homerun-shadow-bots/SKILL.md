@@ -155,6 +155,17 @@ Default shadow profile (apply to all paper bots unless the user wants tighter):
 
 Do **not** reintroduce the old ultra-tight skill template (`trade=2 / gross=25 / positions=3`).
 
+Also set **orchestrator global risk** high enough for the fleet (not just per-bot):
+
+```bash
+# Example: paper fleet needs headroom beyond one bot's max_gross
+curl -fsS -X PUT http://127.0.0.1:8000/api/trader-orchestrator/settings \
+  -H 'Content-Type: application/json' \
+  -d '{"global_risk":{"max_gross_exposure_usd":2000,"max_daily_loss_usd":250,"max_orders_per_cycle":40},"requested_by":"grok"}'
+```
+
+If global `max_gross_exposure_usd` is ~$100 while open inventory is already ~$100, **no bot can open new trades**.
+
 ## Interpreting decisions
 
 | Message | Meaning |

@@ -4660,7 +4660,14 @@ def _serialize_order(
     filled_notional_usd, filled_shares, average_fill_price = _extract_live_fill_metrics(payload)
     price_anchor = average_fill_price
     if price_anchor is None or price_anchor <= 0:
-        price_anchor = safe_float(row.effective_price) or safe_float(row.entry_price)
+        # Prefer entry over a bogus tick-floor effective_price (shadow bug).
+        entry = safe_float(row.entry_price)
+        effective = safe_float(row.effective_price)
+        if entry is not None and entry > 0 and effective is not None and effective > 0:
+            ratio = max(entry, effective) / max(min(entry, effective), 1e-9)
+            price_anchor = float(effective) if ratio <= 3.0 and effective >= 0.01 else float(entry)
+        else:
+            price_anchor = entry if entry is not None and entry > 0 else effective
     # Option-3 read-side P&L: prefer the WS-cache live mid price over
     # the slow-orchestrator-stamped ``position_state.last_mark_price``.
     # The WS cache reflects sub-second venue activity; ``position_

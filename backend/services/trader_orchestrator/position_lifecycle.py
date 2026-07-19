@@ -2111,6 +2111,41 @@ def _state_price_floor(value: Optional[float]) -> Optional[float]:
     return value
 
 
+def _resolve_position_entry_price(row: Any, payload: Optional[dict[str, Any]] = None) -> Optional[float]:
+    """Pick a plausible fill/entry price for mark-to-market and close PnL.
+
+    Shadow fills sometimes stamp ``effective_price`` at a tick floor (e.g. 0.001)
+    while ``entry_price`` holds the real signal/fill price (e.g. 0.545). Using
+    the floor as the cost basis blows up quantity and take-profit / realized PnL.
+    Prefer entry when effective is missing, non-positive, or wildly inconsistent.
+    """
+    entry = safe_float(getattr(row, "entry_price", None))
+    effective = safe_float(getattr(row, "effective_price", None))
+    payload = payload if isinstance(payload, dict) else {}
+    fill_candidates = (
+        safe_float(payload.get("average_fill_price")),
+        safe_float(payload.get("avg_fill_price")),
+        safe_float((payload.get("fill") or {}).get("price")) if isinstance(payload.get("fill"), dict) else None,
+        safe_float((payload.get("simulation_ledger") or {}).get("entry_price"))
+        if isinstance(payload.get("simulation_ledger"), dict)
+        else None,
+    )
+    for candidate in fill_candidates:
+        if candidate is not None and candidate > 0.0:
+            return float(candidate)
+    if effective is not None and effective > 0.0 and entry is not None and entry > 0.0:
+        ratio = max(effective, entry) / max(min(effective, entry), 1e-9)
+        # Allow normal slippage / mid drift; reject multi-order-of-magnitude bugs.
+        if ratio <= 3.0 and effective >= 0.01:
+            return float(effective)
+        return float(entry)
+    if entry is not None and entry > 0.0:
+        return float(entry)
+    if effective is not None and effective > 0.0:
+        return float(effective)
+    return None
+
+
 def _status_for_close(*, pnl: float, close_trigger: Optional[str]) -> str:
     normalized_pnl = 0.0 if abs(float(pnl or 0.0)) <= 1e-9 else float(pnl)
     trigger = str(close_trigger or "").strip().lower()
@@ -4678,12 +4713,10 @@ async def reconcile_shadow_positions(
     reverse_signal_ids_by_source: dict[str, list[str]] = {}
 
     for row in candidates:
-        entry_price = safe_float(row.effective_price)
-        if entry_price is None or entry_price <= 0:
-            entry_price = safe_float(row.entry_price)
+        row_payload_for_idx = dict(row.payload_json or {})
+        entry_price = _resolve_position_entry_price(row, row_payload_for_idx)
         notional = safe_float(row.notional_usd) or 0.0
         row_market_info = market_info_by_id.get(str(row.market_id or ""))
-        row_payload_for_idx = dict(row.payload_json or {})
         row_token_id_for_idx = _extract_leg_token_id(row_payload_for_idx)
         outcome_idx = _direction_outcome_index(
             row.direction,
@@ -5033,16 +5066,22 @@ async def reconcile_shadow_positions(
                     price_source = current_price_source
 
         if close_price is None:
-            state_changed = False
-            if current_price is not None:
+            # Always refresh position_state when we observed a mark so
+            # last_marked_at / last_exit_evaluated_at do not freeze for hours
+            # when price is flat (UI otherwise shows "stale" zero uPnL).
+            state_changed = current_price is not None
+            if not state_changed:
                 state_changed = (
-                    prev_last_mark is None
-                    or abs(prev_last_mark - current_price) > 1e-9
-                    or prev_high is None
+                    prev_high is None
                     or prev_low is None
-                    or abs((prev_high or 0.0) - (highest_price or 0.0)) > 1e-9
-                    or abs((prev_low or 0.0) - (lowest_price or 0.0)) > 1e-9
-                    or prev_mark_source != str(current_price_source or "")
+                    or (
+                        highest_price is not None
+                        and abs((prev_high or 0.0) - (highest_price or 0.0)) > 1e-9
+                    )
+                    or (
+                        lowest_price is not None
+                        and abs((prev_low or 0.0) - (lowest_price or 0.0)) > 1e-9
+                    )
                 )
             if not dry_run and state_changed:
                 payload["position_state"] = next_state

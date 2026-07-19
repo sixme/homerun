@@ -82,6 +82,16 @@ const OPEN_LIVE_MANAGED_ORDER_STATUSES = new Set([
 ])
 const POSITIONS_TABLE_PAGE_SIZE = 100
 const LIVE_MARK_FRESH_MS = 15_000
+/** Shadow lifecycle may re-mark every few seconds; treat ≤2m as fresh. */
+const SHADOW_MARK_FRESH_MS = 120_000
+const CLOSED_PAPER_ORDER_STATUSES = new Set([
+  'closed_win',
+  'closed_loss',
+  'resolved_win',
+  'resolved_loss',
+  'resolved',
+  'closed',
+])
 const MODAL_MARKET_HISTORY_LIMIT = 2000
 const MODAL_MARKET_HISTORY_REFRESH_MS = 10_000
 const LIVELINE_WINDOW_PRESETS: WindowOption[] = [
@@ -144,6 +154,8 @@ interface PositionRow {
   openedAt: string | null
   markUpdatedAt: string | null
   markFresh: boolean
+  markAgeLabel: string | null
+  orderCount: number
   tokenId: string | null
   managedByBot: string | null
   managedBotId: string | null
@@ -161,6 +173,31 @@ function toNumber(value: unknown): number {
   if (typeof value === 'number') return Number.isFinite(value) ? value : 0
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : 0
+}
+
+/** Prefer real fill/entry over a bogus tick-floor effective_price (e.g. 0.001 vs 0.545). */
+function resolveOrderEntryPrice(order: TraderOrder): number {
+  const entry = toNumber(order.entry_price)
+  const effective = toNumber(order.effective_price)
+  const avg = toNumber(order.average_fill_price)
+  if (avg >= 0.01) return avg
+  if (entry > 0 && effective > 0) {
+    const ratio = Math.max(entry, effective) / Math.max(Math.min(entry, effective), 1e-9)
+    if (ratio <= 3 && effective >= 0.01) return effective
+    return entry
+  }
+  if (entry > 0) return entry
+  return effective > 0 ? effective : 0
+}
+
+function formatMarkAge(iso: string | null | undefined): string | null {
+  const ts = toTimestamp(iso)
+  if (!ts) return null
+  const ageMs = Math.max(0, Date.now() - ts)
+  if (ageMs < 60_000) return `${Math.round(ageMs / 1000)}s`
+  if (ageMs < 3_600_000) return `${Math.round(ageMs / 60_000)}m`
+  if (ageMs < 86_400_000) return `${Math.round(ageMs / 3_600_000)}h`
+  return `${Math.round(ageMs / 86_400_000)}d`
 }
 
 function toTimestamp(value: string | null | undefined): number {
@@ -532,6 +569,25 @@ export default function PositionsPanel() {
     retry: false,
   })
 
+  const shadowRealizedSummary = useMemo(() => {
+    let realized = 0
+    let wins = 0
+    let losses = 0
+    let closed = 0
+    traderOrders.forEach((order) => {
+      const mode = String(order.mode || '').toLowerCase()
+      if (mode !== 'shadow' && mode !== 'paper') return
+      const status = String(order.status || '').toLowerCase()
+      if (!CLOSED_PAPER_ORDER_STATUSES.has(status)) return
+      closed += 1
+      const pnl = toNumber(order.actual_profit)
+      realized += pnl
+      if (pnl > 0) wins += 1
+      else if (pnl < 0) losses += 1
+    })
+    return { realized, wins, losses, closed }
+  }, [traderOrders])
+
   const {
     data: liveTraders = [],
   } = useQuery<Trader[]>({
@@ -637,6 +693,8 @@ export default function PositionsPanel() {
         openedAt: position.opened_at,
         markUpdatedAt: position.current_price === null ? null : position.opened_at,
         markFresh: false,
+        markAgeLabel: null,
+        orderCount: 1,
         tokenId: position.token_id ?? null,
         managedByBot: null,
         managedBotId: null,
@@ -854,6 +912,8 @@ export default function PositionsPanel() {
       orderId: string | null
       markPrice: number | null
       markUpdatedAt: string | null
+      orderCount: number
+      unrealizedFromApi: number | null
     }>()
 
     traderOrders.forEach((order) => {
@@ -871,7 +931,7 @@ export default function PositionsPanel() {
         Math.abs(toNumber(order.notional_usd)),
         Math.abs(toNumber(order.filled_notional_usd)),
       )
-      const entryPrice = toNumber(order.average_fill_price ?? order.effective_price ?? order.entry_price)
+      const entryPrice = resolveOrderEntryPrice(order)
       const payload = (order.payload && typeof order.payload === 'object')
         ? order.payload as Record<string, unknown>
         : {}
@@ -921,6 +981,8 @@ export default function PositionsPanel() {
           orderId: readString(order.id),
           markPrice: markPriceRaw > 0 ? markPriceRaw : null,
           markUpdatedAt,
+          orderCount: 0,
+          unrealizedFromApi: null,
         })
       }
 
@@ -941,8 +1003,13 @@ export default function PositionsPanel() {
         bucket.markPrice = markPriceRaw
         bucket.markUpdatedAt = markUpdatedAt || bucket.markUpdatedAt
       }
+      const apiU = order.unrealized_pnl
+      if (typeof apiU === 'number' && Number.isFinite(apiU)) {
+        bucket.unrealizedFromApi = (bucket.unrealizedFromApi ?? 0) + apiU
+      }
 
       if (notional <= 0) return
+      bucket.orderCount += 1
       bucket.costBasis += notional
       if (entryPrice > 0 && notional > 0) {
         bucket.weightedEntry += entryPrice * notional
@@ -957,6 +1024,7 @@ export default function PositionsPanel() {
       }
     })
 
+    const nowMs = Date.now()
     return Array.from(buckets.entries())
       .map<PositionRow | null>(([key, bucket]) => {
         if (bucket.costBasis <= 0) return null
@@ -974,9 +1042,12 @@ export default function PositionsPanel() {
         const marketValue = (currentPrice !== null && size !== null && size > 0)
           ? currentPrice * size
           : bucket.costBasis
-        const unrealizedPnl = (currentPrice !== null && entryPrice !== null && size !== null && size > 0)
+        const computedU = (currentPrice !== null && entryPrice !== null && size !== null && size > 0)
           ? (currentPrice - entryPrice) * size
           : null
+        const unrealizedPnl = computedU !== null
+          ? computedU
+          : bucket.unrealizedFromApi
         const pnlPercent = (unrealizedPnl !== null && bucket.costBasis > 0)
           ? (unrealizedPnl / bucket.costBasis) * 100
           : null
@@ -987,6 +1058,9 @@ export default function PositionsPanel() {
           ? (accountNameById.get(bucket.linkedAccountId) || (bucket.mode === 'shadow' ? 'Shadow account' : 'Autotrader (Paper)'))
           : (bucket.mode === 'shadow' ? (botName || 'Shadow Bot') : 'Autotrader (Paper)')
         const isShadow = bucket.mode === 'shadow'
+        const freshMs = isShadow ? SHADOW_MARK_FRESH_MS : LIVE_MARK_FRESH_MS
+        const markTs = toTimestamp(bucket.markUpdatedAt)
+        const markFresh = currentPrice !== null && markTs > 0 && markTs >= (nowMs - freshMs)
         return {
           key: `${isShadow ? 'shadow' : 'paper'}:${key}`,
           venue: isShadow ? 'shadow-bot' : 'autotrader-paper',
@@ -1006,7 +1080,9 @@ export default function PositionsPanel() {
           pnlPercent,
           openedAt: bucket.lastUpdated,
           markUpdatedAt: bucket.markUpdatedAt,
-          markFresh: currentPrice !== null && toTimestamp(bucket.markUpdatedAt) >= (Date.now() - LIVE_MARK_FRESH_MS),
+          markFresh,
+          markAgeLabel: formatMarkAge(bucket.markUpdatedAt),
+          orderCount: Math.max(1, bucket.orderCount),
           tokenId: null,
           managedByBot: botName,
           managedBotId: bucket.traderId,
@@ -1018,7 +1094,6 @@ export default function PositionsPanel() {
       .filter((row): row is PositionRow => row !== null)
       .sort((left, right) => right.marketValue - left.marketValue)
   }, [accountNameById, selectedSandboxAccount, shadowTraderNameById, simulationCoverageKeys, traderOrders])
-
   const polymarketLiveRows = useMemo<PositionRow[]>(() => {
     const fallbackMarkTs = polymarketLiveUpdatedAt > 0
       ? new Date(polymarketLiveUpdatedAt).toISOString()
@@ -1055,6 +1130,8 @@ export default function PositionsPanel() {
         openedAt: markUpdatedAt,
         markUpdatedAt,
         markFresh,
+        markAgeLabel: formatMarkAge(markUpdatedAt),
+        orderCount: 1,
         tokenId: position.token_id,
         managedByBot: managed?.traderName || null,
         managedBotId: managed?.traderId || null,
@@ -1105,6 +1182,8 @@ export default function PositionsPanel() {
         openedAt: markUpdatedAt,
         markUpdatedAt,
         markFresh,
+        markAgeLabel: formatMarkAge(markUpdatedAt),
+        orderCount: 1,
         tokenId: position.token_id,
         managedByBot: managed?.traderName || null,
         managedBotId: managed?.traderId || null,
@@ -1215,6 +1294,11 @@ export default function PositionsPanel() {
     const totalUnrealizedPnl = markableRows.reduce((sum, row) => sum + (row.unrealizedPnl ?? 0), 0)
     const pnlPercent = markableCostBasis > 0 ? (totalUnrealizedPnl / markableCostBasis) * 100 : 0
     const markCoverage = sortedRows.length > 0 ? (markableRows.length / sortedRows.length) * 100 : 0
+    const staleMarks = sortedRows.filter((row) => row.currentPrice !== null && !row.markFresh).length
+    const shadowRows = sortedRows.filter((row) => row.venue === 'shadow-bot')
+    const botsWithPositions = new Set(
+      sortedRows.map((row) => row.managedBotId || row.managedByBot).filter(Boolean),
+    ).size
 
     const yesExposure = sortedRows
       .filter((row) => isYesSide(row.side))
@@ -1244,14 +1328,21 @@ export default function PositionsPanel() {
       totalUnrealizedPnl,
       pnlPercent,
       markCoverage,
+      staleMarks,
+      shadowOpen: shadowRows.length,
+      botsWithPositions,
       yesExposure,
       noExposure,
       otherExposure,
       directionalNet,
       largestPosition,
       concentrationHhi,
+      realizedPnl: shadowRealizedSummary.realized,
+      closedTrades: shadowRealizedSummary.closed,
+      wins: shadowRealizedSummary.wins,
+      losses: shadowRealizedSummary.losses,
     }
-  }, [sortedRows])
+  }, [sortedRows, shadowRealizedSummary])
 
   const sourceBreakdown = useMemo(() => {
     const totalExposure = sortedRows.reduce((sum, row) => sum + row.marketValue, 0)
@@ -1335,11 +1426,27 @@ export default function PositionsPanel() {
               {t('positions.title')}
             </h2>
             <Badge className="rounded-md border-transparent bg-muted text-muted-foreground text-xs">
-              {sortedRows.length} / {baseRows.length}
+              {sortedRows.length} open
             </Badge>
+            {metrics.shadowOpen > 0 && (
+              <Badge className="rounded-md border-transparent bg-cyan-500/15 text-cyan-300 text-xs">
+                {metrics.shadowOpen} shadow · {metrics.botsWithPositions} bots
+              </Badge>
+            )}
             {sortedRows.length > 0 && (
               <Badge className={cn('rounded-md border-transparent text-xs', metrics.totalUnrealizedPnl >= 0 ? 'bg-emerald-500/15 text-emerald-300' : 'bg-red-500/15 text-red-300')}>
-                {formatSignedUsd(metrics.totalUnrealizedPnl)}
+                uPnL {formatSignedUsd(metrics.totalUnrealizedPnl)}
+                {metrics.pnlPercent !== 0 ? ` (${formatSignedPct(metrics.pnlPercent)})` : ''}
+              </Badge>
+            )}
+            {metrics.closedTrades > 0 && (
+              <Badge className={cn('rounded-md border-transparent text-xs', metrics.realizedPnl >= 0 ? 'bg-emerald-500/15 text-emerald-300' : 'bg-red-500/15 text-red-300')}>
+                realized {formatSignedUsd(metrics.realizedPnl)} · {metrics.wins}W/{metrics.losses}L
+              </Badge>
+            )}
+            {metrics.staleMarks > 0 && (
+              <Badge className="rounded-md border-transparent bg-amber-500/15 text-amber-300 text-xs">
+                {metrics.staleMarks} stale marks
               </Badge>
             )}
           </div>
@@ -1347,6 +1454,41 @@ export default function PositionsPanel() {
             <RefreshCw className={cn('w-3.5 h-3.5', isLoading && 'animate-spin')} />
           </Button>
         </div>
+
+        {sortedRows.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
+            <div className="rounded-md border border-border/60 bg-card/50 px-2.5 py-1.5">
+              <p className="text-[9px] uppercase text-muted-foreground">Cost basis</p>
+              <p className="text-xs font-mono font-semibold">{formatUsd(metrics.totalCostBasis)}</p>
+            </div>
+            <div className="rounded-md border border-border/60 bg-card/50 px-2.5 py-1.5">
+              <p className="text-[9px] uppercase text-muted-foreground">Mark value</p>
+              <p className="text-xs font-mono font-semibold">{formatUsd(metrics.totalMarketValue)}</p>
+            </div>
+            <div className="rounded-md border border-border/60 bg-card/50 px-2.5 py-1.5">
+              <p className="text-[9px] uppercase text-muted-foreground">Unrealized</p>
+              <p className={cn('text-xs font-mono font-semibold', metrics.totalUnrealizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+                {formatSignedUsd(metrics.totalUnrealizedPnl)}
+              </p>
+            </div>
+            <div className="rounded-md border border-border/60 bg-card/50 px-2.5 py-1.5">
+              <p className="text-[9px] uppercase text-muted-foreground">Realized</p>
+              <p className={cn('text-xs font-mono font-semibold', metrics.realizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+                {formatSignedUsd(metrics.realizedPnl)}
+              </p>
+            </div>
+            <div className="rounded-md border border-border/60 bg-card/50 px-2.5 py-1.5">
+              <p className="text-[9px] uppercase text-muted-foreground">Mark coverage</p>
+              <p className="text-xs font-mono font-semibold">{metrics.markCoverage.toFixed(0)}%</p>
+            </div>
+            <div className="rounded-md border border-border/60 bg-card/50 px-2.5 py-1.5">
+              <p className="text-[9px] uppercase text-muted-foreground">YES / NO</p>
+              <p className="text-xs font-mono font-semibold">
+                {formatCompactUsd(metrics.yesExposure)} / {formatCompactUsd(metrics.noExposure)}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Row 2: View tabs + venue selectors */}
         <div className="flex flex-wrap items-center gap-2">
@@ -1567,9 +1709,9 @@ export default function PositionsPanel() {
                         <TableHead className="text-[11px] text-right">{t('positions.colAvgPx')}</TableHead>
                         <TableHead className="text-[11px] text-right">{t('positions.colMark')}</TableHead>
                         <TableHead className="text-[11px] text-right">{t('positions.colUPnl')}</TableHead>
-                        <TableHead className="text-[11px] text-right">{t('positions.colEdge')}</TableHead>
-                        <TableHead className="text-[11px] text-right">{t('positions.colConf')}</TableHead>
-                        <TableHead className="text-[11px] text-right">{t('positions.colOrders')}</TableHead>
+                        <TableHead className="text-[11px] text-right">uPnL %</TableHead>
+                        <TableHead className="text-[11px] text-right">Mark age</TableHead>
+                        <TableHead className="text-[11px] text-right">Orders</TableHead>
                         <TableHead className="text-[11px] text-right">{t('positions.colMode')}</TableHead>
                         <TableHead className="text-[11px]">{t('positions.colBot')}</TableHead>
                         <TableHead className="text-[11px]">{t('positions.colUpdated')}</TableHead>
@@ -1639,23 +1781,34 @@ export default function PositionsPanel() {
                             <TableCell className="text-right font-mono py-1">{formatOptionalPrice(row.entryPrice)}</TableCell>
                             <TableCell className="text-right font-mono py-1">
                               {row.currentPrice !== null ? (
-                                hasLiveMark ? (
+                                hasLiveMark && row.markFresh ? (
                                   <FlashNumber
                                     value={row.currentPrice}
                                     decimals={4}
                                     className="font-mono text-xs"
                                   />
-                                ) : formatOptionalPrice(row.currentPrice)
-                              ) : formatOptionalPrice(row.currentPrice)}
+                                ) : (
+                                  <span className={cn(!row.markFresh && 'text-amber-400')}>
+                                    {formatOptionalPrice(row.currentPrice)}
+                                  </span>
+                                )
+                              ) : (
+                                <span className="text-muted-foreground">n/a</span>
+                              )}
                             </TableCell>
                             <TableCell className={cn('text-right font-mono py-1', (row.unrealizedPnl || 0) > 0 ? 'text-emerald-500' : (row.unrealizedPnl || 0) < 0 ? 'text-red-500' : '')}>
                               {row.unrealizedPnl !== null ? formatSignedUsd(row.unrealizedPnl) : '—'}
                             </TableCell>
-                            <TableCell className="text-right font-mono py-1">
+                            <TableCell className={cn('text-right font-mono py-1', (row.pnlPercent || 0) > 0 ? 'text-emerald-500' : (row.pnlPercent || 0) < 0 ? 'text-red-500' : '')}>
                               {row.pnlPercent !== null ? formatSignedPct(row.pnlPercent) : '—'}
                             </TableCell>
-                            <TableCell className="text-right font-mono py-1">—</TableCell>
-                            <TableCell className="text-right font-mono py-1">—</TableCell>
+                            <TableCell className="text-right font-mono py-1 text-[10px] text-muted-foreground">
+                              {row.markAgeLabel || '—'}
+                              {!row.markFresh && row.currentPrice !== null ? (
+                                <span className="block text-amber-400">stale</span>
+                              ) : null}
+                            </TableCell>
+                            <TableCell className="text-right font-mono py-1">{row.orderCount || 1}</TableCell>
                             <TableCell className="text-right font-mono py-1">{modeLabel}</TableCell>
                             <TableCell className="py-1 text-[10px]">
                               {row.managedByBot ? (

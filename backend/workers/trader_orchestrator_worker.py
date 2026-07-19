@@ -5196,6 +5196,9 @@ async def _run_trader_once_inner(
                     dry_run=False,
                     force_mark_to_market=force_flatten,
                     reason="worker_flatten_then_start" if force_flatten else "worker_lifecycle",
+                    # Keep sandbox account ledger in sync so Positions/Accounts
+                    # show the same shadow inventory and realized closes.
+                    enable_simulation_ledger=True,
                 )
                 closed_positions = int(lifecycle_result.get("closed", 0))
                 if closed_positions > 0:
