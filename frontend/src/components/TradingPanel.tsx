@@ -388,12 +388,35 @@ type PositionBookRow = {
   orderCount: number
   liveOrderCount: number
   shadowOrderCount: number
+  /** Human-readable mode for the Mode column: SHADOW | LIVE | LIVE+SHADOW | — */
+  modeLabel: string
   lastUpdated: string | null
   statusSummary: string
   links: {
     polymarket: string | null
     kalshi: string | null
   }
+}
+
+function normalizeOrderMode(value: unknown): 'live' | 'shadow' | 'other' {
+  const key = String(value || '')
+    .trim()
+    .toLowerCase()
+  if (key === 'live') return 'live'
+  // Canonical non-live bot mode is shadow; accept legacy paper alias.
+  if (key === 'shadow' || key === 'paper' || key === 'sandbox' || key === 'simulation') {
+    return 'shadow'
+  }
+  return 'other'
+}
+
+function formatPositionModeLabel(liveCount: number, shadowCount: number): string {
+  const live = liveCount > 0
+  const shadow = shadowCount > 0
+  if (live && shadow) return 'LIVE+SHADOW'
+  if (live) return 'LIVE'
+  if (shadow) return 'SHADOW'
+  return '—'
 }
 
 type BotMarketModalKind = 'trade' | 'position'
@@ -4183,7 +4206,7 @@ function buildPositionBookRows(
     })
     const confidence = toNumber(order.confidence)
     const traderName = traderNameById[traderId] || shortId(traderId)
-    const mode = normalizeStatus(order.mode)
+    const mode = normalizeOrderMode(order.mode)
     const sourceLabel = cleanText(order.source)?.toUpperCase() || 'UNKNOWN'
     const executionSummary = orderExecutionTypeSummary(order)
     const links = buildOrderMarketLinks(order, orderPayload, signalPayload)
@@ -4300,6 +4323,7 @@ function buildPositionBookRows(
         orderCount: bucket.orderCount,
         liveOrderCount: bucket.liveOrderCount,
         shadowOrderCount: bucket.shadowOrderCount,
+        modeLabel: formatPositionModeLabel(bucket.liveOrderCount, bucket.shadowOrderCount),
         lastUpdated: bucket.lastUpdated,
         statusSummary: Array.from(bucket.statuses).join(', '),
         links: {
@@ -8444,7 +8468,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
         anchorOrderId: null,
         sourceSummary: row.sourceSummary,
         statusSummary: row.statusSummary,
-        modeSummary: `${row.liveOrderCount}L/${row.shadowOrderCount}S`,
+        modeSummary: row.modeLabel,
         executionSummary: row.executionSummary,
         outcomeSummary: null,
         links: row.links,
@@ -10680,9 +10704,42 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     : selectedSandboxAccount
       ? `${selectedSandboxAccount.name} (sandbox)`
       : null
-  const boundAccountCapital = selectedSandboxAccount
-    ? Number(selectedSandboxAccount.current_capital ?? selectedSandboxAccount.initial_capital ?? 0)
+  // Desk equity (cash + open inventory) — same definition as Accounts / header Value.
+  const boundAccountEquity = selectedSandboxAccount
+    ? typeof selectedSandboxAccount.equity === 'number' &&
+      Number.isFinite(selectedSandboxAccount.equity)
+      ? Number(selectedSandboxAccount.equity)
+      : Number(selectedSandboxAccount.current_capital || 0) +
+        Number(selectedSandboxAccount.market_value || 0)
     : null
+  const boundAccountFreeCash = selectedSandboxAccount
+    ? Number(selectedSandboxAccount.current_capital ?? 0)
+    : null
+  const boundAccountTotalPnl =
+    boundAccountEquity != null && selectedSandboxAccount
+      ? boundAccountEquity - Number(selectedSandboxAccount.initial_capital || 0)
+      : null
+  const boundAccountInventory =
+    selectedSandboxAccount &&
+    typeof selectedSandboxAccount.market_value === 'number' &&
+    Number.isFinite(selectedSandboxAccount.market_value)
+      ? Number(selectedSandboxAccount.market_value)
+      : null
+  const boundAccountOpenPositions =
+    selectedSandboxAccount && typeof selectedSandboxAccount.open_positions === 'number'
+      ? Number(selectedSandboxAccount.open_positions)
+      : null
+  // Shadow: prefer desk inventory/open so hub matches Accounts even if worker
+  // metrics lag one orchestrator cycle.
+  const hubExposureUsd =
+    !selectedAccountIsLive && boundAccountInventory != null
+      ? boundAccountInventory
+      : toNumber(metrics?.gross_exposure_usd)
+  const hubOpenCount = Math.max(
+    globalSummary.open,
+    toNumber(metrics?.open_orders),
+    boundAccountOpenPositions ?? 0,
+  )
   const startBlockedReason = startStopIsConfigured
     ? null
     : !selectedAccountId
@@ -11442,19 +11499,43 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
           </Badge>
           <Badge
             className={cn(
-              'h-5 max-w-[220px] truncate px-1.5 text-[10px]',
+              'h-5 max-w-[280px] truncate px-1.5 text-[10px]',
               boundAccountLabel
                 ? 'border-amber-500/35 bg-amber-500/10 text-amber-100'
                 : 'border-red-500/40 bg-red-500/10 text-red-200',
             )}
             title={
               boundAccountLabel
-                ? `Shadow/live engine ledger: ${boundAccountLabel}${boundAccountCapital != null ? ` · $${boundAccountCapital.toLocaleString()}` : ''}. This is global — not configured on each bot.`
+                ? [
+                    `Shadow/live engine ledger: ${boundAccountLabel}`,
+                    boundAccountEquity != null
+                      ? `Equity $${boundAccountEquity.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+                      : null,
+                    boundAccountFreeCash != null
+                      ? `Cash $${boundAccountFreeCash.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+                      : null,
+                    boundAccountTotalPnl != null
+                      ? `P&L ${boundAccountTotalPnl >= 0 ? '+' : ''}$${boundAccountTotalPnl.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+                      : null,
+                    'Global — not configured on each bot.',
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')
                 : 'No account selected. Open the top-bar Select Account control and pick a sandbox desk.'
             }
           >
             {boundAccountLabel
-              ? `Acct: ${boundAccountLabel}${boundAccountCapital != null ? ` · $${Math.round(boundAccountCapital).toLocaleString()}` : ''}`
+              ? `Acct: ${boundAccountLabel}${
+                  boundAccountEquity != null
+                    ? ` · Eq $${Math.round(boundAccountEquity).toLocaleString()}`
+                    : ''
+                }${
+                  boundAccountFreeCash != null &&
+                  boundAccountEquity != null &&
+                  Math.abs(boundAccountEquity - boundAccountFreeCash) > 0.5
+                    ? ` · Cash $${Math.round(boundAccountFreeCash).toLocaleString()}`
+                    : ''
+                }`
               : 'Acct: none — select in top bar'}
           </Badge>
         </div>
@@ -11485,16 +11566,37 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
             </>
           ) : null}
           <span className="text-border">|</span>
-          <span className={toNumber(metrics?.daily_pnl) >= 0 ? 'text-emerald-500' : 'text-red-500'}>
-            {formatCurrency(toNumber(metrics?.daily_pnl))}
+          <span
+            className={toNumber(metrics?.daily_pnl) >= 0 ? 'text-emerald-500' : 'text-red-500'}
+            title="Day realized P&L (UTC) from bot order closes — not total desk equity P&L"
+          >
+            {t('tradingPanel.hub.day')} {formatCurrency(toNumber(metrics?.daily_pnl))}
           </span>
           <span className="text-border">|</span>
-          <span>
-            {t('tradingPanel.hub.exp')}{' '}
-            {formatCurrency(toNumber(metrics?.gross_exposure_usd), true)}
+          <span
+            title={
+              boundAccountTotalPnl != null
+                ? `Desk MTM P&L (equity − initial): ${boundAccountTotalPnl >= 0 ? '+' : ''}$${boundAccountTotalPnl.toFixed(2)}`
+                : 'Desk mark-to-market P&L'
+            }
+            className={
+              boundAccountTotalPnl == null
+                ? undefined
+                : boundAccountTotalPnl >= 0
+                  ? 'text-emerald-500'
+                  : 'text-red-500'
+            }
+          >
+            P&L {boundAccountTotalPnl != null ? formatCurrency(boundAccountTotalPnl) : '—'}
           </span>
           <span className="text-border">|</span>
-          <span>{t('tradingPanel.hub.openCount', { count: globalSummary.open })}</span>
+          <span title="Open inventory mark (sandbox desk market value — matches Accounts)">
+            {t('tradingPanel.hub.exp')} {formatCurrency(hubExposureUsd, true)}
+          </span>
+          <span className="text-border">|</span>
+          <span title="Open positions / open orders (sandbox desk + bot book)">
+            {t('tradingPanel.hub.openCount', { count: hubOpenCount })}
+          </span>
           <span className="text-border">|</span>
           <span>
             {t('tradingPanel.hub.wr')} {formatPercent(globalSummary.winRate)}
@@ -11613,33 +11715,53 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                               <div className="flex items-center gap-1.5">
                                 <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
                                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                                  {t('tradingPanel.allBots.resolvedPnl')}
+                                  {boundAccountTotalPnl != null
+                                    ? 'Desk P&L'
+                                    : t('tradingPanel.allBots.resolvedPnl')}
                                 </span>
                               </div>
                               <span className="text-[9px] font-mono text-muted-foreground">
-                                {overviewStartLabel} - {overviewEndLabel}
+                                {boundAccountTotalPnl != null
+                                  ? 'equity − initial'
+                                  : `${overviewStartLabel} - ${overviewEndLabel}`}
                               </span>
                             </div>
                             <p
                               className={cn(
                                 'mt-1 text-sm font-mono',
-                                globalSummary.resolvedPnl >= 0
+                                (boundAccountTotalPnl ?? globalSummary.resolvedPnl) >= 0
                                   ? 'text-emerald-500'
                                   : 'text-red-500',
                               )}
+                              title={
+                                boundAccountTotalPnl != null
+                                  ? `Cash-backed desk MTM. Order-level resolved sum is ${formatCurrency(globalSummary.resolvedPnl)} (can diverge when marks/fees differ).`
+                                  : undefined
+                              }
                             >
-                              {formatCurrency(globalSummary.resolvedPnl)}
+                              {formatCurrency(
+                                boundAccountTotalPnl != null
+                                  ? boundAccountTotalPnl
+                                  : globalSummary.resolvedPnl,
+                              )}
                             </p>
                             <p className="text-[10px] text-muted-foreground">
                               {t('tradingPanel.allBots.latestDay')}{' '}
                               {formatSignedCurrency(overviewLatestBucket?.resolvedPnl ?? 0)}
+                              {boundAccountTotalPnl != null
+                                ? ` · Day ${formatCurrency(toNumber(metrics?.daily_pnl))}`
+                                : ''}
                             </p>
                             <div className="mt-1.5 h-8">
                               {overviewPnlSeries.length >= 2 && (
                                 <Liveline
                                   data={toTimeValueSeries(overviewPnlSeries)}
                                   value={overviewPnlSeries[overviewPnlSeries.length - 1] ?? 0}
-                                  color={globalSummary.resolvedPnl >= 0 ? '#22c55e' : '#ef4444'}
+                                  color={
+                                    (boundAccountTotalPnl ?? globalSummary.resolvedPnl) >= 0
+                                      ? '#22c55e'
+                                      : '#ef4444'
+                                  }
                                   theme={themeMode}
                                   window={(overviewPnlSeries.length - 1) * 60}
                                   paused
@@ -12836,8 +12958,26 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
                                         <TableCell className="text-right font-mono py-1">
                                           {row.orderCount}
                                         </TableCell>
-                                        <TableCell className="text-right font-mono py-1">
-                                          {row.liveOrderCount}L/{row.shadowOrderCount}S
+                                        <TableCell className="text-right py-1">
+                                          <Badge
+                                            variant="outline"
+                                            className={cn(
+                                              'h-5 px-1.5 text-[10px] font-mono',
+                                              row.modeLabel === 'LIVE' &&
+                                                'border-red-500/40 bg-red-500/10 text-red-200',
+                                              row.modeLabel === 'SHADOW' &&
+                                                'border-cyan-500/40 bg-cyan-500/10 text-cyan-200',
+                                              row.modeLabel === 'LIVE+SHADOW' &&
+                                                'border-amber-500/40 bg-amber-500/10 text-amber-100',
+                                            )}
+                                            title={
+                                              row.liveOrderCount > 0 || row.shadowOrderCount > 0
+                                                ? `${row.liveOrderCount} live · ${row.shadowOrderCount} shadow order(s)`
+                                                : 'Mode not classified'
+                                            }
+                                          >
+                                            {row.modeLabel}
+                                          </Badge>
                                         </TableCell>
                                         <TableCell className="py-1 text-[10px] text-muted-foreground">
                                           {formatShortDate(row.lastUpdated || row.markUpdatedAt)}

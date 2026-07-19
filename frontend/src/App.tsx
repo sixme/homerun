@@ -53,6 +53,10 @@ import {
   getStrategies,
   getSimulationAccounts,
   getCryptoMarkets,
+  simulationAccountEquity,
+  simulationAccountFreeCash,
+  simulationAccountRoiPercent,
+  simulationAccountTotalPnl,
 } from './services/apiCore'
 import type { Opportunity } from './services/apiCore'
 import {
@@ -1540,62 +1544,62 @@ function App() {
   const selectedAccount = sandboxAccounts.find((a) => a.id === selectedAccountId)
   const headerStats = useMemo(() => {
     if (!isLiveAccountSelected) {
-      const cash = selectedAccount?.current_capital ?? 0
-      const initialCapital = selectedAccount?.initial_capital ?? cash
-      const simOpen = selectedAccount?.open_positions ?? 0
-      const simBook = selectedAccount?.book_value ?? 0
-      const simMarket = selectedAccount?.market_value ?? 0
-      const simRealized = selectedAccount?.total_pnl ?? 0
-
       const shadow = selectedSandboxAccountId
         ? aggregateSandboxShadowInventory(headerTraderOrders, selectedSandboxAccountId)
         : { openPositions: 0, costBasis: 0, marketValue: 0, unrealizedPnl: 0, closedRealizedPnl: 0 }
 
-      // simulation_positions is often empty while shadow inventory lives on
-      // trader_orders. When the sim desk has no open book, trust order inventory.
-      const simInventoryEmpty = simOpen === 0 && simBook < 0.01
-      const useOrderInventory =
-        simInventoryEmpty &&
-        (shadow.openPositions > 0 ||
-          Math.abs(shadow.closedRealizedPnl) > 0.0001 ||
-          shadow.costBasis > 0)
+      // Prefer the simulation desk ledger when present — same helpers as Accounts.
+      if (selectedAccount) {
+        const cash = simulationAccountFreeCash(selectedAccount)
+        const initialCapital = selectedAccount.initial_capital || 0
+        const simOpen = selectedAccount.open_positions ?? 0
+        const simBook = selectedAccount.book_value ?? 0
+        const simInventoryEmpty = simOpen === 0 && simBook < 0.01
+        const useOrderInventory =
+          simInventoryEmpty &&
+          (shadow.openPositions > 0 ||
+            Math.abs(shadow.closedRealizedPnl) > 0.0001 ||
+            shadow.costBasis > 0)
 
-      if (useOrderInventory) {
-        const realized = shadow.closedRealizedPnl
-        const unrealized = shadow.unrealizedPnl
-        // Equity is always: starting capital + closed P&L + open MTM.
-        // Never Value = stuck_$100 + mark_notional (double-counts opens).
-        const portfolioValue = initialCapital + realized + unrealized
-        const pnl = realized + unrealized
-        const roi = initialCapital > 0 ? (pnl / initialCapital) * 100 : 0
-        // Free cash when ledger never debited: leftover after open cost.
-        // Clamp at 0 so over-allocated shadow inventory (opens > bankroll) shows
-        // Bal $0 fully deployed, not a confusing negative balance.
-        const cashStuckAtInitial = Math.abs(cash - initialCapital) < 1.0
-        const freeCashRaw = cashStuckAtInitial ? initialCapital + realized - shadow.costBasis : cash
-        const balance = Math.max(0, freeCashRaw)
+        if (useOrderInventory) {
+          const realized = shadow.closedRealizedPnl
+          const unrealized = shadow.unrealizedPnl
+          const portfolioValue = initialCapital + realized + unrealized
+          const pnl = realized + unrealized
+          const roi = initialCapital > 0 ? (pnl / initialCapital) * 100 : 0
+          const cashStuckAtInitial = Math.abs(cash - initialCapital) < 1.0
+          const freeCashRaw = cashStuckAtInitial
+            ? initialCapital + realized - shadow.costBasis
+            : cash
+          return {
+            portfolioValue,
+            balance: Math.max(0, freeCashRaw),
+            pnl,
+            roi,
+            positions: shadow.openPositions,
+          }
+        }
+
+        const portfolioValue = simulationAccountEquity(selectedAccount)
+        const pnl = simulationAccountTotalPnl(selectedAccount)
+        const roi = simulationAccountRoiPercent(selectedAccount)
         return {
           portfolioValue,
-          balance,
+          balance: cash,
           pnl,
           roi,
-          positions: shadow.openPositions,
+          positions: Math.max(simOpen, shadow.openPositions),
         }
       }
 
-      // Sim desk has open positions (or no shadow inventory). Cash is
-      // current_capital; portfolio = cash + marked open inventory.
-      const balance = cash
-      const hasOpenInventory = simOpen > 0 || simMarket > 0
-      // If sim desk still shows empty book but cash is stuck while we have
-      // no order inventory either, fall through to account totals.
-      const portfolioValue = hasOpenInventory ? balance + simMarket : initialCapital + simRealized
-      const pnl = hasOpenInventory ? portfolioValue - initialCapital : simRealized
-      const roi = initialCapital > 0 ? (pnl / initialCapital) * 100 : 0
-      // Prefer the larger of sim desk vs shadow bot open count so Pos matches
-      // the book the user actually sees (ledger-backed fills appear in both).
-      const positions = Math.max(simOpen, shadow.openPositions)
-      return { portfolioValue, balance, pnl, roi, positions }
+      // No sandbox account selected.
+      return {
+        portfolioValue: 0,
+        balance: 0,
+        pnl: 0,
+        roi: 0,
+        positions: shadow.openPositions,
+      }
     }
 
     if (selectedLivePlatform === 'kalshi') {
@@ -1658,12 +1662,7 @@ function App() {
     isLiveAccountSelected,
     selectedLivePlatform,
     selectedSandboxAccountId,
-    selectedAccount?.current_capital,
-    selectedAccount?.initial_capital,
-    selectedAccount?.total_pnl,
-    selectedAccount?.open_positions,
-    selectedAccount?.book_value,
-    selectedAccount?.market_value,
+    selectedAccount,
     headerTraderOrders,
     headerKalshiBalance?.balance,
     headerKalshiStatus?.balance?.balance,

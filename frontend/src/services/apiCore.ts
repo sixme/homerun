@@ -204,7 +204,13 @@ export interface SimulationAccount {
   current_capital: number
   /** Free cash + open inventory mark when provided by the API. */
   equity?: number
+  /**
+   * Mark-to-market desk P&L = equity - initial_capital.
+   * Prefer this (or simulationAccountTotalPnl) everywhere in the UI.
+   */
   total_pnl: number
+  /** Closed-trade ledger counter when provided by the API. */
+  realized_pnl?: number
   roi_percent: number
   total_trades: number
   winning_trades: number
@@ -233,13 +239,13 @@ export function simulationAccountTotalPnl(account: SimulationAccount): number {
 export function simulationAccountRoiPercent(account: SimulationAccount): number {
   const initial = account.initial_capital || 0
   if (initial <= 0) return 0
-  if (typeof account.roi_percent === 'number' && Number.isFinite(account.roi_percent)) {
-    // Prefer API equity-based ROI when present and equity is known.
-    if (typeof account.equity === 'number' && Number.isFinite(account.equity)) {
-      return account.roi_percent
-    }
-  }
+  // Always derive from equity so UI never drifts if API fields disagree.
   return (simulationAccountTotalPnl(account) / initial) * 100
+}
+
+/** Free cash available to open new size. */
+export function simulationAccountFreeCash(account: SimulationAccount): number {
+  return Number(account.current_capital || 0)
 }
 
 export interface TradingPosition {

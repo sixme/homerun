@@ -44,6 +44,76 @@ def compute_paper_equity_and_roi(
     return equity, ((equity - initial) / initial) * 100.0
 
 
+def compute_paper_desk_metrics(
+    *,
+    initial_capital: float,
+    current_capital: float,
+    market_value: float = 0.0,
+    book_value: float = 0.0,
+    realized_pnl: float = 0.0,
+    position_unrealized_pnl: float | None = None,
+) -> dict[str, float]:
+    """Canonical desk money metrics shared by every simulation API surface.
+
+    Definitions (must stay identical in Accounts, header, and Bots hub):
+      free_cash     = current_capital (available to open new size)
+      equity        = free_cash + market_value
+      total_pnl     = equity - initial_capital   (mark-to-market desk P&L)
+      unrealized    = market_value - book_value (or sum of position marks)
+      realized_pnl  = ledger realized (account.total_pnl / closed trades)
+      roi_percent   = total_pnl / initial_capital * 100
+    """
+    free_cash = float(current_capital or 0.0)
+    mark = float(market_value or 0.0)
+    book = float(book_value or 0.0)
+    initial = float(initial_capital or 0.0)
+    realized = float(realized_pnl or 0.0)
+    equity = free_cash + mark
+    if position_unrealized_pnl is not None:
+        unrealized = float(position_unrealized_pnl)
+    else:
+        unrealized = mark - book
+    total_pnl = equity - initial
+    roi = (total_pnl / initial) * 100.0 if initial > 0.0 else 0.0
+    return {
+        "free_cash": free_cash,
+        "equity": equity,
+        "total_pnl": total_pnl,
+        "realized_pnl": realized,
+        "unrealized_pnl": unrealized,
+        "roi_percent": roi,
+        "book_value": book,
+        "market_value": mark,
+        "initial_capital": initial,
+    }
+
+
+def expected_free_cash_from_trades(
+    *,
+    initial_capital: float,
+    trades: list[Any],
+) -> float:
+    """Reconstruct free cash from initial capital + trade costs/payouts.
+
+    Identity: cash = initial - sum(all entry costs) + sum(closed payouts).
+    Open trades contribute only their entry debit (inventory still held).
+    """
+    cash = float(initial_capital or 0.0)
+    for trade in trades:
+        cash -= float(getattr(trade, "total_cost", 0.0) or 0.0)
+        status = getattr(trade, "status", None)
+        status_key = str(getattr(status, "value", status) or "").strip().lower()
+        if status_key in {"open", "pending", ""}:
+            continue
+        payout = getattr(trade, "actual_payout", None)
+        if payout is not None:
+            cash += float(payout)
+        elif getattr(trade, "actual_pnl", None) is not None:
+            # Fallback: payout ≈ cost + pnl when payout was never stamped.
+            cash += float(trade.total_cost or 0.0) + float(trade.actual_pnl or 0.0)
+    return cash
+
+
 def position_mark_price(current_price: float | None, entry_price: float | None) -> float:
     """Mark for open inventory. Preserve explicit 0.0 marks (do not treat as missing)."""
     if current_price is not None:
@@ -806,10 +876,15 @@ class SimulationService:
             # Get open positions count + mark for equity ROI
             positions = await self.get_open_positions(account_id)
             market_value = positions_market_value(positions)
-            equity, roi = compute_paper_equity_and_roi(
+            book_value = sum(float(p.entry_cost or 0.0) for p in positions)
+            pos_unrealized = sum(float(p.unrealized_pnl or 0.0) for p in positions)
+            desk = compute_paper_desk_metrics(
                 initial_capital=float(account.initial_capital or 0.0),
                 current_capital=float(account.current_capital or 0.0),
                 market_value=float(market_value),
+                book_value=float(book_value),
+                realized_pnl=float(account.total_pnl or 0.0),
+                position_unrealized_pnl=pos_unrealized,
             )
 
             return {
@@ -817,17 +892,83 @@ class SimulationService:
                 "name": account.name,
                 "initial_capital": account.initial_capital,
                 "current_capital": account.current_capital,
-                "equity": equity,
-                "total_pnl": account.total_pnl,
-                "roi_percent": roi,
+                "equity": desk["equity"],
+                "total_pnl": desk["total_pnl"],
+                "realized_pnl": desk["realized_pnl"],
+                "unrealized_pnl": desk["unrealized_pnl"],
+                "roi_percent": desk["roi_percent"],
                 "total_trades": account.total_trades,
                 "winning_trades": account.winning_trades,
                 "losing_trades": account.losing_trades,
                 "win_rate": win_rate,
                 "open_positions": len(positions),
-                "market_value": market_value,
+                "book_value": desk["book_value"],
+                "market_value": desk["market_value"],
                 "max_positions": account.max_open_positions,
                 "created_at": account.created_at.isoformat(),
+            }
+
+    async def reconcile_account_cash_from_trades(
+        self,
+        account_id: str,
+        *,
+        session: AsyncSession | None = None,
+        commit: bool = True,
+        tolerance: float = 0.01,
+    ) -> dict[str, Any]:
+        """Repair free cash when it drifts from the trade cost/payout ledger.
+
+        Cash identity: initial - sum(entry costs) + sum(closed payouts).
+        Does not rewrite realized PnL counters; only corrects ``current_capital``.
+        """
+
+        async with contextlib.AsyncExitStack() as stack:
+            if session is None:
+                session = await stack.enter_async_context(AsyncSessionLocal())
+
+            account = await self._lock_account_for_update(session, account_id)
+            if account is None:
+                return {"repaired": False, "reason": "account_not_found"}
+
+            result = await session.execute(select(SimulationTrade).where(SimulationTrade.account_id == account_id))
+            trades = list(result.scalars().all())
+            expected = expected_free_cash_from_trades(
+                initial_capital=float(account.initial_capital or 0.0),
+                trades=trades,
+            )
+            actual = float(account.current_capital or 0.0)
+            delta = expected - actual
+            if abs(delta) <= float(tolerance):
+                return {
+                    "repaired": False,
+                    "reason": "within_tolerance",
+                    "account_id": account_id,
+                    "expected_cash": expected,
+                    "actual_cash": actual,
+                    "delta": delta,
+                }
+
+            account.current_capital = expected
+            if commit:
+                await session.commit()
+            else:
+                await session.flush()
+
+            logger.warning(
+                "Repaired simulation free cash from trade ledger",
+                account_id=account_id,
+                previous_cash=actual,
+                expected_cash=expected,
+                delta=delta,
+                trade_count=len(trades),
+            )
+            return {
+                "repaired": True,
+                "account_id": account_id,
+                "previous_cash": actual,
+                "expected_cash": expected,
+                "delta": delta,
+                "trade_count": len(trades),
             }
 
     def _calculate_slippage(

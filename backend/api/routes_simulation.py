@@ -8,7 +8,7 @@ import asyncio
 from models.database import get_db_session
 from services.polymarket import polymarket_client
 from services.simulation import (
-    compute_paper_equity_and_roi,
+    compute_paper_desk_metrics,
     positions_market_value,
     simulation_service,
 )
@@ -66,16 +66,18 @@ async def list_simulation_accounts():
     result = []
     for acc, positions in accounts_with_positions:
         win_rate = acc.winning_trades / acc.total_trades * 100 if acc.total_trades > 0 else 0
-        # Calculate unrealized P&L from open positions
-        unrealized_pnl = sum(p.unrealized_pnl for p in positions)
         # Book value = sum of entry costs of open positions
-        book_value = sum(p.entry_cost for p in positions)
+        book_value = sum(float(p.entry_cost or 0.0) for p in positions)
         # Market value = sum of current value of open positions
         market_value = positions_market_value(positions)
-        equity, roi = compute_paper_equity_and_roi(
+        pos_unrealized = sum(float(p.unrealized_pnl or 0.0) for p in positions)
+        desk = compute_paper_desk_metrics(
             initial_capital=float(acc.initial_capital or 0.0),
             current_capital=float(acc.current_capital or 0.0),
             market_value=float(market_value or 0.0),
+            book_value=float(book_value or 0.0),
+            realized_pnl=float(acc.total_pnl or 0.0),
+            position_unrealized_pnl=pos_unrealized,
         )
         result.append(
             {
@@ -83,17 +85,20 @@ async def list_simulation_accounts():
                 "name": acc.name,
                 "initial_capital": acc.initial_capital,
                 "current_capital": acc.current_capital,
-                "equity": equity,
-                "total_pnl": acc.total_pnl,
+                "equity": desk["equity"],
+                # total_pnl is mark-to-market desk P&L (equity - initial).
+                # realized_pnl is the ledger closed-trade counter.
+                "total_pnl": desk["total_pnl"],
+                "realized_pnl": desk["realized_pnl"],
                 "total_trades": acc.total_trades,
                 "winning_trades": acc.winning_trades,
                 "losing_trades": acc.losing_trades,
                 "win_rate": win_rate,
-                "roi_percent": roi,
+                "roi_percent": desk["roi_percent"],
                 "open_positions": len(positions),
-                "unrealized_pnl": unrealized_pnl,
-                "book_value": book_value,
-                "market_value": market_value,
+                "unrealized_pnl": desk["unrealized_pnl"],
+                "book_value": desk["book_value"],
+                "market_value": desk["market_value"],
                 "created_at": acc.created_at.isoformat() if acc.created_at else None,
             }
         )
@@ -250,20 +255,23 @@ async def get_equity_history(account_id: str):
     avg_win = gains / account.winning_trades if account.winning_trades > 0 else 0
     avg_loss = losses_abs / account.losing_trades if account.losing_trades > 0 else 0
 
-    # Unrealized P&L
-    unrealized_pnl = sum(p.unrealized_pnl for p in positions)
-    book_value = sum(p.entry_cost for p in positions)
+    book_value = sum(float(p.entry_cost or 0.0) for p in positions)
     market_value = positions_market_value(positions)
-    equity, roi_percent = compute_paper_equity_and_roi(
+    pos_unrealized = sum(float(p.unrealized_pnl or 0.0) for p in positions)
+    desk = compute_paper_desk_metrics(
         initial_capital=float(account.initial_capital or 0.0),
         current_capital=float(account.current_capital or 0.0),
         market_value=float(market_value or 0.0),
+        book_value=float(book_value or 0.0),
+        realized_pnl=float(account.total_pnl or 0.0),
+        position_unrealized_pnl=pos_unrealized,
     )
 
     return {
         "account_id": account_id,
         "initial_capital": account.initial_capital,
         "current_capital": account.current_capital,
+        "equity": desk["equity"],
         "equity_points": equity_points,
         "summary": {
             "total_trades": account.total_trades,
@@ -272,11 +280,11 @@ async def get_equity_history(account_id: str):
             "open_trades": len([t for t in trades if t.status.value == "open"]),
             "total_invested": total_invested,
             "total_returned": total_returned,
-            "realized_pnl": account.total_pnl,
-            "unrealized_pnl": unrealized_pnl,
-            "total_pnl": account.total_pnl + unrealized_pnl,
-            "book_value": book_value,
-            "market_value": market_value,
+            "realized_pnl": desk["realized_pnl"],
+            "unrealized_pnl": desk["unrealized_pnl"],
+            "total_pnl": desk["total_pnl"],
+            "book_value": desk["book_value"],
+            "market_value": desk["market_value"],
             "max_drawdown": max_drawdown,
             "max_drawdown_pct": max_drawdown_pct,
             "profit_factor": profit_factor,
@@ -285,8 +293,8 @@ async def get_equity_history(account_id: str):
             "avg_win": avg_win,
             "avg_loss": avg_loss,
             "win_rate": account.winning_trades / account.total_trades * 100 if account.total_trades > 0 else 0,
-            "equity": equity,
-            "roi_percent": roi_percent,
+            "equity": desk["equity"],
+            "roi_percent": desk["roi_percent"],
         },
     }
 

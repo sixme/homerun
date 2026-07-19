@@ -31,6 +31,8 @@ SlippageModel = _legacy.SlippageModel
 simulation_service = _legacy.simulation_service
 AsyncSessionLocal = _legacy.AsyncSessionLocal
 compute_paper_equity_and_roi = _legacy.compute_paper_equity_and_roi
+compute_paper_desk_metrics = _legacy.compute_paper_desk_metrics
+expected_free_cash_from_trades = _legacy.expected_free_cash_from_trades
 position_mark_price = _legacy.position_mark_price
 positions_market_value = _legacy.positions_market_value
 settings = getattr(_legacy, "settings", _settings)
@@ -46,6 +48,8 @@ __all__ = [
     "simulation_service",
     "AsyncSessionLocal",
     "compute_paper_equity_and_roi",
+    "compute_paper_desk_metrics",
+    "expected_free_cash_from_trades",
     "position_mark_price",
     "positions_market_value",
     "settings",

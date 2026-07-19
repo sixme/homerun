@@ -12,7 +12,10 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Awaitable, Callable, Optional
 
 from config import settings
-from services.execution_latency_metrics import execution_latency_metrics, snapshot_from_events as _latency_snapshot_from_events
+from services.execution_latency_metrics import (
+    execution_latency_metrics,
+    snapshot_from_events as _latency_snapshot_from_events,
+)
 from sqlalchemy import and_, case, desc, func, or_, select, text as sa_text, update as sa_update
 from sqlalchemy.dialects.postgresql import JSONB, insert as pg_insert
 from sqlalchemy.exc import IntegrityError, OperationalError
@@ -221,9 +224,7 @@ def order_loss_counts_for_consecutive_halt(status: Any, payload: Any) -> bool:
     payload_dict = _dict_payload(payload)
     close_payload = _dict_payload(payload_dict.get("position_close"))
     pending_exit = _dict_payload(payload_dict.get("pending_live_exit"))
-    close_trigger = _normalize_status_key(
-        close_payload.get("close_trigger") or pending_exit.get("close_trigger")
-    )
+    close_trigger = _normalize_status_key(close_payload.get("close_trigger") or pending_exit.get("close_trigger"))
     if close_trigger in THESIS_LOSS_CLOSE_TRIGGERS or close_trigger.startswith("resolution"):
         return True
 
@@ -331,9 +332,13 @@ def _normalize_live_risk_clamps(value: Any, *, explicit: bool = False) -> dict[s
     if should_apply("max_open_positions_cap"):
         out["max_open_positions_cap"] = max(1, min(1000, safe_int(source["max_open_positions_cap"], 1000)))
     if should_apply("max_trade_notional_usd_cap"):
-        out["max_trade_notional_usd_cap"] = max(1.0, min(1_000_000.0, safe_float(source["max_trade_notional_usd_cap"], 1_000_000.0)))
+        out["max_trade_notional_usd_cap"] = max(
+            1.0, min(1_000_000.0, safe_float(source["max_trade_notional_usd_cap"], 1_000_000.0))
+        )
     if should_apply("max_per_market_exposure_usd_cap"):
-        out["max_per_market_exposure_usd_cap"] = max(1.0, min(1_000_000.0, safe_float(source["max_per_market_exposure_usd_cap"], 1_000_000.0)))
+        out["max_per_market_exposure_usd_cap"] = max(
+            1.0, min(1_000_000.0, safe_float(source["max_per_market_exposure_usd_cap"], 1_000_000.0))
+        )
     if should_apply("max_orders_per_cycle_cap"):
         out["max_orders_per_cycle_cap"] = max(1, min(1000, safe_int(source["max_orders_per_cycle_cap"], 1000)))
     if should_apply("enforce_halt_on_consecutive_losses"):
@@ -341,7 +346,9 @@ def _normalize_live_risk_clamps(value: Any, *, explicit: bool = False) -> dict[s
     # Newly-wired knob clamps. Bounds mirror the API request validators
     # in routes_trader_orchestrator.LiveRiskClampsSettingsRequest.
     if should_apply("max_daily_spend_usd_cap"):
-        out["max_daily_spend_usd_cap"] = max(1.0, min(100_000_000.0, safe_float(source["max_daily_spend_usd_cap"], 100_000_000.0)))
+        out["max_daily_spend_usd_cap"] = max(
+            1.0, min(100_000_000.0, safe_float(source["max_daily_spend_usd_cap"], 100_000_000.0))
+        )
     if should_apply("max_spread_bps_cap"):
         out["max_spread_bps_cap"] = max(0.0, min(10_000.0, safe_float(source["max_spread_bps_cap"], 10_000.0)))
     if should_apply("slippage_bps_cap"):
@@ -431,9 +438,7 @@ def _normalize_global_runtime_settings(value: Any) -> dict[str, Any]:
     # through global_runtime so it is UI-configurable, never a hidden constant.
     slo_override = source.get("orchestrator_cycle_slo_seconds")
     slo_value = safe_float(slo_override, 30.0)
-    orchestrator_cycle_slo_seconds = (
-        None if slo_value <= 0 else max(3.0, min(300.0, float(slo_value)))
-    )
+    orchestrator_cycle_slo_seconds = None if slo_value <= 0 else max(3.0, min(300.0, float(slo_value)))
     return {
         "pending_live_exit_guard": _normalize_pending_live_exit_guard(source.get("pending_live_exit_guard")),
         "live_risk_clamps": _normalize_live_risk_clamps(
@@ -667,14 +672,10 @@ def _row_counts_as_materialized_bundle_leg(row: TraderOrder) -> bool:
         return True
 
     provider_order_id = str(
-        getattr(row, "provider_order_id", None)
-        or extract_trader_order_provider_order_id(payload)
-        or ""
+        getattr(row, "provider_order_id", None) or extract_trader_order_provider_order_id(payload) or ""
     ).strip()
     provider_clob_order_id = str(
-        getattr(row, "provider_clob_order_id", None)
-        or extract_trader_order_provider_clob_order_id(payload)
-        or ""
+        getattr(row, "provider_clob_order_id", None) or extract_trader_order_provider_clob_order_id(payload) or ""
     ).strip()
     if status_key in {"resolved", "resolved_win", "resolved_loss", "closed_win", "closed_loss"}:
         return True
@@ -760,14 +761,18 @@ def _build_trade_bundle(
     def _bundle_market_key(value: dict[str, Any]) -> str | None:
         if not isinstance(value, dict):
             return None
-        raw_key = str(
-            value.get("condition_id")
-            or value.get("id")
-            or value.get("market_id")
-            or value.get("question")
-            or value.get("market_question")
-            or ""
-        ).strip().lower()
+        raw_key = (
+            str(
+                value.get("condition_id")
+                or value.get("id")
+                or value.get("market_id")
+                or value.get("question")
+                or value.get("market_question")
+                or ""
+            )
+            .strip()
+            .lower()
+        )
         return raw_key or None
 
     def _append_leg(
@@ -798,7 +803,9 @@ def _build_trade_bundle(
                 "side": side,
                 "outcome": outcome,
                 "limit_price": float(limit_price) if limit_price is not None and limit_price > 0.0 else None,
-                "notional_weight": float(notional_weight) if notional_weight is not None and notional_weight > 0.0 else None,
+                "notional_weight": float(notional_weight)
+                if notional_weight is not None and notional_weight > 0.0
+                else None,
                 "condition_id": str(condition_id or "").strip() or None,
             }
         )
@@ -818,7 +825,12 @@ def _build_trade_bundle(
                 leg_id=str(raw_leg.get("leg_id") or "").strip() or None,
                 market_id=str(raw_leg.get("market_id") or position.get("market") or "").strip() or None,
                 market_question=(
-                    str(raw_leg.get("market_question") or position.get("market") or market_meta.get("market_question") or "").strip()
+                    str(
+                        raw_leg.get("market_question")
+                        or position.get("market")
+                        or market_meta.get("market_question")
+                        or ""
+                    ).strip()
                     or None
                 ),
                 token_id=token_id,
@@ -839,7 +851,12 @@ def _build_trade_bundle(
                 leg_id=None,
                 market_id=str(raw_position.get("market_id") or raw_position.get("market") or "").strip() or None,
                 market_question=(
-                    str(raw_position.get("market_question") or raw_position.get("market") or market_meta.get("market_question") or "").strip()
+                    str(
+                        raw_position.get("market_question")
+                        or raw_position.get("market")
+                        or market_meta.get("market_question")
+                        or ""
+                    ).strip()
                     or None
                 ),
                 token_id=token_id,
@@ -885,7 +902,9 @@ def _build_trade_bundle(
         if str(leg.get("condition_id") or leg.get("market_id") or leg.get("market_question") or "").strip()
     }
     roster_market_keys = {key for key in (_bundle_market_key(market) for market in raw_roster_markets) if key}
-    outcome_set = {str(leg.get("outcome") or "").strip().lower() for leg in bundle_legs if str(leg.get("outcome") or "").strip()}
+    outcome_set = {
+        str(leg.get("outcome") or "").strip().lower() for leg in bundle_legs if str(leg.get("outcome") or "").strip()
+    }
 
     if len(bundle_legs) == 2 and len(distinct_market_keys) == 1 and outcome_set == {"yes", "no"}:
         bundle_kind = "paired_binary"
@@ -927,7 +946,9 @@ def _build_trade_bundle(
         "total_cost": safe_float(signal_payload.get("total_cost"), None),
         "expected_payout": safe_float(signal_payload.get("expected_payout"), None),
         "gross_profit": safe_float(signal_payload.get("gross_profit"), None),
-        "net_profit": safe_float(signal_payload.get("net_profit"), safe_float(signal_payload.get("guaranteed_profit"), None)),
+        "net_profit": safe_float(
+            signal_payload.get("net_profit"), safe_float(signal_payload.get("guaranteed_profit"), None)
+        ),
         "roi_percent": safe_float(signal_payload.get("roi_percent"), None),
         "planned_market_count": len(distinct_market_keys),
         "market_roster_count": len(roster_market_keys) if roster_market_keys else None,
@@ -987,12 +1008,7 @@ def _extract_copy_side_from_payload(payload: Any) -> str:
     strategy_context = strategy_context if isinstance(strategy_context, dict) else {}
     copy_event = strategy_context.get("copy_event")
     copy_event = copy_event if isinstance(copy_event, dict) else {}
-    raw_side = (
-        copy_attribution.get("side")
-        or copy_event.get("side")
-        or source_trade.get("side")
-        or data.get("side")
-    )
+    raw_side = copy_attribution.get("side") or copy_event.get("side") or source_trade.get("side") or data.get("side")
     side = str(raw_side or "").strip().upper()
     if side in {"BUY", "SELL"}:
         return side
@@ -1094,16 +1110,8 @@ def _live_trading_position_to_wallet_row(row: LiveTradingPosition) -> Optional[d
     market_id = str(row.market_id or "").strip() or token_id
     average_cost = safe_float(row.average_cost, None)
     current_price = safe_float(row.current_price, None)
-    initial_value = (
-        float(size * average_cost)
-        if average_cost is not None and average_cost > 0.0
-        else None
-    )
-    current_value = (
-        float(size * current_price)
-        if current_price is not None and current_price > 0.0
-        else None
-    )
+    initial_value = float(size * average_cost) if average_cost is not None and average_cost > 0.0 else None
+    current_value = float(size * current_price) if current_price is not None and current_price > 0.0 else None
     unrealized_pnl = safe_float(row.unrealized_pnl, None)
     outcome_text = str(row.outcome or "").strip()
     outcome_index = _wallet_outcome_index(outcome_text)
@@ -1217,7 +1225,9 @@ def _normalize_wallet_outcome_and_direction(
         return "no", "buy_no"
 
     outcome_index = safe_int(
-        wallet_position.get("outcomeIndex") if wallet_position.get("outcomeIndex") is not None else wallet_position.get("outcome_index"),
+        wallet_position.get("outcomeIndex")
+        if wallet_position.get("outcomeIndex") is not None
+        else wallet_position.get("outcome_index"),
         None,
     )
     token_ids = _extract_market_token_ids(market_info)
@@ -1283,7 +1293,12 @@ def _normalize_wallet_position_row(
         avg_price = initial_value / size
     if (initial_value is None or initial_value <= 0.0) and avg_price is not None and avg_price > 0.0:
         initial_value = size * avg_price
-    if (current_price is None or current_price <= 0.0) and current_value is not None and current_value > 0.0 and size > 0.0:
+    if (
+        (current_price is None or current_price <= 0.0)
+        and current_value is not None
+        and current_value > 0.0
+        and size > 0.0
+    ):
         current_price = current_value / size
     if current_value is None and current_price is not None and current_price > 0.0:
         current_value = current_price * size
@@ -1316,10 +1331,9 @@ def _normalize_wallet_position_row(
     yes_price, no_price = _extract_binary_market_prices(market_info)
     market_slug = _read_wallet_text(market_info, "slug")
     event_slug = _read_wallet_text(market_info, "event_slug", "eventSlug")
-    market_question = (
-        _read_wallet_text(wallet_position, "title", "market_question", "marketQuestion", "question")
-        or _read_wallet_text(market_info, "question", "market_question", "title")
-    )
+    market_question = _read_wallet_text(
+        wallet_position, "title", "market_question", "marketQuestion", "question"
+    ) or _read_wallet_text(market_info, "question", "market_question", "title")
     market_url = (
         build_polymarket_market_url(
             event_slug=event_slug or None,
@@ -1731,7 +1745,9 @@ def _extract_live_fill_metrics(payload: dict[str, Any]) -> tuple[float, float, O
     return filled_notional_usd, filled_shares, average_fill_price
 
 
-def _live_active_notional(mode: Any, status: Any, row_notional: float, payload: dict[str, Any], executed_at: Any = None) -> float:
+def _live_active_notional(
+    mode: Any, status: Any, row_notional: float, payload: dict[str, Any], executed_at: Any = None
+) -> float:
     mode_key = _normalize_mode_key(mode)
     if mode_key not in {"live", "shadow"}:
         return max(0.0, abs(row_notional))
@@ -1868,9 +1884,7 @@ def _extract_pending_live_exit_authority_ids(payload: dict[str, Any]) -> tuple[s
     if not isinstance(pending_exit, dict):
         return "", ""
     provider_clob_id = str(
-        pending_exit.get("provider_clob_order_id")
-        or pending_exit.get("exit_order_clob_id")
-        or ""
+        pending_exit.get("provider_clob_order_id") or pending_exit.get("exit_order_clob_id") or ""
     ).strip()
     exit_order_id = str(pending_exit.get("exit_order_id") or "").strip()
     return provider_clob_id, exit_order_id
@@ -1981,16 +1995,12 @@ def _live_order_authority_key_from_payload(payload: dict[str, Any]) -> str:
 def _live_order_authority_key_from_row(row: TraderOrder) -> str:
     payload = dict(getattr(row, "payload_json", None) or {})
     provider_clob_id = str(
-        getattr(row, "provider_clob_order_id", None)
-        or extract_trader_order_provider_clob_order_id(payload)
-        or ""
+        getattr(row, "provider_clob_order_id", None) or extract_trader_order_provider_clob_order_id(payload) or ""
     ).strip()
     if provider_clob_id:
         return f"clob:{provider_clob_id.lower()}"
     provider_order_id = str(
-        getattr(row, "provider_order_id", None)
-        or extract_trader_order_provider_order_id(payload)
-        or ""
+        getattr(row, "provider_order_id", None) or extract_trader_order_provider_order_id(payload) or ""
     ).strip()
     if provider_order_id:
         return f"provider:{provider_order_id.lower()}"
@@ -2012,9 +2022,7 @@ def _live_order_authority_keys_from_row(row: TraderOrder) -> list[str]:
         if clob_id:
             keys.append(f"clob:{clob_id.lower()}")
     provider_order_id = str(
-        getattr(row, "provider_order_id", None)
-        or extract_trader_order_provider_order_id(payload)
-        or ""
+        getattr(row, "provider_order_id", None) or extract_trader_order_provider_order_id(payload) or ""
     ).strip()
     for live_order_id in (provider_order_id, payload_live_order_id):
         if live_order_id:
@@ -2142,7 +2150,10 @@ def _sync_pending_live_exit_from_live_order(
         ("provider_clob_order_id", str(live_row.clob_order_id or "").strip() or None),
         ("filled_size", filled_size if filled_size > 0.0 else None),
         ("filled_notional_usd", filled_notional_usd if filled_notional_usd > 0.0 else None),
-        ("average_fill_price", average_fill_price if average_fill_price is not None and average_fill_price > 0.0 else None),
+        (
+            "average_fill_price",
+            average_fill_price if average_fill_price is not None and average_fill_price > 0.0 else None,
+        ),
         ("last_snapshot_at", to_iso(live_row.updated_at or now)),
         ("snapshot", snapshot),
     ):
@@ -2156,7 +2167,10 @@ def _sync_pending_live_exit_from_live_order(
         pending_exit["resolved_at"] = to_iso(now)
         changed = True
     elif pending_status == "cancelled":
-        last_error = str(live_row.error_message or "").strip() or f"provider_exit_status:{normalized_provider_status or 'cancelled'}"
+        last_error = (
+            str(live_row.error_message or "").strip()
+            or f"provider_exit_status:{normalized_provider_status or 'cancelled'}"
+        )
         if pending_exit.get("last_error") != last_error:
             pending_exit["last_error"] = last_error
             changed = True
@@ -2204,7 +2218,11 @@ def _build_live_order_authority_payload(
         filled_notional_usd=filled_notional_usd,
         live_side=live_row.side,
     )
-    entry_price = average_fill_price if average_fill_price is not None and average_fill_price > 0.0 else safe_float(live_row.price, None)
+    entry_price = (
+        average_fill_price
+        if average_fill_price is not None and average_fill_price > 0.0
+        else safe_float(live_row.price, None)
+    )
     order_notional_usd = filled_notional_usd
 
     provider_clob_id = str(live_row.clob_order_id or "").strip()
@@ -2513,7 +2531,8 @@ async def _attempt_timeout_taker_rescue(
             fallback_price=float(fallback_price),
             market_question=str(row.market_question or ""),
             opportunity_id=str(row.signal_id or row.id or ""),
-            time_in_force=str(rescue_time_in_force or DEFAULT_TIMEOUT_TAKER_RESCUE_TIME_IN_FORCE).strip().upper() or "IOC",
+            time_in_force=str(rescue_time_in_force or DEFAULT_TIMEOUT_TAKER_RESCUE_TIME_IN_FORCE).strip().upper()
+            or "IOC",
             post_only=False,
             resolve_live_price=True,
             prefer_cached_price=True,
@@ -2695,18 +2714,14 @@ async def recover_missing_live_trader_orders(
     broadcast: bool = True,
 ) -> dict[str, Any]:
     trader_id_filter = {str(value or "").strip() for value in (trader_ids or []) if str(value or "").strip()}
-    await _acquire_live_order_authority_recovery_lock(
-        session, trader_ids=trader_ids
-    )
+    await _acquire_live_order_authority_recovery_lock(session, trader_ids=trader_ids)
     # Only recover live authority from the last 24 hours, and only keep
     # terminal venue rows in a short lookback window. Old failed/cancelled
     # rows are already final and repeatedly rescanning them was starving the
     # pool without producing any new local authority.
     now = _now()
     _recovery_cutoff = now - timedelta(hours=_LIVE_ORDER_AUTHORITY_RECOVERY_WINDOW_HOURS)
-    _recent_terminal_cutoff = now - timedelta(
-        minutes=_LIVE_ORDER_AUTHORITY_RECOVERY_RECENT_TERMINAL_LOOKBACK_MINUTES
-    )
+    _recent_terminal_cutoff = now - timedelta(minutes=_LIVE_ORDER_AUTHORITY_RECOVERY_RECENT_TERMINAL_LOOKBACK_MINUTES)
     _live_row_timestamp = func.coalesce(LiveTradingOrder.updated_at, LiveTradingOrder.created_at)
     live_rows_query = (
         select(LiveTradingOrder)
@@ -2716,9 +2731,7 @@ async def recover_missing_live_trader_orders(
                     ("open", "filled", "pending", "partially_filled")
                 ),
                 and_(
-                    func.lower(func.coalesce(LiveTradingOrder.status, "")).in_(
-                        ("failed", "cancelled", "expired")
-                    ),
+                    func.lower(func.coalesce(LiveTradingOrder.status, "")).in_(("failed", "cancelled", "expired")),
                     _live_row_timestamp >= _recent_terminal_cutoff,
                 ),
             )
@@ -2728,13 +2741,7 @@ async def recover_missing_live_trader_orders(
     )
     if not trader_id_filter:
         live_rows_query = live_rows_query.limit(_LIVE_ORDER_AUTHORITY_RECOVERY_GENERAL_MAX_ROWS)
-    live_rows = list(
-        (
-            await session.execute(live_rows_query)
-        )
-        .scalars()
-        .all()
-    )
+    live_rows = list((await session.execute(live_rows_query)).scalars().all())
     if not live_rows:
         if commit and session.in_transaction():
             await session.rollback()
@@ -2747,22 +2754,12 @@ async def recover_missing_live_trader_orders(
         }
 
     live_provider_clob_ids = {
-        str(row.clob_order_id or "").strip().lower()
-        for row in live_rows
-        if str(row.clob_order_id or "").strip()
+        str(row.clob_order_id or "").strip().lower() for row in live_rows if str(row.clob_order_id or "").strip()
     }
-    live_order_ids = {
-        str(row.id or "").strip().lower()
-        for row in live_rows
-        if str(row.id or "").strip()
-    }
+    live_order_ids = {str(row.id or "").strip().lower() for row in live_rows if str(row.id or "").strip()}
 
     live_orders_by_token: dict[str, LiveTradingPosition] = {}
-    relevant_token_ids = {
-        str(row.token_id or "").strip()
-        for row in live_rows
-        if str(row.token_id or "").strip()
-    }
+    relevant_token_ids = {str(row.token_id or "").strip() for row in live_rows if str(row.token_id or "").strip()}
     position_rows: list[LiveTradingPosition] = []
     if relevant_token_ids:
         position_rows = list(
@@ -2779,7 +2776,9 @@ async def recover_missing_live_trader_orders(
         if not token_key:
             continue
         current = live_orders_by_token.get(token_key)
-        if current is None or (current.updated_at or current.created_at or _now()) < (row.updated_at or row.created_at or _now()):
+        if current is None or (current.updated_at or current.created_at or _now()) < (
+            row.updated_at or row.created_at or _now()
+        ):
             live_orders_by_token[token_key] = row
 
     existing_rows_query = (
@@ -2819,16 +2818,12 @@ async def recover_missing_live_trader_orders(
                 market_filters.append(TraderOrder.market_id.in_(list(relevant_market_ids)))
             if relevant_provider_clob_ids:
                 market_filters.append(
-                    func.lower(func.coalesce(TraderOrder.provider_clob_order_id, "")).in_(list(relevant_provider_clob_ids))
+                    func.lower(func.coalesce(TraderOrder.provider_clob_order_id, "")).in_(
+                        list(relevant_provider_clob_ids)
+                    )
                 )
             existing_rows_query = existing_rows_query.where(or_(*market_filters))
-    existing_rows = list(
-        (
-            await session.execute(existing_rows_query)
-        )
-        .scalars()
-        .all()
-    )
+    existing_rows = list((await session.execute(existing_rows_query)).scalars().all())
     global_authority_rows_by_key: dict[str, TraderOrder] = {}
     if trader_id_filter and (live_provider_clob_ids or live_order_ids):
         global_authority_filters: list[Any] = []
@@ -2844,9 +2839,7 @@ async def recover_missing_live_trader_orders(
             global_authority_rows = list(
                 (
                     await session.execute(
-                        select(TraderOrder)
-                        .where(TraderOrder.mode == "live")
-                        .where(or_(*global_authority_filters))
+                        select(TraderOrder).where(TraderOrder.mode == "live").where(or_(*global_authority_filters))
                     )
                 )
                 .scalars()
@@ -2879,7 +2872,9 @@ async def recover_missing_live_trader_orders(
         if not trader_order_id or trader_order_id in execution_order_by_trader_order:
             continue
         execution_order_by_trader_order[trader_order_id] = execution_order_row
-    existing_trader_ids = {str(row.trader_id or "").strip() for row in existing_rows if str(row.trader_id or "").strip()}
+    existing_trader_ids = {
+        str(row.trader_id or "").strip() for row in existing_rows if str(row.trader_id or "").strip()
+    }
     trader_source_configs_by_id: dict[str, Any] = {}
     if existing_trader_ids:
         trader_rows = (
@@ -2891,9 +2886,7 @@ async def recover_missing_live_trader_orders(
             )
         ).all()
         trader_source_configs_by_id = {
-            str(row.id or "").strip(): row.source_configs_json
-            for row in trader_rows
-            if str(row.id or "").strip()
+            str(row.id or "").strip(): row.source_configs_json for row in trader_rows if str(row.id or "").strip()
         }
     existing_provider_rows_by_clob_id: dict[str, TraderOrder] = {}
     existing_rows_by_live_order_id: dict[str, TraderOrder] = {}
@@ -2928,15 +2921,11 @@ async def recover_missing_live_trader_orders(
             pending_exit_rows_by_live_order_id[pending_exit_live_order_id.lower()] = row
         row_status = str(row.status or "").strip().lower()
         provider_order_id = str(
-            getattr(row, "provider_order_id", None)
-            or extract_trader_order_provider_order_id(payload)
-            or ""
+            getattr(row, "provider_order_id", None) or extract_trader_order_provider_order_id(payload) or ""
         ).strip()
         submission_intent = payload.get("submission_intent")
         submission_intent_state = (
-            _normalize_status_key(submission_intent.get("state"))
-            if isinstance(submission_intent, dict)
-            else ""
+            _normalize_status_key(submission_intent.get("state")) if isinstance(submission_intent, dict) else ""
         )
         if (
             not authority_key
@@ -3020,9 +3009,7 @@ async def recover_missing_live_trader_orders(
         payload = dict(row.payload_json or {})
         provider_clob_id, live_order_id = _extract_live_order_authority_ids_from_payload(payload)
         provider_order_id = str(
-            getattr(row, "provider_order_id", None)
-            or extract_trader_order_provider_order_id(payload)
-            or ""
+            getattr(row, "provider_order_id", None) or extract_trader_order_provider_order_id(payload) or ""
         ).strip()
         if provider_clob_id:
             provider_clob_id = provider_clob_id.lower()
@@ -3067,7 +3054,9 @@ async def recover_missing_live_trader_orders(
 
         token_key = _wallet_position_token_key(live_row.token_id)
         position_row = live_orders_by_token.get(token_key)
-        market_question = str(live_row.market_question or (position_row.market_question if position_row is not None else "") or "").strip()
+        market_question = str(
+            live_row.market_question or (position_row.market_question if position_row is not None else "") or ""
+        ).strip()
         created_at = live_row.created_at or live_row.updated_at or now
         if created_at.tzinfo is None:
             created_at = created_at.replace(tzinfo=timezone.utc)
@@ -3152,7 +3141,9 @@ async def recover_missing_live_trader_orders(
                     continue
                 if _live_order_authority_key_from_row(placeholder_row):
                     continue
-                placeholder_market_id = str(placeholder_row.market_id or placeholder_payload.get("market_id") or "").strip()
+                placeholder_market_id = str(
+                    placeholder_row.market_id or placeholder_payload.get("market_id") or ""
+                ).strip()
                 placeholder_condition_id = _normalize_condition_id(placeholder_market_id)
                 if live_market_id and placeholder_market_id and placeholder_market_id != live_market_id:
                     # Token identity is stricter than market_id formatting; allow
@@ -3296,7 +3287,8 @@ async def recover_missing_live_trader_orders(
                 str(live_row.side or "").strip().upper() != "SELL"
                 and recovered_status in LIVE_ACTIVE_ORDER_STATUSES
                 and not existing_status_is_terminal
-                and existing_status in {"placing", "submitted", "executed", "completed", "open", "failed", "cancelled", "rejected", "error"}
+                and existing_status
+                in {"placing", "submitted", "executed", "completed", "open", "failed", "cancelled", "rejected", "error"}
                 and existing_status != recovered_status
             ):
                 existing_row.status = recovered_status
@@ -3335,20 +3327,29 @@ async def recover_missing_live_trader_orders(
             _existing_verification = str(getattr(existing_row, "verification_status", None) or "").strip().lower()
             _existing_status_lower = str(getattr(existing_row, "status", None) or "").strip().lower()
             _is_resolved_status_for_guard = _existing_status_lower in {
-                "resolved", "resolved_win", "resolved_loss",
-                "closed_win", "closed_loss", "win", "loss",
+                "resolved",
+                "resolved_win",
+                "resolved_loss",
+                "closed_win",
+                "closed_loss",
+                "win",
+                "loss",
             }
             if _existing_verification == "wallet_activity" and _is_resolved_status_for_guard:
                 verification_changed = False
             else:
                 verification_changed = apply_trader_order_verification(
                     existing_row,
-                    verification_status=str(recovered_verification.get("verification_status") or TRADER_ORDER_VERIFICATION_LOCAL),
+                    verification_status=str(
+                        recovered_verification.get("verification_status") or TRADER_ORDER_VERIFICATION_LOCAL
+                    ),
                     verification_source=str(recovered_verification.get("verification_source") or "").strip() or None,
                     verification_reason=str(recovered_verification.get("verification_reason") or "").strip() or None,
                     provider_order_id=str(recovered_verification.get("provider_order_id") or "").strip() or None,
-                    provider_clob_order_id=str(recovered_verification.get("provider_clob_order_id") or "").strip() or None,
-                    execution_wallet_address=str(recovered_verification.get("execution_wallet_address") or "").strip() or None,
+                    provider_clob_order_id=str(recovered_verification.get("provider_clob_order_id") or "").strip()
+                    or None,
+                    execution_wallet_address=str(recovered_verification.get("execution_wallet_address") or "").strip()
+                    or None,
                     verification_tx_hash=str(recovered_verification.get("verification_tx_hash") or "").strip() or None,
                     verified_at=now,
                     force=True,
@@ -3366,7 +3367,12 @@ async def recover_missing_live_trader_orders(
                 if abs(existing_notional - recovered_notional) > 1e-9:
                     existing_row.notional_usd = float(recovered_notional)
                     field_changed = True
-            elif recovered_notional <= 0.0 and _normalize_status_key(existing_row.status) in {"cancelled", "failed", "rejected", "error"}:
+            elif recovered_notional <= 0.0 and _normalize_status_key(existing_row.status) in {
+                "cancelled",
+                "failed",
+                "rejected",
+                "error",
+            }:
                 if safe_float(existing_row.notional_usd, 0.0) != 0.0:
                     existing_row.notional_usd = 0.0
                     field_changed = True
@@ -3408,13 +3414,21 @@ async def recover_missing_live_trader_orders(
                     if safe_float(execution_order.notional_usd, 0.0) != 0.0:
                         execution_order.notional_usd = 0.0
                         execution_order_changed = True
-                if existing_row.provider_order_id and str(execution_order.provider_order_id or "") != str(existing_row.provider_order_id):
+                if existing_row.provider_order_id and str(execution_order.provider_order_id or "") != str(
+                    existing_row.provider_order_id
+                ):
                     execution_order.provider_order_id = str(existing_row.provider_order_id)
                     execution_order_changed = True
-                if existing_row.provider_clob_order_id and str(execution_order.provider_clob_order_id or "") != str(existing_row.provider_clob_order_id):
+                if existing_row.provider_clob_order_id and str(execution_order.provider_clob_order_id or "") != str(
+                    existing_row.provider_clob_order_id
+                ):
                     execution_order.provider_clob_order_id = str(existing_row.provider_clob_order_id)
                     execution_order_changed = True
-                next_execution_error = None if recovered_status in LIVE_ACTIVE_ORDER_STATUSES else str(live_row.error_message or "").strip() or execution_order.error_message
+                next_execution_error = (
+                    None
+                    if recovered_status in LIVE_ACTIVE_ORDER_STATUSES
+                    else str(live_row.error_message or "").strip() or execution_order.error_message
+                )
                 if execution_order.error_message != next_execution_error:
                     execution_order.error_message = next_execution_error
                     execution_order_changed = True
@@ -3430,7 +3444,9 @@ async def recover_missing_live_trader_orders(
                         "status": recovered_status,
                         "filled_notional_usd": float(recovered_notional),
                         "filled_shares": float(max(0.0, recovered_filled_shares)),
-                        "avg_fill_price": float(recovered_entry_price) if recovered_entry_price is not None and recovered_entry_price > 0.0 else None,
+                        "avg_fill_price": float(recovered_entry_price)
+                        if recovered_entry_price is not None and recovered_entry_price > 0.0
+                        else None,
                         "provider_order_id": existing_row.provider_order_id,
                         "provider_clob_order_id": existing_row.provider_clob_order_id,
                         "snapshot_status": _normalize_status_key(live_row.status),
@@ -3468,7 +3484,9 @@ async def recover_missing_live_trader_orders(
                 hot_state_sync_rows[str(existing_row.id or "")] = existing_row
             if matched_pre_submit_placeholder and token_key:
                 pre_submit_rows_by_token_key[token_key] = [
-                    row for row in pre_submit_rows_by_token_key.get(token_key, []) if str(row.id or "") != str(existing_row.id or "")
+                    row
+                    for row in pre_submit_rows_by_token_key.get(token_key, [])
+                    if str(row.id or "") != str(existing_row.id or "")
                 ]
                 if not pre_submit_rows_by_token_key[token_key]:
                     pre_submit_rows_by_token_key.pop(token_key, None)
@@ -3515,10 +3533,10 @@ async def recover_missing_live_trader_orders(
 
         candidate_trader_id = str(candidate["trader_id"]).strip()
         candidate_market_id = str(candidate["market_id"]).strip()
-        if (
-            (candidate_trader_id, candidate_market_id) in existing_occupied_markets
-            or (candidate_trader_id, candidate_market_id) in recently_closed_recovery_guard_markets
-        ):
+        if (candidate_trader_id, candidate_market_id) in existing_occupied_markets or (
+            candidate_trader_id,
+            candidate_market_id,
+        ) in recently_closed_recovery_guard_markets:
             ambiguous_orders += 1
             continue
 
@@ -3554,12 +3572,18 @@ async def recover_missing_live_trader_orders(
             mode="live",
             status=str(recovery_state["trader_status"]),
             notional_usd=float(recovered_notional) if recovered_notional > 0.0 else None,
-            entry_price=float(recovered_entry_price) if recovered_entry_price is not None and recovered_entry_price > 0.0 else None,
-            effective_price=float(recovered_entry_price) if recovered_entry_price is not None and recovered_entry_price > 0.0 else None,
+            entry_price=float(recovered_entry_price)
+            if recovered_entry_price is not None and recovered_entry_price > 0.0
+            else None,
+            effective_price=float(recovered_entry_price)
+            if recovered_entry_price is not None and recovered_entry_price > 0.0
+            else None,
             execution_wallet_address=recovered_verification.get("execution_wallet_address"),
             provider_order_id=recovered_verification.get("provider_order_id"),
             provider_clob_order_id=recovered_verification.get("provider_clob_order_id"),
-            verification_status=str(recovered_verification.get("verification_status") or TRADER_ORDER_VERIFICATION_LOCAL),
+            verification_status=str(
+                recovered_verification.get("verification_status") or TRADER_ORDER_VERIFICATION_LOCAL
+            ),
             verification_source=recovered_verification.get("verification_source"),
             verification_reason=recovered_verification.get("verification_reason"),
             verification_tx_hash=recovered_verification.get("verification_tx_hash"),
@@ -3573,8 +3597,7 @@ async def recover_missing_live_trader_orders(
             created_at=created_at,
             executed_at=(
                 live_row.updated_at or live_row.created_at or now
-                if recovered_notional > 0.0
-                or str(recovery_state["trader_status"]) == "executed"
+                if recovered_notional > 0.0 or str(recovery_state["trader_status"]) == "executed"
                 else None
             ),
             updated_at=live_row.updated_at or now,
@@ -3676,11 +3699,7 @@ async def recover_missing_live_trader_orders(
             session_rows_by_id = {
                 str(row.id): row
                 for row in (
-                    await session.execute(
-                        select(ExecutionSession).where(
-                            ExecutionSession.id.in_(touched_id_list)
-                        )
-                    )
+                    await session.execute(select(ExecutionSession).where(ExecutionSession.id.in_(touched_id_list)))
                 )
                 .scalars()
                 .all()
@@ -3690,9 +3709,7 @@ async def recover_missing_live_trader_orders(
             for leg in (
                 (
                     await session.execute(
-                        select(ExecutionSessionLeg).where(
-                            ExecutionSessionLeg.session_id.in_(touched_id_list)
-                        )
+                        select(ExecutionSessionLeg).where(ExecutionSessionLeg.session_id.in_(touched_id_list))
                     )
                 )
                 .scalars()
@@ -3715,8 +3732,7 @@ async def recover_missing_live_trader_orders(
                 now=now,
                 all_failed_message="All execution legs failed during live authority recovery.",
                 partial_failed_message=(
-                    "Execution session closed with partial fills and failed legs "
-                    "during live authority recovery."
+                    "Execution session closed with partial fills and failed legs during live authority recovery."
                 ),
             )
             # Only enroll (persist + broadcast) sessions that materially changed —
@@ -4201,10 +4217,7 @@ async def _validate_source_configs(
         raise ValueError("source_configs must include at least one source")
     if len(source_configs) > 1:
         # A trader runs exactly one strategy on one source. Reject anything else.
-        raise ValueError(
-            "source_configs must contain exactly one entry "
-            "(a trader runs one strategy on one source)"
-        )
+        raise ValueError("source_configs must contain exactly one entry (a trader runs one strategy on one source)")
     for source_config in source_configs:
         source_key = str(source_config.get("source_key") or "").strip().lower()
         strategy_key = _normalize_strategy_key(source_config.get("strategy_key"))
@@ -4821,9 +4834,7 @@ def _serialize_order(
         # in price-percent terms; ``edge_delta_pct`` is how that P&L
         # compares against the strategy-claimed edge at signal time.
         if price_anchor is not None and price_anchor > 0:
-            unrealized_pnl_pct = (
-                (float(current_price) - float(price_anchor)) / float(price_anchor) * 100.0
-            )
+            unrealized_pnl_pct = (float(current_price) - float(price_anchor)) / float(price_anchor) * 100.0
             edge_at_signal = safe_float(row.edge_percent, 0.0) or 0.0
             edge_delta_pct = unrealized_pnl_pct - float(edge_at_signal)
 
@@ -4854,7 +4865,9 @@ def _serialize_order(
     )
     follower_effective_price = safe_float(
         copy_attribution.get("follower_effective_price"),
-        average_fill_price if average_fill_price is not None and average_fill_price > 0 else safe_float(row.effective_price),
+        average_fill_price
+        if average_fill_price is not None and average_fill_price > 0
+        else safe_float(row.effective_price),
     )
     if source_price is not None and source_price > 0.0:
         copy_attribution["source_price"] = float(source_price)
@@ -4912,8 +4925,14 @@ def _serialize_order(
         if parsed_detected_at is not None:
             if parsed_detected_at.tzinfo is None:
                 parsed_detected_at = parsed_detected_at.replace(tzinfo=timezone.utc)
-            created_at_utc = row.created_at if row.created_at.tzinfo is not None else row.created_at.replace(tzinfo=timezone.utc)
-            copy_latency_ms = max(0.0, (created_at_utc.astimezone(timezone.utc) - parsed_detected_at.astimezone(timezone.utc)).total_seconds() * 1000.0)
+            created_at_utc = (
+                row.created_at if row.created_at.tzinfo is not None else row.created_at.replace(tzinfo=timezone.utc)
+            )
+            copy_latency_ms = max(
+                0.0,
+                (created_at_utc.astimezone(timezone.utc) - parsed_detected_at.astimezone(timezone.utc)).total_seconds()
+                * 1000.0,
+            )
             copy_attribution["copy_latency_ms"] = float(copy_latency_ms)
 
     if copy_attribution:
@@ -5108,9 +5127,7 @@ def _serialize_event(row: TraderEvent) -> dict[str, Any]:
     }
 
 
-async def ensure_orchestrator_control(
-    session: AsyncSession, *, read_only: bool = False
-) -> TraderOrchestratorControl:
+async def ensure_orchestrator_control(session: AsyncSession, *, read_only: bool = False) -> TraderOrchestratorControl:
     # read_only=True (the orchestrator hot path) skips the settings
     # normalization *write* — it only re-orders enabled_strategies, which the
     # cycle doesn't care about — so a per-cycle control read never contends
@@ -5187,17 +5204,15 @@ async def read_orchestrator_snapshot(session: AsyncSession) -> dict[str, Any]:
         _runtime_updated_raw = runtime_snapshot.get("updated_at")
         if _runtime_updated_raw:
             try:
-                _runtime_updated_at = as_utc(
-                    datetime.fromisoformat(str(_runtime_updated_raw).replace("Z", "+00:00"))
-                )
-                runtime_fresh = (
-                    utcnow() - _runtime_updated_at
-                ).total_seconds() <= _RUNTIME_SNAPSHOT_FRESH_SECONDS
+                _runtime_updated_at = as_utc(datetime.fromisoformat(str(_runtime_updated_raw).replace("Z", "+00:00")))
+                runtime_fresh = (utcnow() - _runtime_updated_at).total_seconds() <= _RUNTIME_SNAPSHOT_FRESH_SECONDS
             except Exception:
                 runtime_fresh = False
     if os.environ.get("HOMERUN_PROCESS_ROLE") == "worker" and runtime_fresh:
         return await _apply_wallet_live_exposure_floor(session, _serialize_runtime_snapshot(runtime_snapshot))
-    return await _apply_wallet_live_exposure_floor(session, _serialize_snapshot(await ensure_orchestrator_snapshot(session)))
+    return await _apply_wallet_live_exposure_floor(
+        session, _serialize_snapshot(await ensure_orchestrator_snapshot(session))
+    )
 
 
 async def update_orchestrator_control(session: AsyncSession, **updates: Any) -> dict[str, Any]:
@@ -5427,7 +5442,9 @@ async def create_trader(session: AsyncSession, payload: dict[str, Any]) -> dict[
         create_payload = copied_payload
 
     live_mode_requested = _normalize_trader_mode(create_payload.get("mode")) == "live"
-    live_start_requested = bool(create_payload.get("is_enabled", True)) and not bool(create_payload.get("is_paused", False))
+    live_start_requested = bool(create_payload.get("is_enabled", True)) and not bool(
+        create_payload.get("is_paused", False)
+    )
     raw_risk_limits = create_payload.get("risk_limits")
     explicit_live_trade_cap = safe_float(
         raw_risk_limits.get("max_trade_notional_usd") if isinstance(raw_risk_limits, dict) else None,
@@ -5627,6 +5644,7 @@ async def delete_trader(session: AsyncSession, trader_id: str, *, force: bool = 
                 else "cleanup:force_delete_override"
             )
             import services.trader_hot_state as _hs
+
             _hs.record_order_cancelled(
                 trader_id=str(active_row.trader_id or ""),
                 mode=str(active_row.mode or ""),
@@ -5944,18 +5962,15 @@ async def list_trader_decisions(
     )
 
     if capped_per_trader_limit is not None:
-        ranked_decisions = (
-            select(
-                TraderDecision.id.label("id"),
-                func.row_number()
-                .over(
-                    partition_by=TraderDecision.trader_id,
-                    order_by=(TraderDecision.created_at.desc(), TraderDecision.id.desc()),
-                )
-                .label("rn"),
+        ranked_decisions = select(
+            TraderDecision.id.label("id"),
+            func.row_number()
+            .over(
+                partition_by=TraderDecision.trader_id,
+                order_by=(TraderDecision.created_at.desc(), TraderDecision.id.desc()),
             )
-            .where(TraderDecision.trader_id.in_(normalized_trader_ids))
-        )
+            .label("rn"),
+        ).where(TraderDecision.trader_id.in_(normalized_trader_ids))
         if decision:
             ranked_decisions = ranked_decisions.where(TraderDecision.decision == decision)
         ranked_subquery = ranked_decisions.subquery()
@@ -6378,13 +6393,9 @@ async def ensure_shadow_simulation_ledger(
         account_id = str(existing.get("account_id") or "").strip()
     if not account_id:
         control = (
-            await session.execute(
-                select(TraderOrchestratorControl).where(TraderOrchestratorControl.id == "default")
-            )
+            await session.execute(select(TraderOrchestratorControl).where(TraderOrchestratorControl.id == "default"))
         ).scalar_one_or_none()
-        settings_payload = (
-            dict(getattr(control, "settings_json", None) or {}) if control is not None else {}
-        )
+        settings_payload = dict(getattr(control, "settings_json", None) or {}) if control is not None else {}
         account_id = str(
             settings_payload.get("shadow_account_id") or settings_payload.get("selected_account_id") or ""
         ).strip()
@@ -6415,24 +6426,16 @@ async def ensure_shadow_simulation_ledger(
     direction = str(getattr(order, "direction", "") or "").strip().lower()
     shadow_sim = payload.get("shadow_simulation") or payload.get("paper_simulation")
     shadow_sim = shadow_sim if isinstance(shadow_sim, dict) else {}
-    token_id = str(
-        payload.get("token_id")
-        or payload.get("selected_token_id")
-        or ""
-    ).strip() or None
+    token_id = str(payload.get("token_id") or payload.get("selected_token_id") or "").strip() or None
     signal_id = str(getattr(order, "signal_id", "") or "").strip() or str(order.id)
-    strategy_type = str(
-        getattr(order, "strategy_key", "") or payload.get("strategy_type") or "trader_orchestrator"
-    )
+    strategy_type = str(getattr(order, "strategy_key", "") or payload.get("strategy_type") or "trader_orchestrator")
 
     ledger_row = await simulation_service.record_orchestrator_shadow_fill(
         account_id=account_id,
         trader_id=str(getattr(order, "trader_id", "") or ""),
         signal_id=signal_id,
         market_id=str(getattr(order, "market_id", "") or ""),
-        market_question=str(
-            getattr(order, "market_question", "") or payload.get("market_question") or ""
-        ),
+        market_question=str(getattr(order, "market_question", "") or payload.get("market_question") or ""),
         direction=direction,
         notional_usd=float(notional),
         entry_price=float(entry_price),
@@ -6453,6 +6456,135 @@ async def ensure_shadow_simulation_ledger(
     order.payload_json = payload
     order.updated_at = _now()
     return stamped
+
+
+_TERMINAL_SHADOW_ORDER_STATUSES = frozenset(
+    {
+        "cancelled",
+        "failed",
+        "rejected",
+        "error",
+        "expired",
+        "closed_win",
+        "closed_loss",
+        "resolved_win",
+        "resolved_loss",
+        "resolved",
+        "closed",
+    }
+)
+
+
+async def reconcile_stale_shadow_simulation_ledgers(
+    session: AsyncSession,
+    *,
+    trader_id: str | None = None,
+    commit: bool = False,
+) -> dict[str, Any]:
+    """Close open sim positions whose linked shadow order is already terminal.
+
+    Without this, cancelled/closed orders leave ``simulation_positions`` OPEN,
+    so Accounts Open count and equity stay inflated vs Bots open orders/exposure.
+    """
+    from services.simulation import simulation_service
+
+    mode_expr = func.lower(func.coalesce(TraderOrder.mode, ""))
+    status_expr = func.lower(func.coalesce(TraderOrder.status, ""))
+    query = (
+        select(TraderOrder)
+        .where(mode_expr == "shadow")
+        .where(status_expr.in_(tuple(_TERMINAL_SHADOW_ORDER_STATUSES)))
+        .order_by(TraderOrder.updated_at.asc())
+    )
+    if trader_id:
+        query = query.where(TraderOrder.trader_id == trader_id)
+
+    rows = list((await session.execute(query)).scalars().all())
+    attempted = 0
+    closed = 0
+    skipped = 0
+    errors: list[dict[str, Any]] = []
+
+    for order in rows:
+        payload = dict(order.payload_json or {})
+        ledger = payload.get("simulation_ledger")
+        if not isinstance(ledger, dict):
+            skipped += 1
+            continue
+        account_id = str(ledger.get("account_id") or "").strip()
+        trade_id = str(ledger.get("trade_id") or "").strip()
+        position_id = str(ledger.get("position_id") or "").strip()
+        if not (account_id and trade_id and position_id):
+            skipped += 1
+            continue
+
+        position = await session.get(SimulationPosition, position_id)
+        if position is None:
+            skipped += 1
+            continue
+        pos_status = str(getattr(position.status, "value", position.status) or "").strip().lower()
+        if pos_status not in {"open", "tradestatus.open"} and "open" not in pos_status:
+            # already closed
+            skipped += 1
+            continue
+
+        attempted += 1
+        status_key = str(order.status or "").strip().lower()
+        position_close = payload.get("position_close")
+        position_close = position_close if isinstance(position_close, dict) else {}
+        close_price = safe_float(position_close.get("close_price"), None)
+        if close_price is None or close_price < 0.0:
+            # Cancelled / failed: refund at entry (flat). Closed without stamp: entry.
+            close_price = safe_float(ledger.get("entry_price"), None)
+        if close_price is None or close_price < 0.0:
+            close_price = safe_float(order.effective_price, None)
+        if close_price is None or close_price < 0.0:
+            close_price = safe_float(order.entry_price, 0.0) or 0.0
+
+        close_trigger = str(
+            position_close.get("close_trigger")
+            or (
+                "cancel" if status_key in {"cancelled", "failed", "rejected", "error", "expired"} else "reconcile_stale"
+            )
+        )
+        try:
+            result = await simulation_service.close_orchestrator_shadow_fill(
+                account_id=account_id,
+                trade_id=trade_id,
+                position_id=position_id,
+                close_price=float(close_price),
+                close_trigger=close_trigger,
+                price_source=str(position_close.get("price_source") or "stale_ledger_reconcile"),
+                reason=f"reconcile_stale_shadow_ledger order_status={status_key}",
+                session=session,
+                commit=False,
+            )
+            if result.get("closed") or result.get("already_closed"):
+                closed += 1
+                payload["simulation_ledger_reconcile"] = {
+                    "closed": bool(result.get("closed")),
+                    "already_closed": bool(result.get("already_closed")),
+                    "actual_pnl": result.get("actual_pnl"),
+                    "reconciled_at": _now().isoformat() + "Z",
+                }
+                order.payload_json = payload
+                order.updated_at = _now()
+            else:
+                skipped += 1
+        except Exception as exc:
+            errors.append({"order_id": str(order.id), "error": str(exc)})
+
+    if closed > 0 or errors:
+        await session.flush()
+    if commit and (closed > 0 or errors):
+        await session.commit()
+
+    return {
+        "attempted": attempted,
+        "closed": closed,
+        "skipped": skipped,
+        "errors": errors,
+    }
 
 
 def build_trader_order_row(
@@ -6496,9 +6628,7 @@ def build_trader_order_row(
         order_payload["source_trade"] = dict(source_trade_payload)
 
     strategy_context_order_payload = (
-        dict(order_payload.get("strategy_context"))
-        if isinstance(order_payload.get("strategy_context"), dict)
-        else {}
+        dict(order_payload.get("strategy_context")) if isinstance(order_payload.get("strategy_context"), dict) else {}
     )
     if strategy_context_payload and not strategy_context_order_payload:
         strategy_context_order_payload = dict(strategy_context_payload)
@@ -6533,13 +6663,19 @@ def build_trader_order_row(
         if source_size is not None and source_size > 0.0 and "source_size" not in copy_attribution:
             copy_attribution["source_size"] = float(source_size)
         source_notional_usd = safe_float(source_trade_payload.get("source_notional_usd"), None)
-        if source_notional_usd is not None and source_notional_usd > 0.0 and "source_notional_usd" not in copy_attribution:
+        if (
+            source_notional_usd is not None
+            and source_notional_usd > 0.0
+            and "source_notional_usd" not in copy_attribution
+        ):
             copy_attribution["source_notional_usd"] = float(source_notional_usd)
 
         source_tx_hash = str(copy_event_payload.get("tx_hash") or source_trade_payload.get("tx_hash") or "").strip()
         if source_tx_hash and not str(copy_attribution.get("source_tx_hash") or "").strip():
             copy_attribution["source_tx_hash"] = source_tx_hash
-        source_order_hash = str(copy_event_payload.get("order_hash") or source_trade_payload.get("order_hash") or "").strip()
+        source_order_hash = str(
+            copy_event_payload.get("order_hash") or source_trade_payload.get("order_hash") or ""
+        ).strip()
         if source_order_hash and not str(copy_attribution.get("source_order_hash") or "").strip():
             copy_attribution["source_order_hash"] = source_order_hash
 
@@ -6572,7 +6708,9 @@ def build_trader_order_row(
 
         follower_effective_price = safe_float(
             effective_price,
-            safe_float(getattr(signal, "effective_price", None), safe_float(getattr(signal, "entry_price", None), None)),
+            safe_float(
+                getattr(signal, "effective_price", None), safe_float(getattr(signal, "entry_price", None), None)
+            ),
         )
         if follower_effective_price is not None and follower_effective_price > 0.0:
             copy_attribution["follower_effective_price"] = float(follower_effective_price)
@@ -6725,14 +6863,10 @@ def _assign_execution_session_rollups(
     if int(row.legs_open or 0) != int(legs_open):
         row.legs_open = int(legs_open)
         changed = True
-    if row.executed_notional_usd is None or abs(
-        float(row.executed_notional_usd) - float(executed_notional_usd)
-    ) > 1e-6:
+    if row.executed_notional_usd is None or abs(float(row.executed_notional_usd) - float(executed_notional_usd)) > 1e-6:
         row.executed_notional_usd = float(executed_notional_usd)
         changed = True
-    if row.unhedged_notional_usd is None or abs(
-        float(row.unhedged_notional_usd) - float(unhedged_notional_usd)
-    ) > 1e-6:
+    if row.unhedged_notional_usd is None or abs(float(row.unhedged_notional_usd) - float(unhedged_notional_usd)) > 1e-6:
         row.unhedged_notional_usd = float(unhedged_notional_usd)
         changed = True
     if changed:
@@ -7076,6 +7210,7 @@ async def get_execution_session_leg_rollups(
         }
     return out
 
+
 async def get_execution_session_detail(
     session: AsyncSession,
     session_id: str,
@@ -7335,9 +7470,7 @@ async def record_signal_consumption(
     normalized_decision_id = str(decision_id or "").strip() or None
     if normalized_decision_id is not None:
         existing_decision_id = (
-            await session.execute(
-                select(TraderDecision.id).where(TraderDecision.id == normalized_decision_id).limit(1)
-            )
+            await session.execute(select(TraderDecision.id).where(TraderDecision.id == normalized_decision_id).limit(1))
         ).scalar_one_or_none()
         if existing_decision_id is None:
             normalized_decision_id = None
@@ -7436,17 +7569,20 @@ async def list_unconsumed_trade_signals(
     normalized_cursor_signal_id = str(cursor_signal_id or "").strip()
     cursor_signal_consumed = False
     if normalized_cursor_signal_id:
-        cursor_signal_consumed = bool(
-            (
-                await session.execute(
-                    select(func.count())
-                    .select_from(TraderSignalConsumption)
-                    .where(TraderSignalConsumption.trader_id == trader_id)
-                    .where(TraderSignalConsumption.signal_id == normalized_cursor_signal_id)
-                )
-            ).scalar_one()
-            or 0
-        ) > 0
+        cursor_signal_consumed = (
+            bool(
+                (
+                    await session.execute(
+                        select(func.count())
+                        .select_from(TraderSignalConsumption)
+                        .where(TraderSignalConsumption.trader_id == trader_id)
+                        .where(TraderSignalConsumption.signal_id == normalized_cursor_signal_id)
+                    )
+                ).scalar_one()
+                or 0
+            )
+            > 0
+        )
     signal_sort_ts = func.coalesce(TradeSignal.updated_at, TradeSignal.created_at)
     # Replace the LEFT JOIN + GROUP BY MAX with two correlated NOT EXISTS
     # subqueries. The uq_trader_signal_consumption (trader_id, signal_id)
@@ -7522,21 +7658,20 @@ async def list_unconsumed_trade_signals(
             defer(TradeSignal.quality_rejection_reasons),
         )
     query = (
-        query
-        .where(unconsumed_or_reactivated_clause)
+        query.where(unconsumed_or_reactivated_clause)
         .where(or_(TradeSignal.expires_at.is_(None), TradeSignal.expires_at >= now))
         .where(scanner_runtime_ready_clause)
         .limit(max(1, min(limit, 5000)))
     )
-    normalized_signal_ids = [str(signal_id or "").strip() for signal_id in (signal_ids or []) if str(signal_id or "").strip()]
+    normalized_signal_ids = [
+        str(signal_id or "").strip() for signal_id in (signal_ids or []) if str(signal_id or "").strip()
+    ]
     if signal_ids is not None:
         if not normalized_signal_ids:
             return []
         query = query.where(TradeSignal.id.in_(normalized_signal_ids))
     normalized_excluded_market_ids = [
-        str(market_id or "").strip()
-        for market_id in (exclude_market_ids or [])
-        if str(market_id or "").strip()
+        str(market_id or "").strip() for market_id in (exclude_market_ids or []) if str(market_id or "").strip()
     ]
     if normalized_excluded_market_ids:
         query = query.where(
@@ -7639,7 +7774,9 @@ async def list_unconsumed_trade_signals(
             TradeSignal.id.asc(),
         )
     else:
-        query = query.order_by(TradeSignal.runtime_sequence.desc().nulls_last(), signal_sort_ts.asc(), TradeSignal.id.asc())
+        query = query.order_by(
+            TradeSignal.runtime_sequence.desc().nulls_last(), signal_sort_ts.asc(), TradeSignal.id.asc()
+        )
     return list((await session.execute(query)).scalars().all())
 
 
@@ -7856,9 +7993,7 @@ async def reconcile_orphaned_fast_submissions(
             position_query = (
                 select(LiveTradingPosition)
                 .where(LiveTradingPosition.market_id.in_(orphan_market_ids))
-                .where(
-                    func.lower(func.coalesce(LiveTradingPosition.wallet_address, "")).in_(orphan_wallets)
-                )
+                .where(func.lower(func.coalesce(LiveTradingPosition.wallet_address, "")).in_(orphan_wallets))
             )
             position_rows = list((await session.execute(position_query)).scalars().all())
             for pos_row in position_rows:
@@ -7963,19 +8098,14 @@ async def reconcile_orphaned_fast_submissions(
         row_wallet = str(getattr(row, "execution_wallet_address", None) or "").strip().lower()
         position_candidates: list[LiveTradingPosition] = []
         if row_market_id and wallet_positions_by_market:
-            wallet_keys = (
-                [row_wallet] if row_wallet else list(orphan_wallets)
-            )
+            wallet_keys = [row_wallet] if row_wallet else list(orphan_wallets)
             for wallet_key in wallet_keys:
-                position_candidates.extend(
-                    wallet_positions_by_market.get((wallet_key, row_market_id), [])
-                )
+                position_candidates.extend(wallet_positions_by_market.get((wallet_key, row_market_id), []))
 
         matching_positions = [
             pos
             for pos in position_candidates
-            if _outcome_matches_direction(pos.outcome, row_direction)
-            and float(pos.size or 0.0) > 0.0
+            if _outcome_matches_direction(pos.outcome, row_direction) and float(pos.size or 0.0) > 0.0
         ]
 
         sibling_already_owns = (row_market_id, row_direction) in other_active_keys
@@ -7986,7 +8116,7 @@ async def reconcile_orphaned_fast_submissions(
             # outcomes and we already filtered to the correct side).
             matched_position = max(
                 matching_positions,
-                key=lambda p: (p.updated_at or p.created_at or now_ts),
+                key=lambda p: p.updated_at or p.created_at or now_ts,
             )
             position_size = float(matched_position.size or 0.0)
             position_avg_cost = float(matched_position.average_cost or 0.0)
@@ -8042,7 +8172,7 @@ async def reconcile_orphaned_fast_submissions(
         # already tracking the position. Mark orphan as before, but
         # stamp any wallet evidence we DID see for audit visibility.
         row.status = "failed"
-        row.error_message = (row.error_message or "orphan: no venue match for fast_idempotency_key")
+        row.error_message = row.error_message or "orphan: no venue match for fast_idempotency_key"
         updated_payload = dict(row.payload_json or {})
         updated_payload["fast_submission_state"] = "orphan_no_venue_match"
         updated_payload["resolved_at_iso"] = now_ts.isoformat()
@@ -8051,7 +8181,7 @@ async def reconcile_orphaned_fast_submissions(
             # have a paper trail if reconciliation needs auditing.
             audit_position = max(
                 matching_positions,
-                key=lambda p: (p.updated_at or p.created_at or now_ts),
+                key=lambda p: p.updated_at or p.created_at or now_ts,
             )
             updated_payload["wallet_position_evidence"] = {
                 "wallet_address": str(audit_position.wallet_address or ""),
@@ -8150,11 +8280,7 @@ async def reconcile_live_provider_orders(
     provider_tagged = 0
     tagged_payload_updates = 0
     active_order_rows = list(
-        (
-            await session.execute(select(TraderOrder).where(TraderOrder.id.in_(active_order_ids)))
-        )
-        .scalars()
-        .all()
+        (await session.execute(select(TraderOrder).where(TraderOrder.id.in_(active_order_ids)))).scalars().all()
     )
     session_order_rows = list(
         (
@@ -8206,7 +8332,9 @@ async def reconcile_live_provider_orders(
             try:
                 snapshots = await live_execution_service.get_order_snapshots_by_clob_ids(sorted(provider_clob_ids))
             except Exception as exc:
-                logger.warning("Live provider reconciliation failed to fetch snapshots", trader_id=trader_id, exc_info=exc)
+                logger.warning(
+                    "Live provider reconciliation failed to fetch snapshots", trader_id=trader_id, exc_info=exc
+                )
                 snapshots = {}
 
     now = _now()
@@ -8226,11 +8354,7 @@ async def reconcile_live_provider_orders(
     leg_state_updates: dict[str, dict[str, Any]] = {}
 
     active_rows = list(
-        (
-            await session.execute(select(TraderOrder).where(TraderOrder.id.in_(active_order_ids)))
-        )
-        .scalars()
-        .all()
+        (await session.execute(select(TraderOrder).where(TraderOrder.id.in_(active_order_ids)))).scalars().all()
     )
     session_order_rows = list(
         (
@@ -8477,6 +8601,7 @@ async def reconcile_live_provider_orders(
             )
         if _is_active_order_status(str(order.mode or ""), order_status_to_persist):
             import services.trader_hot_state as _hs
+
             _hs.upsert_active_order(
                 trader_id=trader_id,
                 mode=str(order.mode or ""),
@@ -8494,6 +8619,7 @@ async def reconcile_live_provider_orders(
             )
         elif order_status_to_persist in {"cancelled", "failed"}:
             import services.trader_hot_state as _hs
+
             _hs.record_order_cancelled(
                 trader_id=trader_id,
                 mode=str(order.mode or ""),
@@ -9382,7 +9508,9 @@ async def get_open_position_count_for_trader(
             continue
         row_payload = dict(row.payload_json or {})
         row_notional = safe_float(row.notional_usd, 0.0) or 0.0
-        active_notional = _live_active_notional(row_mode, row.status, row_notional, row_payload, executed_at=row.executed_at)
+        active_notional = _live_active_notional(
+            row_mode, row.status, row_notional, row_payload, executed_at=row.executed_at
+        )
         if active_notional <= 0.0:
             continue
         key = _position_cap_scope_key(
@@ -9485,7 +9613,9 @@ async def get_open_order_summary_for_trader(session: AsyncSession, trader_id: st
                 await session.execute(
                     select(TraderOrder)
                     .where(TraderOrder.trader_id == trader_id)
-                    .where(func.lower(func.trim(func.coalesce(TraderOrder.status, ""))).in_(tuple(UNFILLED_ORDER_STATUSES)))
+                    .where(
+                        func.lower(func.trim(func.coalesce(TraderOrder.status, ""))).in_(tuple(UNFILLED_ORDER_STATUSES))
+                    )
                 )
             )
             .scalars()
@@ -9503,6 +9633,7 @@ async def get_open_order_summary_for_trader(session: AsyncSession, trader_id: st
             summary["other"] += count
         summary["total"] += count
     return summary
+
 
 async def get_pending_live_exit_summary_for_trader(
     session: AsyncSession,
@@ -9688,12 +9819,14 @@ async def cleanup_trader_open_orders(
     # cycle.  See _OPEN_ORDER_CLEANUP_MAX_CANDIDATES_PER_CALL above.
     candidates_total = len(candidates)
     if candidates_total > _OPEN_ORDER_CLEANUP_MAX_CANDIDATES_PER_CALL:
+
         def _age_anchor(row: TraderOrder) -> datetime:
             if require_unfilled:
                 anchor = row.created_at or row.updated_at or row.executed_at
             else:
                 anchor = row.executed_at or row.updated_at or row.created_at
             return anchor or datetime.max
+
         candidates.sort(key=_age_anchor)  # oldest first
         candidates = candidates[:_OPEN_ORDER_CLEANUP_MAX_CANDIDATES_PER_CALL]
     candidates_deferred = candidates_total - len(candidates)
@@ -9721,10 +9854,14 @@ async def cleanup_trader_open_orders(
         note_reason = str(reason or "manual_position_cleanup").strip()
         rescue_price_bps = safe_float(live_taker_rescue_price_bps, DEFAULT_TIMEOUT_TAKER_RESCUE_PRICE_BPS)
         rescue_price_bps = max(0.0, float(rescue_price_bps or 0.0))
-        rescue_time_in_force = str(live_taker_rescue_time_in_force or DEFAULT_TIMEOUT_TAKER_RESCUE_TIME_IN_FORCE).strip().upper()
+        rescue_time_in_force = (
+            str(live_taker_rescue_time_in_force or DEFAULT_TIMEOUT_TAKER_RESCUE_TIME_IN_FORCE).strip().upper()
+        )
         if rescue_time_in_force not in {"IOC", "FOK", "GTC"}:
             rescue_time_in_force = DEFAULT_TIMEOUT_TAKER_RESCUE_TIME_IN_FORCE
-        allow_timeout_taker_rescue = bool(attempt_live_taker_rescue and require_unfilled and _cleanup_timeout_reason(note_reason))
+        allow_timeout_taker_rescue = bool(
+            attempt_live_taker_rescue and require_unfilled and _cleanup_timeout_reason(note_reason)
+        )
         candidate_ids = [str(row.id) for row in candidates]
         execution_order_rows = list(
             (
@@ -9831,6 +9968,7 @@ async def cleanup_trader_open_orders(
                         row.updated_at = now
                         if row.status == "failed":
                             import services.trader_hot_state as _hs
+
                             _hs.record_order_cancelled(
                                 trader_id=str(row.trader_id or ""),
                                 mode=str(row.mode or ""),
@@ -9849,8 +9987,12 @@ async def cleanup_trader_open_orders(
                             existing_payload.update(
                                 {
                                     "order_id": str(rescue.get("order_id") or rescue_payload.get("order_id") or ""),
-                                    "clob_order_id": str(rescue.get("clob_order_id") or rescue_payload.get("clob_order_id") or ""),
-                                    "provider_order_id": str(rescue.get("order_id") or rescue_payload.get("order_id") or ""),
+                                    "clob_order_id": str(
+                                        rescue.get("clob_order_id") or rescue_payload.get("clob_order_id") or ""
+                                    ),
+                                    "provider_order_id": str(
+                                        rescue.get("order_id") or rescue_payload.get("order_id") or ""
+                                    ),
                                     "provider_clob_order_id": str(
                                         rescue.get("clob_order_id") or rescue_payload.get("clob_order_id") or ""
                                     ),
@@ -9902,6 +10044,7 @@ async def cleanup_trader_open_orders(
                 else:
                     row.reason = f"cleanup:{note_reason}"
             import services.trader_hot_state as _hs
+
             _hs.record_order_cancelled(
                 trader_id=str(row.trader_id or ""),
                 mode=str(row.mode or ""),
@@ -10030,10 +10173,14 @@ async def get_trader_source_exposure(
     if not source_key:
         return 0.0
 
-    query = select(TraderOrder).where(
-        TraderOrder.trader_id == trader_id,
-        func.lower(func.coalesce(TraderOrder.source, "")) == source_key,
-    ).where(_visible_trader_order_query_clause())
+    query = (
+        select(TraderOrder)
+        .where(
+            TraderOrder.trader_id == trader_id,
+            func.lower(func.coalesce(TraderOrder.source, "")) == source_key,
+        )
+        .where(_visible_trader_order_query_clause())
+    )
     if mode is not None:
         mode_key = _normalize_mode_key(mode)
         if mode_key == "other":
@@ -10055,10 +10202,14 @@ async def get_trader_copy_leader_exposure(
     if not normalized_wallet:
         return 0.0
 
-    query = select(TraderOrder).where(
-        TraderOrder.trader_id == trader_id,
-        func.lower(func.coalesce(TraderOrder.source, "")) == "traders",
-    ).where(_visible_trader_order_query_clause())
+    query = (
+        select(TraderOrder)
+        .where(
+            TraderOrder.trader_id == trader_id,
+            func.lower(func.coalesce(TraderOrder.source, "")) == "traders",
+        )
+        .where(_visible_trader_order_query_clause())
+    )
     if mode is not None:
         mode_key = _normalize_mode_key(mode)
         if mode_key == "other":
@@ -10190,9 +10341,15 @@ async def get_trader_copy_analytics(
             leader["latency_sum"] += row_copy_latency_ms
             leader["latency_count"] += 1
 
-    resolved_orders = sum(1 for row, _, _ in filtered_rows if _normalize_status_key(row.status) in REALIZED_ORDER_STATUSES)
-    win_orders = sum(1 for row, _, _ in filtered_rows if _normalize_status_key(row.status) in REALIZED_WIN_ORDER_STATUSES)
-    loss_orders = sum(1 for row, _, _ in filtered_rows if _normalize_status_key(row.status) in REALIZED_LOSS_ORDER_STATUSES)
+    resolved_orders = sum(
+        1 for row, _, _ in filtered_rows if _normalize_status_key(row.status) in REALIZED_ORDER_STATUSES
+    )
+    win_orders = sum(
+        1 for row, _, _ in filtered_rows if _normalize_status_key(row.status) in REALIZED_WIN_ORDER_STATUSES
+    )
+    loss_orders = sum(
+        1 for row, _, _ in filtered_rows if _normalize_status_key(row.status) in REALIZED_LOSS_ORDER_STATUSES
+    )
     win_rate_pct = (win_orders / resolved_orders * 100.0) if resolved_orders > 0 else None
 
     sorted_leaders = sorted(
@@ -10844,7 +11001,6 @@ async def compute_orchestrator_metrics(session: AsyncSession) -> dict[str, Any]:
     }
 
 
-
 async def compose_trader_orchestrator_config(
     session: AsyncSession,
     *,
@@ -11291,8 +11447,8 @@ async def get_trader_orders_summary(
     mode: Optional[str] = None,
 ) -> dict[str, Any]:
     open_statuses = tuple(sorted(OPEN_ORDER_STATUSES))
-    resolved_statuses = ('resolved', 'resolved_win', 'resolved_loss', 'closed_win', 'closed_loss', 'win', 'loss')
-    failed_statuses = ('failed', 'rejected', 'error', 'cancelled')
+    resolved_statuses = ("resolved", "resolved_win", "resolved_loss", "closed_win", "closed_loss", "win", "loss")
+    failed_statuses = ("failed", "rejected", "error", "cancelled")
 
     status_col = func.lower(TraderOrder.status)
     is_open = status_col.in_(open_statuses)
@@ -11332,8 +11488,12 @@ async def get_trader_orders_summary(
         func.count().filter(is_resolved & is_pnl_verified & (profit_col > 0)).label("wins"),
         func.count().filter(is_resolved & is_pnl_verified & (profit_col < 0)).label("losses"),
         func.sum(func.abs(func.coalesce(TraderOrder.notional_usd, 0.0))).label("total_notional"),
-        func.avg(TraderOrder.edge_percent).filter(TraderOrder.edge_percent.isnot(None) & (TraderOrder.edge_percent != 0)).label("avg_edge"),
-        func.avg(TraderOrder.confidence).filter(TraderOrder.confidence.isnot(None) & (TraderOrder.confidence != 0)).label("avg_confidence"),
+        func.avg(TraderOrder.edge_percent)
+        .filter(TraderOrder.edge_percent.isnot(None) & (TraderOrder.edge_percent != 0))
+        .label("avg_edge"),
+        func.avg(TraderOrder.confidence)
+        .filter(TraderOrder.confidence.isnot(None) & (TraderOrder.confidence != 0))
+        .label("avg_confidence"),
     ).where(_visible_trader_order_query_clause())
     if mode:
         query = query.where(func.lower(TraderOrder.mode) == mode.strip().lower())
@@ -11342,18 +11502,22 @@ async def get_trader_orders_summary(
     resolved_count = int(row.resolved or 0)
     wins_count = int(row.wins or 0)
 
-    by_trader_query = select(
-        TraderOrder.trader_id,
-        func.count().label("orders"),
-        func.count().filter(is_open).label("open"),
-        func.count().filter(is_resolved).label("resolved"),
-        func.count().filter(is_failed).label("failed"),
-        func.sum(verified_profit_col).filter(is_resolved).label("pnl"),
-        func.sum(func.abs(func.coalesce(TraderOrder.notional_usd, 0.0))).label("notional"),
-        func.count().filter(is_resolved & is_pnl_verified & (profit_col > 0)).label("wins"),
-        func.count().filter(is_resolved & is_pnl_verified & (profit_col < 0)).label("losses"),
-        func.max(func.coalesce(TraderOrder.updated_at, TraderOrder.created_at)).label("latest_activity"),
-    ).where(_visible_trader_order_query_clause()).group_by(TraderOrder.trader_id)
+    by_trader_query = (
+        select(
+            TraderOrder.trader_id,
+            func.count().label("orders"),
+            func.count().filter(is_open).label("open"),
+            func.count().filter(is_resolved).label("resolved"),
+            func.count().filter(is_failed).label("failed"),
+            func.sum(verified_profit_col).filter(is_resolved).label("pnl"),
+            func.sum(func.abs(func.coalesce(TraderOrder.notional_usd, 0.0))).label("notional"),
+            func.count().filter(is_resolved & is_pnl_verified & (profit_col > 0)).label("wins"),
+            func.count().filter(is_resolved & is_pnl_verified & (profit_col < 0)).label("losses"),
+            func.max(func.coalesce(TraderOrder.updated_at, TraderOrder.created_at)).label("latest_activity"),
+        )
+        .where(_visible_trader_order_query_clause())
+        .group_by(TraderOrder.trader_id)
+    )
     if mode:
         by_trader_query = by_trader_query.where(func.lower(TraderOrder.mode) == mode.strip().lower())
     trader_rows = (await session.execute(by_trader_query)).all()
@@ -11405,22 +11569,13 @@ async def get_trader_orders_summary(
         select(TraderOrder.signal_id)
         .join(TradeSignal, TradeSignal.id == TraderOrder.signal_id)
         .where(_visible_trader_order_query_clause())
-        .where(
-            (sig_legs > 1)
-            | (sig_positions > 1)
-            | (row_legs > 1)
-            | (row_positions > 1)
-        )
+        .where((sig_legs > 1) | (sig_positions > 1) | (row_legs > 1) | (row_positions > 1))
         .distinct()
     )
     if mode:
-        candidate_signal_query = candidate_signal_query.where(
-            func.lower(TraderOrder.mode) == mode.strip().lower()
-        )
+        candidate_signal_query = candidate_signal_query.where(func.lower(TraderOrder.mode) == mode.strip().lower())
     candidate_signal_ids = [
-        str(sid).strip()
-        for (sid,) in (await session.execute(candidate_signal_query)).all()
-        if str(sid or "").strip()
+        str(sid).strip() for (sid,) in (await session.execute(candidate_signal_query)).all() if str(sid or "").strip()
     ]
 
     if not candidate_signal_ids:
@@ -11458,10 +11613,10 @@ async def get_trader_orders_summary(
         signals_by_id: dict[str, TradeSignal] = {}
         if candidate_signal_ids:
             signal_rows = (
-                await session.execute(
-                    select(TradeSignal).where(TradeSignal.id.in_(candidate_signal_ids))
-                )
-            ).scalars().all()
+                (await session.execute(select(TradeSignal).where(TradeSignal.id.in_(candidate_signal_ids))))
+                .scalars()
+                .all()
+            )
             signals_by_id = {str(sig.id).strip(): sig for sig in signal_rows}
         subset_totals, subset_by_trader = _grouped_trade_counts(
             subset_rows,
@@ -11510,10 +11665,16 @@ async def get_trader_orders_summary(
         for tr in trader_rows:
             tkey = str(tr.trader_id or "")
             sub_agg = subset_agg_by_trader.get(tkey, {"orders": 0, "open": 0, "resolved": 0, "failed": 0})
-            sub_grp = subset_by_trader.get(tkey, {
-                "trade_count": 0, "open_trades": 0, "resolved_trades": 0,
-                "failed_trades": 0, "partial_open_bundles": 0,
-            })
+            sub_grp = subset_by_trader.get(
+                tkey,
+                {
+                    "trade_count": 0,
+                    "open_trades": 0,
+                    "resolved_trades": 0,
+                    "failed_trades": 0,
+                    "partial_open_bundles": 0,
+                },
+            )
             trade_counts_by_trader[tkey] = {
                 "trade_count": int(tr.orders or 0) - sub_agg["orders"] + sub_grp["trade_count"],
                 "open_trades": int(tr.open or 0) - sub_agg["open"] + sub_grp["open_trades"],
@@ -11537,8 +11698,7 @@ async def get_trader_orders_summary(
         )
     active_position_rows = (await session.execute(active_position_query)).all()
     active_position_counts_by_trader = {
-        str(row.trader_id or ""): int(row.open_trades or 0)
-        for row in active_position_rows
+        str(row.trader_id or ""): int(row.open_trades or 0) for row in active_position_rows
     }
     active_position_open_trades = sum(active_position_counts_by_trader.values())
     if active_position_open_trades > 0:
@@ -11555,15 +11715,19 @@ async def get_trader_orders_summary(
                 },
             )
             trade_counts["open_trades"] = int(open_trade_count or 0)
-    by_source_query = select(
-        TraderOrder.source,
-        func.count().label("orders"),
-        func.count().filter(is_resolved).label("resolved"),
-        func.sum(verified_profit_col).filter(is_resolved).label("pnl"),
-        func.sum(func.abs(func.coalesce(TraderOrder.notional_usd, 0.0))).label("notional"),
-        func.count().filter(is_resolved & is_pnl_verified & (profit_col > 0)).label("wins"),
-        func.count().filter(is_resolved & is_pnl_verified & (profit_col < 0)).label("losses"),
-    ).where(_visible_trader_order_query_clause()).group_by(TraderOrder.source)
+    by_source_query = (
+        select(
+            TraderOrder.source,
+            func.count().label("orders"),
+            func.count().filter(is_resolved).label("resolved"),
+            func.sum(verified_profit_col).filter(is_resolved).label("pnl"),
+            func.sum(func.abs(func.coalesce(TraderOrder.notional_usd, 0.0))).label("notional"),
+            func.count().filter(is_resolved & is_pnl_verified & (profit_col > 0)).label("wins"),
+            func.count().filter(is_resolved & is_pnl_verified & (profit_col < 0)).label("losses"),
+        )
+        .where(_visible_trader_order_query_clause())
+        .group_by(TraderOrder.source)
+    )
     if mode:
         by_source_query = by_source_query.where(func.lower(TraderOrder.mode) == mode.strip().lower())
     by_source_query = by_source_query.order_by(func.count().desc()).limit(8)
@@ -11592,11 +11756,21 @@ async def get_trader_orders_summary(
                 "orders": int(tr.orders or 0),
                 "open": int(tr.open or 0),
                 "resolved": int(tr.resolved or 0),
-                "trade_count": int((trade_counts_by_trader.get(str(tr.trader_id or "")) or {}).get("trade_count", tr.orders or 0)),
-                "open_trades": int((trade_counts_by_trader.get(str(tr.trader_id or "")) or {}).get("open_trades", tr.open or 0)),
-                "resolved_trades": int((trade_counts_by_trader.get(str(tr.trader_id or "")) or {}).get("resolved_trades", tr.resolved or 0)),
-                "failed_trades": int((trade_counts_by_trader.get(str(tr.trader_id or "")) or {}).get("failed_trades", 0)),
-                "partial_open_bundles": int((trade_counts_by_trader.get(str(tr.trader_id or "")) or {}).get("partial_open_bundles", 0)),
+                "trade_count": int(
+                    (trade_counts_by_trader.get(str(tr.trader_id or "")) or {}).get("trade_count", tr.orders or 0)
+                ),
+                "open_trades": int(
+                    (trade_counts_by_trader.get(str(tr.trader_id or "")) or {}).get("open_trades", tr.open or 0)
+                ),
+                "resolved_trades": int(
+                    (trade_counts_by_trader.get(str(tr.trader_id or "")) or {}).get("resolved_trades", tr.resolved or 0)
+                ),
+                "failed_trades": int(
+                    (trade_counts_by_trader.get(str(tr.trader_id or "")) or {}).get("failed_trades", 0)
+                ),
+                "partial_open_bundles": int(
+                    (trade_counts_by_trader.get(str(tr.trader_id or "")) or {}).get("partial_open_bundles", 0)
+                ),
                 "pnl": float(tr.pnl or 0),
                 "notional": float(tr.notional or 0),
                 "wins": int(tr.wins or 0),
@@ -11647,13 +11821,17 @@ async def list_serialized_trader_orders(
     sibling_rows_by_signal_id: dict[str, list[TraderOrder]] = defaultdict(list)
     if signal_ids:
         sibling_rows = (
-            await session.execute(
-                select(TraderOrder).where(
-                    TraderOrder.signal_id.in_(signal_ids),
-                    _visible_trader_order_query_clause(),
+            (
+                await session.execute(
+                    select(TraderOrder).where(
+                        TraderOrder.signal_id.in_(signal_ids),
+                        _visible_trader_order_query_clause(),
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         for sibling_row in sibling_rows:
             signal_key = str(sibling_row.signal_id or "").strip()
             if signal_key:
@@ -11688,6 +11866,7 @@ async def list_serialized_trader_orders(
     live_prices_by_token: dict[str, float] = {}
     try:
         from services.live_price_snapshot import get_live_mid_prices
+
         order_token_ids: list[str] = []
         seen_tokens: set[str] = set()
         for row in rows:
@@ -11696,9 +11875,7 @@ async def list_serialized_trader_orders(
                 seen_tokens.add(token_id)
                 order_token_ids.append(token_id)
         if order_token_ids:
-            live_prices_by_token = await get_live_mid_prices(
-                order_token_ids, ws_only=True
-            ) or {}
+            live_prices_by_token = await get_live_mid_prices(order_token_ids, ws_only=True) or {}
     except Exception:
         live_prices_by_token = {}
 
@@ -11774,4 +11951,3 @@ async def get_serialized_execution_session_detail(
     session_id: str,
 ) -> dict[str, Any] | None:
     return await get_execution_session_detail(session, session_id)
-

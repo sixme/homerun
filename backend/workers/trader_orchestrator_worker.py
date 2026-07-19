@@ -4706,6 +4706,8 @@ async def _run_terminal_stale_order_watchdog(session: Any, *, now: datetime | No
                     force_mark_to_market=True,
                     order_ids=order_ids,
                     reason="terminal_market_watchdog",
+                    # Must debit/credit Paper Trading ledger when 5m crypto windows end.
+                    enable_simulation_ledger=True,
                 )
             remediation["closed"] = int(remediation["closed"]) + int(lifecycle_result.get("closed", 0) or 0)
             # SOAK-2026-05-18: surface skipped_reasons + would_close from
@@ -5183,6 +5185,68 @@ async def _run_trader_once_inner(
                         message="Shadow ledger backfill encountered one or more errors.",
                         payload=backfill_result,
                     )
+                # Terminal orders must not leave open sim positions (Accounts Open
+                # would exceed Bots open orders / exposure).
+                from services.trader_orchestrator_state import (
+                    reconcile_stale_shadow_simulation_ledgers,
+                )
+
+                stale_result = await reconcile_stale_shadow_simulation_ledgers(
+                    session,
+                    trader_id=trader_id,
+                    commit=False,
+                )
+                if stale_result.get("closed"):
+                    await create_trader_event(
+                        session,
+                        trader_id=trader_id,
+                        event_type="shadow_ledger_stale_reconciled",
+                        source="worker",
+                        message=(
+                            f"Closed {int(stale_result.get('closed') or 0)} stale "
+                            "sandbox position(s) for terminal shadow orders."
+                        ),
+                        payload=stale_result,
+                    )
+                    # After closing positions, free cash can drift if a prior
+                    # close missed its credit. Rebuild cash from the trade ledger.
+                    try:
+                        from services.simulation import simulation_service as _sim_svc
+                        from services.trader_orchestrator_state import (
+                            get_orchestrator_control as _get_orch_control,
+                        )
+
+                        _ctrl = await _get_orch_control(session)
+                        _settings = dict(getattr(_ctrl, "settings", None) or {})
+                        shadow_account_id = str(
+                            _settings.get("shadow_account_id") or _settings.get("selected_account_id") or ""
+                        ).strip()
+                        if shadow_account_id:
+                            cash_fix = await _sim_svc.reconcile_account_cash_from_trades(
+                                shadow_account_id,
+                                session=session,
+                                commit=False,
+                            )
+                            if cash_fix.get("repaired"):
+                                await create_trader_event(
+                                    session,
+                                    trader_id=trader_id,
+                                    event_type="shadow_cash_ledger_repaired",
+                                    severity="warn",
+                                    source="worker",
+                                    message=(
+                                        f"Repaired sandbox free cash by "
+                                        f"${float(cash_fix.get('delta') or 0.0):.4f} "
+                                        "from trade ledger."
+                                    ),
+                                    payload=cash_fix,
+                                )
+                    except Exception as cash_exc:
+                        logger.warning(
+                            "Shadow cash ledger repair failed",
+                            trader_id=trader_id,
+                            error=str(cash_exc),
+                        )
                 _accumulate("mnt_shadow_backfill", _mnt_shadow_backfill_started)
                 _mnt_shadow_reconcile_started = time.monotonic()
                 force_flatten = resume_policy == "flatten_then_start"
@@ -5860,6 +5924,7 @@ async def _run_trader_once_inner(
                         dry_run=False,
                         force_mark_to_market=True,
                         reason="circuit_breaker_safe_exit",
+                        enable_simulation_ledger=True,
                     )
                     safe_exit_closed = int(safe_exit_result.get("closed", 0))
                     if safe_exit_closed > 0:
@@ -8886,6 +8951,7 @@ async def _reconcile_orphan_open_orders(session: Any) -> dict[str, int]:
                 dry_run=False,
                 force_mark_to_market=False,
                 reason="orphan_trader_lifecycle",
+                enable_simulation_ledger=True,
             )
             shadow_closed += int(result.get("closed", 0))
             await sync_trader_position_inventory(session, trader_id=trader_id, mode="shadow")
