@@ -7,7 +7,11 @@ import asyncio
 
 from models.database import get_db_session
 from services.polymarket import polymarket_client
-from services.simulation import compute_paper_equity_and_roi, simulation_service
+from services.simulation import (
+    compute_paper_equity_and_roi,
+    positions_market_value,
+    simulation_service,
+)
 
 simulation_router = APIRouter()
 
@@ -67,7 +71,7 @@ async def list_simulation_accounts():
         # Book value = sum of entry costs of open positions
         book_value = sum(p.entry_cost for p in positions)
         # Market value = sum of current value of open positions
-        market_value = sum(p.quantity * (p.current_price or p.entry_price) for p in positions)
+        market_value = positions_market_value(positions)
         equity, roi = compute_paper_equity_and_roi(
             initial_capital=float(acc.initial_capital or 0.0),
             current_capital=float(acc.current_capital or 0.0),
@@ -249,7 +253,7 @@ async def get_equity_history(account_id: str):
     # Unrealized P&L
     unrealized_pnl = sum(p.unrealized_pnl for p in positions)
     book_value = sum(p.entry_cost for p in positions)
-    market_value = sum(p.quantity * (p.current_price or p.entry_price) for p in positions)
+    market_value = positions_market_value(positions)
     equity, roi_percent = compute_paper_equity_and_roi(
         initial_capital=float(account.initial_capital or 0.0),
         current_capital=float(account.current_capital or 0.0),

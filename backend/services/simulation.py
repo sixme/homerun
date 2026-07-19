@@ -44,6 +44,28 @@ def compute_paper_equity_and_roi(
     return equity, ((equity - initial) / initial) * 100.0
 
 
+def position_mark_price(current_price: float | None, entry_price: float | None) -> float:
+    """Mark for open inventory. Preserve explicit 0.0 marks (do not treat as missing)."""
+    if current_price is not None:
+        return float(current_price)
+    if entry_price is not None:
+        return float(entry_price)
+    return 0.0
+
+
+def positions_market_value(positions: list[Any]) -> float:
+    """Sum quantity * mark for open simulation positions."""
+    total = 0.0
+    for p in positions:
+        qty = float(getattr(p, "quantity", 0.0) or 0.0)
+        mark = position_mark_price(
+            getattr(p, "current_price", None),
+            getattr(p, "entry_price", None),
+        )
+        total += qty * mark
+    return total
+
+
 class SlippageModel:
     """Calculate execution slippage"""
 
@@ -762,11 +784,7 @@ class SimulationService:
 
             # Get open positions count + mark for equity ROI
             positions = await self.get_open_positions(account_id)
-            market_value = sum(
-                float(p.quantity or 0.0)
-                * float(p.current_price if p.current_price is not None else p.entry_price or 0.0)
-                for p in positions
-            )
+            market_value = positions_market_value(positions)
             equity, roi = compute_paper_equity_and_roi(
                 initial_capital=float(account.initial_capital or 0.0),
                 current_capital=float(account.current_capital or 0.0),
