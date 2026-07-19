@@ -699,7 +699,6 @@ class Settings(BaseSettings):
     EVENTS_ACLED_CB_MAX_FAILURES: int = 8
     EVENTS_ACLED_CB_COOLDOWN_SECONDS: float = 180.0
     EVENTS_USGS_MIN_MAGNITUDE: float = 4.5
-    EVENTS_GOV_RSS_ENABLED: bool = True  # Legacy flag (deprecated; NEWS_GOV_RSS_ENABLED is authoritative)
     EVENTS_USGS_ENABLED: bool = True  # Enable earthquake monitoring
 
     # Database Maintenance
