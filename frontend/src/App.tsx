@@ -86,7 +86,12 @@ import { useWebSocket } from './hooks/useWebSocket'
 import { useKeyboardShortcuts, Shortcut } from './hooks/useKeyboardShortcuts'
 import { useRealtimeInvalidation } from './hooks/useRealtimeInvalidation'
 import { useDisplayedOpportunityRefresh } from './hooks/useDisplayedOpportunityRefresh'
-import { shortcutsHelpOpenAtom, selectedAccountIdAtom, activeChatSessionIdAtom, aiTabSubtabAtom } from './store/atoms'
+import {
+  shortcutsHelpOpenAtom,
+  selectedAccountIdAtom,
+  activeChatSessionIdAtom,
+  aiTabSubtabAtom,
+} from './store/atoms'
 import { buildNewsSearchKeywords, processPolymarketSearchResults } from './lib/opportunitySearch'
 
 // shadcn/ui components
@@ -95,7 +100,15 @@ import { Button } from './components/ui/button'
 import { Input } from './components/ui/input'
 import { Separator } from './components/ui/separator'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './components/ui/tooltip'
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from './components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from './components/ui/select'
 
 // App components
 import OpportunityCard from './components/OpportunityCard'
@@ -143,7 +156,17 @@ const DiscoveryPanel = lazy(() => import('./components/DiscoveryPanel'))
 const DataPanel = lazy(() => import('./components/DataPanel'))
 const TradersNetworkPanel = lazy(() => import('./components/TradersNetworkPanel'))
 
-type Tab = 'opportunities' | 'data' | 'trading' | 'strategies' | 'accounts' | 'traders' | 'positions' | 'performance' | 'ai' | 'settings'
+type Tab =
+  | 'opportunities'
+  | 'data'
+  | 'trading'
+  | 'strategies'
+  | 'accounts'
+  | 'traders'
+  | 'positions'
+  | 'performance'
+  | 'ai'
+  | 'settings'
 type TradersSubTab = 'discovery' | 'pool' | 'tracked' | 'analysis' | 'graph' | 'manage'
 type OpportunitiesView = string
 type CopilotSeedPrompt = { id: number; prompt: string; autoSend: boolean }
@@ -151,10 +174,16 @@ type CopilotSeedPrompt = { id: number; prompt: string; autoSend: boolean }
 const ITEMS_PER_PAGE = 20
 const ANALYZE_ALL_IDS_PAGE_SIZE = 500
 
-// Mirror PositionsPanel: shadow bots write mode=shadow; paper mode also counts.
-const HEADER_OPEN_PAPER_ORDER_STATUSES = new Set(['submitted', 'executed', 'open', 'working', 'partial'])
-const HEADER_PAPER_SHADOW_ORDER_MODES = new Set(['paper', 'shadow'])
-const HEADER_CLOSED_PAPER_ORDER_STATUSES = new Set([
+// Shadow bots write mode=shadow (legacy paper alias still accepted when reading).
+const HEADER_OPEN_SHADOW_ORDER_STATUSES = new Set([
+  'submitted',
+  'executed',
+  'open',
+  'working',
+  'partial',
+])
+const HEADER_SHADOW_ORDER_MODES = new Set(['shadow', 'paper'])
+const HEADER_CLOSED_SHADOW_ORDER_STATUSES = new Set([
   'closed_win',
   'closed_loss',
   'resolved_win',
@@ -176,7 +205,9 @@ function headerReadString(value: unknown): string | null {
 }
 
 function headerNormalizeDirection(raw: string | null | undefined): string {
-  const direction = String(raw || '').trim().toUpperCase()
+  const direction = String(raw || '')
+    .trim()
+    .toUpperCase()
   if (!direction) return 'N/A'
   if (direction === 'BUY_YES' || direction === 'SELL_YES') return 'YES'
   if (direction === 'BUY_NO' || direction === 'SELL_NO') return 'NO'
@@ -217,47 +248,51 @@ function aggregateSandboxShadowInventory(
   unrealizedPnl: number
   closedRealizedPnl: number
 } {
-  const buckets = new Map<string, {
-    costBasis: number
-    weightedEntry: number
-    weightedSize: number
-    markPrice: number | null
-    unrealizedFromApi: number | null
-  }>()
+  const buckets = new Map<
+    string,
+    {
+      costBasis: number
+      weightedEntry: number
+      weightedSize: number
+      markPrice: number | null
+      unrealizedFromApi: number | null
+    }
+  >()
 
   let closedRealizedPnl = 0
 
   for (const order of orders) {
     const mode = String(order.mode || '').toLowerCase()
-    if (!HEADER_PAPER_SHADOW_ORDER_MODES.has(mode)) continue
+    if (!HEADER_SHADOW_ORDER_MODES.has(mode)) continue
 
-    const payload = (order.payload && typeof order.payload === 'object')
-      ? order.payload as Record<string, unknown>
-      : {}
-    const simulationLedger = (payload.simulation_ledger && typeof payload.simulation_ledger === 'object')
-      ? payload.simulation_ledger as Record<string, unknown>
-      : null
+    const payload =
+      order.payload && typeof order.payload === 'object'
+        ? (order.payload as Record<string, unknown>)
+        : {}
+    const simulationLedger =
+      payload.simulation_ledger && typeof payload.simulation_ledger === 'object'
+        ? (payload.simulation_ledger as Record<string, unknown>)
+        : null
     const linkedAccountId = headerReadString(simulationLedger?.account_id)
     // Include: exact ledger match OR no ledger (orphan shadow fill).
     // Exclude: ledger stamped to a *different* sandbox account.
     if (linkedAccountId && linkedAccountId !== accountId) continue
 
     const status = String(order.status || '').toLowerCase()
-    if (HEADER_CLOSED_PAPER_ORDER_STATUSES.has(status)) {
+    if (HEADER_CLOSED_SHADOW_ORDER_STATUSES.has(status)) {
       // Prefer position_close.realized_pnl, then actual_profit; recompute
       // when fill price is a tick-floor bug (entry vs effective diverge).
-      const positionClose = (payload.position_close && typeof payload.position_close === 'object')
-        ? payload.position_close as Record<string, unknown>
-        : null
+      const positionClose =
+        payload.position_close && typeof payload.position_close === 'object'
+          ? (payload.position_close as Record<string, unknown>)
+          : null
       const closePx = headerToNumber(positionClose?.close_price)
       const entry = headerResolveOrderEntryPrice(order)
       const notional = Math.max(
         Math.abs(headerToNumber(order.notional_usd)),
         Math.abs(headerToNumber(order.filled_notional_usd)),
       )
-      let closedPnl = headerToNumber(
-        positionClose?.realized_pnl ?? order.actual_profit,
-      )
+      let closedPnl = headerToNumber(positionClose?.realized_pnl ?? order.actual_profit)
       if (entry >= 0.01 && closePx > 0 && notional > 0) {
         const shares = notional / entry
         const recomputed = shares * closePx - notional
@@ -271,7 +306,7 @@ function aggregateSandboxShadowInventory(
       closedRealizedPnl += closedPnl
       continue
     }
-    if (!HEADER_OPEN_PAPER_ORDER_STATUSES.has(status)) continue
+    if (!HEADER_OPEN_SHADOW_ORDER_STATUSES.has(status)) continue
 
     const marketId = headerReadString(order.market_id) || ''
     if (!marketId) continue
@@ -279,9 +314,10 @@ function aggregateSandboxShadowInventory(
     const side = headerNormalizeDirection(order.direction_side ?? order.direction)
     const traderId = headerReadString(order.trader_id)
     // Keep per-bot rows for shadow so header Pos matches Positions / Bots.
-    const bucketScope = mode === 'shadow'
-      ? (traderId || linkedAccountId || 'unassigned')
-      : (linkedAccountId || 'unassigned')
+    const bucketScope =
+      mode === 'shadow'
+        ? traderId || linkedAccountId || 'unassigned'
+        : linkedAccountId || 'unassigned'
     const key = `${mode}:${bucketScope}:${marketId}:${side}`
 
     const notional = Math.max(
@@ -289,9 +325,10 @@ function aggregateSandboxShadowInventory(
       Math.abs(headerToNumber(order.filled_notional_usd)),
     )
     const entryPrice = headerResolveOrderEntryPrice(order)
-    const positionState = (payload.position_state && typeof payload.position_state === 'object')
-      ? payload.position_state as Record<string, unknown>
-      : null
+    const positionState =
+      payload.position_state && typeof payload.position_state === 'object'
+        ? (payload.position_state as Record<string, unknown>)
+        : null
     const markFromOrder = headerToNumber(order.current_price)
     const markFromState = headerToNumber(positionState?.last_mark_price)
     const markPriceRaw = markFromOrder > 0 ? markFromOrder : markFromState
@@ -331,12 +368,12 @@ function aggregateSandboxShadowInventory(
     const entryPrice = bucket.costBasis > 0 ? bucket.weightedEntry / bucket.costBasis : null
     const size = bucket.weightedSize > 0 ? bucket.weightedSize : null
     const currentPrice = bucket.markPrice
-    const rowMarketValue = (currentPrice !== null && size !== null && size > 0)
-      ? currentPrice * size
-      : bucket.costBasis
-    const computedU = (currentPrice !== null && entryPrice !== null && size !== null && size > 0)
-      ? (currentPrice - entryPrice) * size
-      : null
+    const rowMarketValue =
+      currentPrice !== null && size !== null && size > 0 ? currentPrice * size : bucket.costBasis
+    const computedU =
+      currentPrice !== null && entryPrice !== null && size !== null && size > 0
+        ? (currentPrice - entryPrice) * size
+        : null
     const rowUnrealized = computedU !== null ? computedU : (bucket.unrealizedFromApi ?? 0)
     marketValue += rowMarketValue
     unrealizedPnl += rowUnrealized
@@ -437,7 +474,9 @@ const STRATEGY_SUBTYPE_LABELS: Record<string, Record<string, string>> = {
 }
 
 function normalizeStrategiesSourceFilter(source: unknown): string | null {
-  const value = String(source || '').trim().toLowerCase()
+  const value = String(source || '')
+    .trim()
+    .toLowerCase()
   if (!value) return null
   return value
 }
@@ -519,12 +558,16 @@ const OPPORTUNITY_TAB_CONFIG: Record<string, OpportunityTabConfig> = {
 
 // Tailwind active-state classes per color token (kept static so Tailwind purge finds them)
 const TAB_ACTIVE_CLASSES: Record<OpportunityTabConfig['color'], string> = {
-  green: 'bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30 hover:text-green-400',
-  orange: 'bg-orange-500/20 text-orange-400 border-orange-500/30 hover:bg-orange-500/30 hover:text-orange-400',
-  amber: 'bg-amber-500/20 text-amber-400 border-amber-500/30 hover:bg-amber-500/30 hover:text-amber-400',
+  green:
+    'bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30 hover:text-green-400',
+  orange:
+    'bg-orange-500/20 text-orange-400 border-orange-500/30 hover:bg-orange-500/30 hover:text-orange-400',
+  amber:
+    'bg-amber-500/20 text-amber-400 border-amber-500/30 hover:bg-amber-500/30 hover:text-amber-400',
   cyan: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/30 hover:text-cyan-400',
   blue: 'bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30 hover:text-blue-400',
-  emerald: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/30 hover:text-emerald-400',
+  emerald:
+    'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/30 hover:text-emerald-400',
 }
 
 const TAB_COUNT_CLASSES: Record<OpportunityTabConfig['color'], string> = {
@@ -557,20 +600,18 @@ function resolveWorkerHealth(worker?: WorkerStatus): {
   const control = (worker.control || {}) as Record<string, any>
   const paused = Boolean(control.is_paused)
   const enabled =
-    typeof control.is_enabled === 'boolean'
-      ? Boolean(control.is_enabled)
-      : Boolean(worker.enabled)
+    typeof control.is_enabled === 'boolean' ? Boolean(control.is_enabled) : Boolean(worker.enabled)
   const running = Boolean(worker.running)
   const activity = String(worker.current_activity || '').trim()
   const activityKey = activity.toLowerCase()
   const activeHint =
-    activityKey.length > 0
-    && !activityKey.startsWith('idle')
-    && !activityKey.startsWith('paused')
-    && !activityKey.startsWith('disabled')
-    && !activityKey.startsWith('stopped')
-    && !activityKey.startsWith('waiting')
-    && !activityKey.startsWith('blocked')
+    activityKey.length > 0 &&
+    !activityKey.startsWith('idle') &&
+    !activityKey.startsWith('paused') &&
+    !activityKey.startsWith('disabled') &&
+    !activityKey.startsWith('stopped') &&
+    !activityKey.startsWith('waiting') &&
+    !activityKey.startsWith('blocked')
   const lastError = String(worker.last_error || '').trim()
 
   if (lastError) {
@@ -623,7 +664,11 @@ function App() {
   const [analyzeScope, setAnalyzeScope] = useState<'visible' | 'all'>('visible')
   const [analyzeMenuOpen, setAnalyzeMenuOpen] = useState(false)
   const [copilotOpen, setCopilotOpen] = useState(false)
-  const [copilotContext, setCopilotContext] = useState<{ type?: string; id?: string; label?: string }>({})
+  const [copilotContext, setCopilotContext] = useState<{
+    type?: string
+    id?: string
+    label?: string
+  }>({})
   const [copilotSeedPrompt, setCopilotSeedPrompt] = useState<CopilotSeedPrompt | null>(null)
   const [commandBarOpen, setCommandBarOpen] = useState(false)
   // Top-level unified search overlay.  When non-null, renders the
@@ -640,9 +685,17 @@ function App() {
   const [scannerActivity, setScannerActivity] = useState<string>('Idle')
   const [headerSearchQuery, setHeaderSearchQuery] = useState('')
   const [headerSearchOpen, setHeaderSearchOpen] = useState(false)
-  const [pendingStrategiesSourceFilter, setPendingStrategiesSourceFilter] = useState<string | null>(null)
-  const [weatherAnalyzeTargets, setWeatherAnalyzeTargets] = useState<AnalyzeTargets>({ visibleIds: [], allIds: [] })
-  const [tradersAnalyzeTargets, setTradersAnalyzeTargets] = useState<AnalyzeTargets>({ visibleIds: [], allIds: [] })
+  const [pendingStrategiesSourceFilter, setPendingStrategiesSourceFilter] = useState<string | null>(
+    null,
+  )
+  const [weatherAnalyzeTargets, setWeatherAnalyzeTargets] = useState<AnalyzeTargets>({
+    visibleIds: [],
+    allIds: [],
+  })
+  const [tradersAnalyzeTargets, setTradersAnalyzeTargets] = useState<AnalyzeTargets>({
+    visibleIds: [],
+    allIds: [],
+  })
   const headerSearchRef = useRef<HTMLInputElement>(null)
   const headerSearchContainerRef = useRef<HTMLDivElement>(null)
   const analyzeMenuRef = useRef<HTMLDivElement>(null)
@@ -705,24 +758,27 @@ function App() {
     }
   }, [refetchUiLockStatus, uiLockEnabled, uiLocked])
 
-  const handleUnlockUi = useCallback(async (password: string) => {
-    setUiUnlockError(null)
-    try {
-      await uiUnlockMutation.mutateAsync(password)
-      setLocalUiLocked(false)
-      idleLockTriggeredRef.current = false
-      lastInteractionAtRef.current = Date.now()
-      lastActivityPostAtRef.current = 0
-      await sendUILockActivity()
-      await refetchUiLockStatus()
-      window.dispatchEvent(new CustomEvent('ui-lock-unlocked'))
-      queryClient.invalidateQueries()
-    } catch (error: any) {
-      const detail = error?.response?.data?.detail
-      setUiUnlockError(detail || error?.message || 'Unlock failed')
-      setLocalUiLocked(true)
-    }
-  }, [queryClient, refetchUiLockStatus, uiUnlockMutation])
+  const handleUnlockUi = useCallback(
+    async (password: string) => {
+      setUiUnlockError(null)
+      try {
+        await uiUnlockMutation.mutateAsync(password)
+        setLocalUiLocked(false)
+        idleLockTriggeredRef.current = false
+        lastInteractionAtRef.current = Date.now()
+        lastActivityPostAtRef.current = 0
+        await sendUILockActivity()
+        await refetchUiLockStatus()
+        window.dispatchEvent(new CustomEvent('ui-lock-unlocked'))
+        queryClient.invalidateQueries()
+      } catch (error: any) {
+        const detail = error?.response?.data?.detail
+        setUiUnlockError(detail || error?.message || 'Unlock failed')
+        setLocalUiLocked(true)
+      }
+    },
+    [queryClient, refetchUiLockStatus, uiUnlockMutation],
+  )
 
   useEffect(() => {
     if (!uiLockEnabled || uiLocked) return
@@ -766,7 +822,14 @@ function App() {
       window.removeEventListener('focus', markInteraction)
       document.removeEventListener('visibilitychange', onVisibility)
     }
-  }, [handleForceLock, postUiActivity, refetchUiLockStatus, uiLockEnabled, uiLockTimeoutMinutes, uiLocked])
+  }, [
+    handleForceLock,
+    postUiActivity,
+    refetchUiLockStatus,
+    uiLockEnabled,
+    uiLockTimeoutMinutes,
+    uiLocked,
+  ])
 
   useEffect(() => {
     const onLockRequired = () => {
@@ -804,39 +867,57 @@ function App() {
   }, [])
 
   // Open copilot with context
-  const handleOpenCopilot = useCallback((contextType?: string, contextId?: string, label?: string) => {
-    handleOpenCopilotRequest({ contextType, contextId, label })
-  }, [handleOpenCopilotRequest])
+  const handleOpenCopilot = useCallback(
+    (contextType?: string, contextId?: string, label?: string) => {
+      handleOpenCopilotRequest({ contextType, contextId, label })
+    },
+    [handleOpenCopilotRequest],
+  )
 
   // Open copilot from opportunity card
-  const handleOpenCopilotForOpportunity = useCallback((opp: Opportunity) => {
-    handleOpenCopilot('opportunity', opp.id, opp.title)
-  }, [handleOpenCopilot])
+  const handleOpenCopilotForOpportunity = useCallback(
+    (opp: Opportunity) => {
+      handleOpenCopilot('opportunity', opp.id, opp.title)
+    },
+    [handleOpenCopilot],
+  )
 
   // Navigate to AI tab with specific section
-  const handleNavigateToAI = useCallback((section: string) => {
-    setActiveTab('ai')
-    if (section === 'chat') {
-      setAiTabSubtab('chat')
-    } else if (section === 'agents') {
-      setAiTabSubtab('agents')
-    } else if (section === 'tools') {
-      setAiTabSubtab('tools')
-    } else if (section === 'providers' || section === 'llm') {
-      setAiTabSubtab('providers')
-    } else if (section === 'models') {
-      setAiTabSubtab('models')
-    } else if (section === 'judgments' || section === 'activity' || section === 'usage') {
-      setAiTabSubtab('activity')
-    } else if (section === 'resolution' || section === 'market' || section === 'news' || section === 'analyze') {
-      // Analysis can be done via chat now
-      setAiTabSubtab('chat')
-    } else if (section === 'system' || section === 'skills' || section === 'sessions' || section === 'status') {
-      setAiTabSubtab('activity')
-    }
-    window.dispatchEvent(new CustomEvent('navigate-ai-section', { detail: section }))
-  }, [setAiTabSubtab])
-
+  const handleNavigateToAI = useCallback(
+    (section: string) => {
+      setActiveTab('ai')
+      if (section === 'chat') {
+        setAiTabSubtab('chat')
+      } else if (section === 'agents') {
+        setAiTabSubtab('agents')
+      } else if (section === 'tools') {
+        setAiTabSubtab('tools')
+      } else if (section === 'providers' || section === 'llm') {
+        setAiTabSubtab('providers')
+      } else if (section === 'models') {
+        setAiTabSubtab('models')
+      } else if (section === 'judgments' || section === 'activity' || section === 'usage') {
+        setAiTabSubtab('activity')
+      } else if (
+        section === 'resolution' ||
+        section === 'market' ||
+        section === 'news' ||
+        section === 'analyze'
+      ) {
+        // Analysis can be done via chat now
+        setAiTabSubtab('chat')
+      } else if (
+        section === 'system' ||
+        section === 'skills' ||
+        section === 'sessions' ||
+        section === 'status'
+      ) {
+        setAiTabSubtab('activity')
+      }
+      window.dispatchEvent(new CustomEvent('navigate-ai-section', { detail: section }))
+    },
+    [setAiTabSubtab],
+  )
 
   // Navigate to news tab with a keyword search from an opportunity
   const handleSearchNewsForOpportunity = useCallback((opp: Opportunity) => {
@@ -886,7 +967,10 @@ function App() {
   // Close header search dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (headerSearchContainerRef.current && !headerSearchContainerRef.current.contains(e.target as Node)) {
+      if (
+        headerSearchContainerRef.current &&
+        !headerSearchContainerRef.current.contains(e.target as Node)
+      ) {
         setHeaderSearchOpen(false)
       }
     }
@@ -926,19 +1010,21 @@ function App() {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<unknown>).detail
       const detailObject =
-        typeof detail === 'object' && detail !== null
-          ? (detail as Record<string, unknown>)
-          : null
+        typeof detail === 'object' && detail !== null ? (detail as Record<string, unknown>) : null
       const subtab = detailObject
-        ? String(detailObject.subtab || '').trim().toLowerCase()
-        : String(detail || '').trim().toLowerCase()
+        ? String(detailObject.subtab || '')
+            .trim()
+            .toLowerCase()
+        : String(detail || '')
+            .trim()
+            .toLowerCase()
       if (subtab && subtab !== 'opportunity') return
       setActiveTab('strategies')
       const sourceFilter = detailObject
-        ? detailObject.sourceFilter ??
+        ? (detailObject.sourceFilter ??
           detailObject.source ??
           detailObject.source_key ??
-          detailObject.sourceKey
+          detailObject.sourceKey)
         : null
       const nextFilter = normalizeStrategiesSourceFilter(sourceFilter)
       setPendingStrategiesSourceFilter(nextFilter)
@@ -955,8 +1041,7 @@ function App() {
   useEffect(() => {
     const handler = (event: Event) => {
       const detail = (event as CustomEvent).detail as
-        | { tab?: string; subtab?: string; researchInner?: string }
-        | undefined
+        { tab?: string; subtab?: string; researchInner?: string } | undefined
       if (!detail) return
       if (detail.tab) setActiveTab(detail.tab as Tab)
       try {
@@ -1024,7 +1109,16 @@ function App() {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(0)
-  }, [selectedStrategy, selectedStrategySubtype, selectedCategory, minProfit, maxRisk, searchQuery, polymarketSearchSubmitted, searchSort])
+  }, [
+    selectedStrategy,
+    selectedStrategySubtype,
+    selectedCategory,
+    minProfit,
+    maxRisk,
+    searchQuery,
+    polymarketSearchSubmitted,
+    searchSort,
+  ])
 
   useEffect(() => {
     setSelectedStrategySubtype('')
@@ -1047,41 +1141,55 @@ function App() {
   }, [opportunitiesView])
 
   const usesSharedScannerOpportunitiesQuery =
-    activeTab === 'opportunities'
-    && opportunitiesView !== 'search'
-    && opportunitiesView !== 'crypto'
-    && opportunitiesView !== 'news'
-    && opportunitiesView !== 'weather'
-    && opportunitiesView !== 'traders'
-    && opportunitiesView !== 'sports'
+    activeTab === 'opportunities' &&
+    opportunitiesView !== 'search' &&
+    opportunitiesView !== 'crypto' &&
+    opportunitiesView !== 'news' &&
+    opportunitiesView !== 'weather' &&
+    opportunitiesView !== 'traders' &&
+    opportunitiesView !== 'sports'
 
   // Queries — WS pushes are primary; polling is a degraded fallback.
   // When WS is connected, polls are infrequent. When disconnected, revert to faster polling.
-  const {
-    data: opportunitiesData,
-    isLoading: oppsLoading,
-  } = useQuery({
-    queryKey: ['opportunities', opportunitiesView, selectedStrategy, selectedStrategySubtype, selectedCategory, minProfit, maxRisk, searchQuery, sortBy, sortDir, currentPage],
-    queryFn: () => getOpportunities({
-      strategy: selectedStrategy || undefined,
-      sub_strategy: selectedStrategySubtype || undefined,
-      category: selectedCategory || undefined,
-      min_profit: minProfit,
-      max_risk: maxRisk,
-      search: searchQuery || undefined,
-      sort_by: sortBy,
-      sort_dir: sortDir,
-      limit: ITEMS_PER_PAGE,
-      offset: currentPage * ITEMS_PER_PAGE,
-      include_price_history: true,
-    }),
+  const { data: opportunitiesData, isLoading: oppsLoading } = useQuery({
+    queryKey: [
+      'opportunities',
+      opportunitiesView,
+      selectedStrategy,
+      selectedStrategySubtype,
+      selectedCategory,
+      minProfit,
+      maxRisk,
+      searchQuery,
+      sortBy,
+      sortDir,
+      currentPage,
+    ],
+    queryFn: () =>
+      getOpportunities({
+        strategy: selectedStrategy || undefined,
+        sub_strategy: selectedStrategySubtype || undefined,
+        category: selectedCategory || undefined,
+        min_profit: minProfit,
+        max_risk: maxRisk,
+        search: searchQuery || undefined,
+        sort_by: sortBy,
+        sort_dir: sortDir,
+        limit: ITEMS_PER_PAGE,
+        offset: currentPage * ITEMS_PER_PAGE,
+        include_price_history: true,
+      }),
     enabled: usesSharedScannerOpportunitiesQuery,
     refetchInterval: isConnected ? false : 10000,
   })
 
-  const opportunities = Array.isArray(opportunitiesData?.opportunities) ? opportunitiesData.opportunities : []
+  const opportunities = Array.isArray(opportunitiesData?.opportunities)
+    ? opportunitiesData.opportunities
+    : []
   const parsedTotalOpportunities = Number(opportunitiesData?.total ?? 0)
-  const totalOpportunities = Number.isFinite(parsedTotalOpportunities) ? parsedTotalOpportunities : 0
+  const totalOpportunities = Number.isFinite(parsedTotalOpportunities)
+    ? parsedTotalOpportunities
+    : 0
 
   const wsTopics = useMemo(() => {
     const topics = new Set<string>(['opportunities.summary'])
@@ -1096,7 +1204,9 @@ function App() {
     for (const opportunity of opportunities as Opportunity[]) {
       const markets = Array.isArray(opportunity?.markets) ? opportunity.markets : []
       for (const market of markets) {
-        const rawMarketId = String(market?.condition_id || market?.conditionId || market?.id || '').trim().toLowerCase()
+        const rawMarketId = String(market?.condition_id || market?.conditionId || market?.id || '')
+          .trim()
+          .toLowerCase()
         if (!rawMarketId) continue
         marketIds.add(rawMarketId)
         if (marketIds.size >= 80) break
@@ -1122,9 +1232,7 @@ function App() {
     })
   }, [isConnected, wsChannels, wsTopics, sendMessage])
 
-  const {
-    data: status,
-  } = useQuery({
+  const { data: status } = useQuery({
     queryKey: ['scanner-status'],
     queryFn: getScannerStatus,
     refetchInterval: isConnected ? false : 15000,
@@ -1170,7 +1278,9 @@ function App() {
     if (!stats || typeof stats !== 'object') return null
 
     const confluenceRaw = Number((stats as Record<string, unknown>).confluence_executable)
-    const confluence = Number.isFinite(confluenceRaw) ? Math.max(0, Math.round(confluenceRaw)) : null
+    const confluence = Number.isFinite(confluenceRaw)
+      ? Math.max(0, Math.round(confluenceRaw))
+      : null
     if (confluence == null) return null
     return confluence
   }, [trackedTradersWorker])
@@ -1193,13 +1303,16 @@ function App() {
     const rows = workerNames.map((workerName) => {
       const worker = byName.get(workerName)
       const resolved = resolveWorkerHealth(worker)
-      const orchestratorPaused = workerName === 'trader_orchestrator'
-        && Boolean((worker?.control || {}).is_paused)
-        && resolved.state === 'PAUSED'
+      const orchestratorPaused =
+        workerName === 'trader_orchestrator' &&
+        Boolean((worker?.control || {}).is_paused) &&
+        resolved.state === 'PAUSED'
       const tone: WorkerHealthTone = orchestratorPaused ? 'green' : resolved.tone
       return {
         workerName,
-        label: WORKER_HEALTH_LABEL_KEYS[workerName] ? t(WORKER_HEALTH_LABEL_KEYS[workerName]) : workerName,
+        label: WORKER_HEALTH_LABEL_KEYS[workerName]
+          ? t(WORKER_HEALTH_LABEL_KEYS[workerName])
+          : workerName,
         ...resolved,
         tone,
       }
@@ -1237,7 +1350,10 @@ function App() {
       return {
         state: 'ERROR',
         tone: 'red' as WorkerHealthTone,
-        detail: tradingVpnStatusError instanceof Error ? tradingVpnStatusError.message : 'VPN status request failed.',
+        detail:
+          tradingVpnStatusError instanceof Error
+            ? tradingVpnStatusError.message
+            : 'VPN status request failed.',
       }
     }
 
@@ -1261,7 +1377,9 @@ function App() {
       return {
         state: 'DOWN',
         tone: 'red' as WorkerHealthTone,
-        detail: String(tradingVpnStatus.proxy_ip_error || tradingVpnStatus.error || 'Proxy unreachable.'),
+        detail: String(
+          tradingVpnStatus.proxy_ip_error || tradingVpnStatus.error || 'Proxy unreachable.',
+        ),
       }
     }
 
@@ -1269,7 +1387,9 @@ function App() {
       return {
         state: 'ACTIVE',
         tone: 'green' as WorkerHealthTone,
-        detail: tradingVpnStatus.proxy_ip ? `Trading through ${tradingVpnStatus.proxy_ip}` : 'Proxy reachable and active.',
+        detail: tradingVpnStatus.proxy_ip
+          ? `Trading through ${tradingVpnStatus.proxy_ip}`
+          : 'Proxy reachable and active.',
       }
     }
 
@@ -1325,13 +1445,10 @@ function App() {
 
   const isLiveAccountSelected = selectedAccountId?.startsWith('live:') ?? false
   const selectedLivePlatform = selectedAccountId === 'live:kalshi' ? 'kalshi' : 'polymarket'
-  const selectedSandboxAccountId = (
-    !isLiveAccountSelected && selectedAccountId
-      ? selectedAccountId
-      : null
-  )
+  const selectedSandboxAccountId =
+    !isLiveAccountSelected && selectedAccountId ? selectedAccountId : null
 
-  // Shadow bot inventory lives on trader_orders (mode=shadow/paper), not
+  // Shadow bot inventory lives on trader_orders (mode=shadow), not
   // simulation_positions. Header must use the same source as Positions.
   const { data: headerTraderOrders = [] } = useQuery({
     queryKey: ['header-sandbox-trader-orders'],
@@ -1355,12 +1472,15 @@ function App() {
     refetchInterval: 10000,
     retry: false,
   })
-  const headerPolymarketReady = Boolean(headerTradingStatus?.authenticated || headerTradingStatus?.initialized)
+  const headerPolymarketReady = Boolean(
+    headerTradingStatus?.authenticated || headerTradingStatus?.initialized,
+  )
 
   const { data: headerTradingPositions = [] } = useQuery({
     queryKey: ['live-positions'],
     queryFn: getTradingPositions,
-    enabled: isLiveAccountSelected && selectedLivePlatform === 'polymarket' && headerPolymarketReady,
+    enabled:
+      isLiveAccountSelected && selectedLivePlatform === 'polymarket' && headerPolymarketReady,
     refetchInterval: 15000,
     retry: false,
   })
@@ -1368,7 +1488,8 @@ function App() {
   const { data: headerTradingBalance } = useQuery({
     queryKey: ['trading-balance'],
     queryFn: getTradingBalance,
-    enabled: isLiveAccountSelected && selectedLivePlatform === 'polymarket' && headerPolymarketReady,
+    enabled:
+      isLiveAccountSelected && selectedLivePlatform === 'polymarket' && headerPolymarketReady,
     refetchInterval: 15000,
     retry: false,
   })
@@ -1377,12 +1498,11 @@ function App() {
   const { data: headerPolymarketWalletPnl } = useQuery({
     queryKey: ['header-polymarket-wallet-pnl', headerPolymarketWalletAddress],
     queryFn: () => analyzeWalletPnL(headerPolymarketWalletAddress, 'ALL'),
-    enabled: (
-      isLiveAccountSelected
-      && selectedLivePlatform === 'polymarket'
-      && headerPolymarketReady
-      && headerPolymarketWalletAddress.length > 0
-    ),
+    enabled:
+      isLiveAccountSelected &&
+      selectedLivePlatform === 'polymarket' &&
+      headerPolymarketReady &&
+      headerPolymarketWalletAddress.length > 0,
     refetchInterval: 15000,
     retry: false,
   })
@@ -1398,7 +1518,10 @@ function App() {
   const { data: headerKalshiPositions = [] } = useQuery({
     queryKey: ['kalshi-positions'],
     queryFn: getKalshiPositions,
-    enabled: isLiveAccountSelected && selectedLivePlatform === 'kalshi' && !!headerKalshiStatus?.authenticated,
+    enabled:
+      isLiveAccountSelected &&
+      selectedLivePlatform === 'kalshi' &&
+      !!headerKalshiStatus?.authenticated,
     refetchInterval: 15000,
     retry: false,
   })
@@ -1406,12 +1529,15 @@ function App() {
   const { data: headerKalshiBalance } = useQuery({
     queryKey: ['kalshi-balance'],
     queryFn: getKalshiBalance,
-    enabled: isLiveAccountSelected && selectedLivePlatform === 'kalshi' && !!headerKalshiStatus?.authenticated,
+    enabled:
+      isLiveAccountSelected &&
+      selectedLivePlatform === 'kalshi' &&
+      !!headerKalshiStatus?.authenticated,
     refetchInterval: 15000,
     retry: false,
   })
 
-  const selectedAccount = sandboxAccounts.find(a => a.id === selectedAccountId)
+  const selectedAccount = sandboxAccounts.find((a) => a.id === selectedAccountId)
   const headerStats = useMemo(() => {
     if (!isLiveAccountSelected) {
       const cash = selectedAccount?.current_capital ?? 0
@@ -1428,11 +1554,11 @@ function App() {
       // simulation_positions is often empty while shadow inventory lives on
       // trader_orders. When the sim desk has no open book, trust order inventory.
       const simInventoryEmpty = simOpen === 0 && simBook < 0.01
-      const useOrderInventory = simInventoryEmpty && (
-        shadow.openPositions > 0
-        || Math.abs(shadow.closedRealizedPnl) > 0.0001
-        || shadow.costBasis > 0
-      )
+      const useOrderInventory =
+        simInventoryEmpty &&
+        (shadow.openPositions > 0 ||
+          Math.abs(shadow.closedRealizedPnl) > 0.0001 ||
+          shadow.costBasis > 0)
 
       if (useOrderInventory) {
         const realized = shadow.closedRealizedPnl
@@ -1443,12 +1569,10 @@ function App() {
         const pnl = realized + unrealized
         const roi = initialCapital > 0 ? (pnl / initialCapital) * 100 : 0
         // Free cash when ledger never debited: leftover after open cost.
-        // Clamp at 0 so over-allocated paper (opens > bankroll) shows
+        // Clamp at 0 so over-allocated shadow inventory (opens > bankroll) shows
         // Bal $0 fully deployed, not a confusing negative balance.
         const cashStuckAtInitial = Math.abs(cash - initialCapital) < 1.0
-        const freeCashRaw = cashStuckAtInitial
-          ? (initialCapital + realized - shadow.costBasis)
-          : cash
+        const freeCashRaw = cashStuckAtInitial ? initialCapital + realized - shadow.costBasis : cash
         const balance = Math.max(0, freeCashRaw)
         return {
           portfolioValue,
@@ -1465,12 +1589,8 @@ function App() {
       const hasOpenInventory = simOpen > 0 || simMarket > 0
       // If sim desk still shows empty book but cash is stuck while we have
       // no order inventory either, fall through to account totals.
-      const portfolioValue = hasOpenInventory
-        ? (balance + simMarket)
-        : (initialCapital + simRealized)
-      const pnl = hasOpenInventory
-        ? (portfolioValue - initialCapital)
-        : simRealized
+      const portfolioValue = hasOpenInventory ? balance + simMarket : initialCapital + simRealized
+      const pnl = hasOpenInventory ? portfolioValue - initialCapital : simRealized
       const roi = initialCapital > 0 ? (pnl / initialCapital) * 100 : 0
       // Prefer the larger of sim desk vs shadow bot open count so Pos matches
       // the book the user actually sees (ledger-backed fills appear in both).
@@ -1481,7 +1601,10 @@ function App() {
     if (selectedLivePlatform === 'kalshi') {
       const liveBalance = headerKalshiBalance?.balance ?? headerKalshiStatus?.balance?.balance ?? 0
       const livePositions = headerKalshiPositions.length
-      const livePnl = headerKalshiPositions.reduce((sum, position) => sum + Number(position.unrealized_pnl || 0), 0)
+      const livePnl = headerKalshiPositions.reduce(
+        (sum, position) => sum + Number(position.unrealized_pnl || 0),
+        0,
+      )
       const livePositionMarketValue = headerKalshiPositions.reduce(
         (sum, position) => sum + Number(position.size || 0) * Number(position.current_price || 0),
         0,
@@ -1501,8 +1624,13 @@ function App() {
     }
 
     const liveBalance = headerTradingBalance?.balance ?? 0
-    const livePositions = headerTradingPositions.filter((position) => position.counts_as_open !== false).length
-    const liveUnrealizedPnl = headerTradingPositions.reduce((sum, position) => sum + Number(position.unrealized_pnl || 0), 0)
+    const livePositions = headerTradingPositions.filter(
+      (position) => position.counts_as_open !== false,
+    ).length
+    const liveUnrealizedPnl = headerTradingPositions.reduce(
+      (sum, position) => sum + Number(position.unrealized_pnl || 0),
+      0,
+    )
     const livePositionMarketValue = headerTradingPositions.reduce(
       (sum, position) => sum + Number(position.size || 0) * Number(position.current_price || 0),
       0,
@@ -1516,7 +1644,9 @@ function App() {
     const livePnl = Number.isFinite(livePnlCandidate) ? livePnlCandidate : liveUnrealizedPnl
     const liveRoi = Number.isFinite(liveRoiCandidate)
       ? liveRoiCandidate
-      : (liveCostBasis > 0 ? (liveUnrealizedPnl / liveCostBasis) * 100 : 0)
+      : liveCostBasis > 0
+        ? (liveUnrealizedPnl / liveCostBasis) * 100
+        : 0
     return {
       portfolioValue: liveBalance + livePositionMarketValue,
       balance: liveBalance,
@@ -1553,13 +1683,13 @@ function App() {
     return grouped
   }, [strategies])
   const isGenericDynamicOpportunityView =
-    opportunitiesView !== 'scanner'
-    && opportunitiesView !== 'search'
-    && opportunitiesView !== 'crypto'
-    && opportunitiesView !== 'news'
-    && opportunitiesView !== 'weather'
-    && opportunitiesView !== 'traders'
-    && opportunitiesView !== 'sports'
+    opportunitiesView !== 'scanner' &&
+    opportunitiesView !== 'search' &&
+    opportunitiesView !== 'crypto' &&
+    opportunitiesView !== 'news' &&
+    opportunitiesView !== 'weather' &&
+    opportunitiesView !== 'traders' &&
+    opportunitiesView !== 'sports'
   const activeSourceStrategyTypes = useMemo(
     () => new Set(strategyTypesBySourceKey[opportunitiesView] || []),
     [strategyTypesBySourceKey, opportunitiesView],
@@ -1567,86 +1697,105 @@ function App() {
   const displayOpportunities = useMemo(() => {
     if (!isGenericDynamicOpportunityView) return opportunities
     if (activeSourceStrategyTypes.size === 0) return opportunities
-    return opportunities.filter((opportunity) => activeSourceStrategyTypes.has(opportunity.strategy))
+    return opportunities.filter((opportunity) =>
+      activeSourceStrategyTypes.has(opportunity.strategy),
+    )
   }, [activeSourceStrategyTypes, isGenericDynamicOpportunityView, opportunities])
   const visibleOpportunityIds = useMemo(
     () => Array.from(new Set(displayOpportunities.map((opportunity) => opportunity.id))),
     [displayOpportunities],
   )
-  const scannerOpportunityCountValue = Number(
-    status?.opportunities_count ?? totalOpportunities,
-  )
+  const scannerOpportunityCountValue = Number(status?.opportunities_count ?? totalOpportunities)
   const scannerOpportunityCount = Number.isFinite(scannerOpportunityCountValue)
     ? Math.max(0, Math.trunc(scannerOpportunityCountValue))
     : totalOpportunities
-  const displayableOpportunityCount = opportunitiesView === 'scanner'
-    ? scannerOpportunityCount
-    : displayOpportunities.length
+  const displayableOpportunityCount =
+    opportunitiesView === 'scanner' ? scannerOpportunityCount : displayOpportunities.length
 
-  const {
-    data: strategyFacetCounts,
-  } = useQuery({
-    queryKey: ['opportunity-strategy-counts', selectedCategory, selectedStrategySubtype, minProfit, maxRisk, searchQuery],
-    queryFn: () => getOpportunityCounts({
-      category: selectedCategory || undefined,
-      sub_strategy: selectedStrategySubtype || undefined,
-      min_profit: minProfit,
-      max_risk: maxRisk,
-      search: searchQuery || undefined,
-    }),
+  const { data: strategyFacetCounts } = useQuery({
+    queryKey: [
+      'opportunity-strategy-counts',
+      selectedCategory,
+      selectedStrategySubtype,
+      minProfit,
+      maxRisk,
+      searchQuery,
+    ],
+    queryFn: () =>
+      getOpportunityCounts({
+        category: selectedCategory || undefined,
+        sub_strategy: selectedStrategySubtype || undefined,
+        min_profit: minProfit,
+        max_risk: maxRisk,
+        search: searchQuery || undefined,
+      }),
     enabled: activeTab === 'opportunities' && opportunitiesView === 'scanner',
     refetchInterval: 15000,
   })
 
-  const {
-    data: categoryFacetCounts,
-  } = useQuery({
-    queryKey: ['opportunity-category-counts', selectedStrategy, selectedStrategySubtype, minProfit, maxRisk, searchQuery],
-    queryFn: () => getOpportunityCounts({
-      strategy: selectedStrategy || undefined,
-      sub_strategy: selectedStrategySubtype || undefined,
-      min_profit: minProfit,
-      max_risk: maxRisk,
-      search: searchQuery || undefined,
-    }),
+  const { data: categoryFacetCounts } = useQuery({
+    queryKey: [
+      'opportunity-category-counts',
+      selectedStrategy,
+      selectedStrategySubtype,
+      minProfit,
+      maxRisk,
+      searchQuery,
+    ],
+    queryFn: () =>
+      getOpportunityCounts({
+        strategy: selectedStrategy || undefined,
+        sub_strategy: selectedStrategySubtype || undefined,
+        min_profit: minProfit,
+        max_risk: maxRisk,
+        search: searchQuery || undefined,
+      }),
     enabled: activeTab === 'opportunities' && opportunitiesView === 'scanner',
     refetchInterval: 15000,
   })
 
-  const {
-    data: subfilterCounts,
-  } = useQuery({
-    queryKey: ['opportunity-subfilters', selectedStrategy, selectedCategory, minProfit, maxRisk, searchQuery],
-    queryFn: () => getOpportunityCounts({
-      strategy: selectedStrategy || undefined,
-      category: selectedCategory || undefined,
-      min_profit: minProfit,
-      max_risk: maxRisk,
-      search: searchQuery || undefined,
-    }),
+  const { data: subfilterCounts } = useQuery({
+    queryKey: [
+      'opportunity-subfilters',
+      selectedStrategy,
+      selectedCategory,
+      minProfit,
+      maxRisk,
+      searchQuery,
+    ],
+    queryFn: () =>
+      getOpportunityCounts({
+        strategy: selectedStrategy || undefined,
+        category: selectedCategory || undefined,
+        min_profit: minProfit,
+        max_risk: maxRisk,
+        search: searchQuery || undefined,
+      }),
     enabled: activeTab === 'opportunities' && opportunitiesView === 'scanner' && !!selectedStrategy,
     refetchInterval: 15000,
   })
 
   const { data: newsWorkflowFindingsCount } = useQuery({
     queryKey: ['news-workflow-findings-count'],
-    queryFn: () => getNewsWorkflowFindings({
-      actionable_only: true,
-      include_debug_rejections: false,
-      max_age_hours: 24,
-      limit: 1,
-    }),
+    queryFn: () =>
+      getNewsWorkflowFindings({
+        actionable_only: true,
+        include_debug_rejections: false,
+        max_age_hours: 24,
+        limit: 1,
+      }),
     enabled: activeTab === 'opportunities',
     refetchInterval: isConnected ? false : 30000,
   })
 
   const { data: weatherWorkflowExecutableCount } = useQuery({
     queryKey: ['weather-workflow-opportunities', 'count'],
-    queryFn: () => getWeatherWorkflowOpportunityIds({
-      include_report_only: false,
-      limit: 1,
-      offset: 0,
-    }),
+    queryFn: () =>
+      getWeatherWorkflowOpportunityIds({
+        include_report_only: false,
+        limit: 1,
+        offset: 0,
+      }),
     enabled: activeTab === 'opportunities',
     refetchInterval: isConnected ? false : 30000,
   })
@@ -1675,31 +1824,39 @@ function App() {
   const weatherCount = weatherWorkflowExecutableCount?.total || 0
   const cryptoCount = cryptoMarketCounts?.length || 0
   const sportsCount = sportsOpportunityCountData?.total || 0
-  const signalTotals = useMemo(() => ({
-    pending: Number(signalStats?.totals?.pending || 0),
-    selected: Number(signalStats?.totals?.selected || 0),
-    submitted: Number(signalStats?.totals?.submitted || 0),
-    executed: Number(signalStats?.totals?.executed || 0),
-    skipped: Number(signalStats?.totals?.skipped || 0),
-    expired: Number(signalStats?.totals?.expired || 0),
-    failed: Number(signalStats?.totals?.failed || 0),
-  }), [signalStats?.totals])
+  const signalTotals = useMemo(
+    () => ({
+      pending: Number(signalStats?.totals?.pending || 0),
+      selected: Number(signalStats?.totals?.selected || 0),
+      submitted: Number(signalStats?.totals?.submitted || 0),
+      executed: Number(signalStats?.totals?.executed || 0),
+      skipped: Number(signalStats?.totals?.skipped || 0),
+      expired: Number(signalStats?.totals?.expired || 0),
+      failed: Number(signalStats?.totals?.failed || 0),
+    }),
+    [signalStats?.totals],
+  )
 
   // Counts indexed by source_key — consumed by the dynamic tab renderer
-  const tabCounts: Record<string, number> = useMemo(() => ({
-    scanner: scannerOpportunityCount,
-    traders: tradersCount,
-    news: newsCount,
-    weather: weatherCount,
-    crypto: cryptoCount,
-    sports: sportsCount,
-  }), [scannerOpportunityCount, tradersCount, newsCount, weatherCount, cryptoCount, sportsCount])
+  const tabCounts: Record<string, number> = useMemo(
+    () => ({
+      scanner: scannerOpportunityCount,
+      traders: tradersCount,
+      news: newsCount,
+      weather: weatherCount,
+      crypto: cryptoCount,
+      sports: sportsCount,
+    }),
+    [scannerOpportunityCount, tradersCount, newsCount, weatherCount, cryptoCount, sportsCount],
+  )
 
   // Build opportunities subtabs from the fixed supported source keys.
   // Source keys that are exit-only (no detect/opportunities) are hidden from tabs.
   const HIDDEN_SOURCE_KEYS = new Set(['manual'])
   const opportunityTabs = useMemo(() => {
-    const strategySourceKeys = new Set(strategies.map((s) => normalizeStrategiesSourceKey(s.source_key)))
+    const strategySourceKeys = new Set(
+      strategies.map((s) => normalizeStrategiesSourceKey(s.source_key)),
+    )
     const knownKeys = TAB_ORDER.filter((key) => strategySourceKeys.has(key) || key === 'scanner')
     const knownKeySet = new Set<string>(knownKeys)
     const dynamicKeys = Array.from(strategySourceKeys)
@@ -1748,13 +1905,14 @@ function App() {
 
   // Client-side sorting and filtering for polymarket search results
   const processedPolymarketResults = useMemo(
-    () => processPolymarketSearchResults(
-      polymarketResults,
-      strategyFilterSet,
-      selectedCategory,
-      searchSort
-    ),
-    [polymarketResults, strategyFilterSet, selectedCategory, searchSort]
+    () =>
+      processPolymarketSearchResults(
+        polymarketResults,
+        strategyFilterSet,
+        selectedCategory,
+        searchSort,
+      ),
+    [polymarketResults, strategyFilterSet, selectedCategory, searchSort],
   )
 
   const polymarketTotalFiltered = processedPolymarketResults.length
@@ -1847,20 +2005,19 @@ function App() {
       let opportunityIds: string[] = []
 
       if (opportunitiesView === 'search') {
-        opportunityIds = scope === 'all'
-          ? searchAllOpportunityIds
-          : searchVisibleOpportunityIds
+        opportunityIds = scope === 'all' ? searchAllOpportunityIds : searchVisibleOpportunityIds
       } else if (opportunitiesView === 'weather' || opportunitiesView === 'traders') {
-        opportunityIds = scope === 'all'
-          ? activePanelAnalyzeTargets.allIds
-          : activePanelAnalyzeTargets.visibleIds
+        opportunityIds =
+          scope === 'all' ? activePanelAnalyzeTargets.allIds : activePanelAnalyzeTargets.visibleIds
       } else {
         opportunityIds = visibleOpportunityIds
 
         if (scope === 'all') {
           if (isGenericDynamicOpportunityView && activeSourceStrategyTypes.size > 0) {
             const perStrategyIds = await Promise.all(
-              Array.from(activeSourceStrategyTypes).map((strategyType) => fetchAllOpportunityIds(strategyType)),
+              Array.from(activeSourceStrategyTypes).map((strategyType) =>
+                fetchAllOpportunityIds(strategyType),
+              ),
             )
             opportunityIds = perStrategyIds.flat()
           } else {
@@ -1906,30 +2063,29 @@ function App() {
     ? displayOpportunities.length
     : opportunitiesView === 'weather' || opportunitiesView === 'traders'
       ? activePanelAnalyzeTargets.allIds.length
-    : opportunitiesView === 'search'
-      ? searchAllOpportunityIds.length
-      : totalOpportunities
-  const analyzeVisibleCount = opportunitiesView === 'search'
-    ? searchVisibleOpportunityIds.length
-    : opportunitiesView === 'weather' || opportunitiesView === 'traders'
-      ? activePanelAnalyzeTargets.visibleIds.length
-      : visibleOpportunityIds.length
-  const analyzeTargetCount = analyzeScope === 'visible'
-    ? analyzeVisibleCount
-    : analyzeAllCount
+      : opportunitiesView === 'search'
+        ? searchAllOpportunityIds.length
+        : totalOpportunities
+  const analyzeVisibleCount =
+    opportunitiesView === 'search'
+      ? searchVisibleOpportunityIds.length
+      : opportunitiesView === 'weather' || opportunitiesView === 'traders'
+        ? activePanelAnalyzeTargets.visibleIds.length
+        : visibleOpportunityIds.length
+  const analyzeTargetCount = analyzeScope === 'visible' ? analyzeVisibleCount : analyzeAllCount
   const showAnalyzeControl =
-    opportunitiesView === 'scanner'
-    || isGenericDynamicOpportunityView
-    || opportunitiesView === 'search'
-    || opportunitiesView === 'weather'
-    || opportunitiesView === 'traders'
+    opportunitiesView === 'scanner' ||
+    isGenericDynamicOpportunityView ||
+    opportunitiesView === 'search' ||
+    opportunitiesView === 'weather' ||
+    opportunitiesView === 'traders'
   const analyzeActionLabel = analyzeScope === 'visible' ? 'Analyze Visible' : 'Analyze All'
   const showTopSettingsControl =
-    opportunitiesView === 'scanner'
-    || opportunitiesView === 'crypto'
-    || opportunitiesView === 'news'
-    || opportunitiesView === 'weather'
-    || opportunitiesView === 'traders'
+    opportunitiesView === 'scanner' ||
+    opportunitiesView === 'crypto' ||
+    opportunitiesView === 'news' ||
+    opportunitiesView === 'weather' ||
+    opportunitiesView === 'traders'
 
   const openOpportunitySettings = useCallback(() => {
     if (opportunitiesView === 'scanner') {
@@ -1967,12 +2123,13 @@ function App() {
   const strategyCounts = strategyFacetCounts?.strategies || {}
   const categoryCounts = categoryFacetCounts?.categories || {}
   const visibleStrategies = useMemo(
-    () => strategies.filter((s) => {
-      if (s.type === selectedStrategy) return true
-      if (showZeroCountStrategies) return true
-      return (strategyCounts[s.type] || 0) > 0
-    }),
-    [strategies, selectedStrategy, showZeroCountStrategies, strategyCounts]
+    () =>
+      strategies.filter((s) => {
+        if (s.type === selectedStrategy) return true
+        if (showZeroCountStrategies) return true
+        return (strategyCounts[s.type] || 0) > 0
+      }),
+    [strategies, selectedStrategy, showZeroCountStrategies, strategyCounts],
   )
 
   const SOURCE_GROUP_ORDER = ['scanner', 'weather', 'news', 'crypto', 'traders', 'manual'] as const
@@ -1991,9 +2148,11 @@ function App() {
       if (!groups[key]) groups[key] = []
       groups[key].push(s)
     }
-    return SOURCE_GROUP_ORDER
-      .filter((k) => groups[k]?.length)
-      .map((k) => ({ key: k, label: SOURCE_GROUP_LABELS[k] || k, strategies: groups[k] }))
+    return SOURCE_GROUP_ORDER.filter((k) => groups[k]?.length).map((k) => ({
+      key: k,
+      label: SOURCE_GROUP_LABELS[k] || k,
+      strategies: groups[k],
+    }))
   }, [visibleStrategies])
 
   useEffect(() => {
@@ -2004,12 +2163,12 @@ function App() {
   }, [selectedStrategySubtype, strategySubtypeOptions])
 
   const hasActiveOpportunityFilters =
-    !!selectedStrategy
-    || !!selectedStrategySubtype
-    || !!selectedCategory
-    || minProfit > 0
-    || maxRisk < 1
-    || searchQuery.trim().length > 0
+    !!selectedStrategy ||
+    !!selectedStrategySubtype ||
+    !!selectedCategory ||
+    minProfit > 0 ||
+    maxRisk < 1 ||
+    searchQuery.trim().length > 0
 
   const refreshMarketsMutation = useMutation({
     mutationFn: async () => {
@@ -2032,38 +2191,125 @@ function App() {
   }, [refreshMarketsMutation])
 
   // Keyboard shortcuts
-  const shortcuts: Shortcut[] = useMemo(() => [
-    { key: '1', description: t('shortcuts.goToOpportunities'), category: t('shortcuts.navigation'), action: () => setActiveTab('opportunities') },
-    { key: '2', description: t('shortcuts.goToBots'), category: t('shortcuts.navigation'), action: () => setActiveTab('trading') },
-    { key: '6', description: t('shortcuts.goToPositions'), category: t('shortcuts.navigation'), action: () => setActiveTab('positions') },
-    { key: '7', description: t('shortcuts.goToPerformance'), category: t('shortcuts.navigation'), action: () => setActiveTab('performance') },
-    { key: '4', description: t('shortcuts.goToAccounts'), category: t('shortcuts.navigation'), action: () => setActiveTab('accounts') },
-    { key: '3', description: t('shortcuts.goToStrategies'), category: t('shortcuts.navigation'), action: () => setActiveTab('strategies') },
-    { key: '5', description: t('shortcuts.goToTraders'), category: t('shortcuts.navigation'), action: () => setActiveTab('traders') },
-    { key: 'd', description: t('shortcuts.goToData'), category: t('shortcuts.navigation'), action: () => setActiveTab('data') },
-    { key: '8', description: t('shortcuts.goToAI'), category: t('shortcuts.navigation'), action: () => setActiveTab('ai') },
-    { key: '9', description: t('shortcuts.goToSettings'), category: t('shortcuts.navigation'), action: () => setActiveTab('settings') },
-    { key: 'k', ctrl: true, description: 'Open AI Command Bar', category: 'Actions', action: () => setCommandBarOpen(v => !v) },
-    { key: 'r', ctrl: true, description: 'Trigger Manual Scan', category: 'Actions', action: () => {
-      if (!globallyPaused) {
-        scanMutation.mutate()
-      }
-    } },
-    { key: '/', description: 'Focus Search', category: 'Actions', action: () => {
-      headerSearchRef.current?.focus()
-      setHeaderSearchOpen(true)
-    }},
-    { key: '.', ctrl: true, description: 'Toggle AI Copilot', category: 'Actions', action: () => setCopilotOpen(v => !v) },
-    { key: '?', shift: true, description: 'Show Keyboard Shortcuts', category: 'Help', action: () => setShortcutsHelpOpen(v => !v) },
-    { key: 'Escape', description: 'Close Modals / Panels', category: 'Help', action: () => {
-      setShortcutsHelpOpen(false)
-      setCommandBarOpen(false)
-      setCopilotOpen(false)
-      setAccountSettingsOpen(false)
-      setSearchFiltersOpen(false)
-      setNewsSettingsOpen(false)
-    }},
-  ], [globallyPaused, scanMutation, setShortcutsHelpOpen, t])
+  const shortcuts: Shortcut[] = useMemo(
+    () => [
+      {
+        key: '1',
+        description: t('shortcuts.goToOpportunities'),
+        category: t('shortcuts.navigation'),
+        action: () => setActiveTab('opportunities'),
+      },
+      {
+        key: '2',
+        description: t('shortcuts.goToBots'),
+        category: t('shortcuts.navigation'),
+        action: () => setActiveTab('trading'),
+      },
+      {
+        key: '6',
+        description: t('shortcuts.goToPositions'),
+        category: t('shortcuts.navigation'),
+        action: () => setActiveTab('positions'),
+      },
+      {
+        key: '7',
+        description: t('shortcuts.goToPerformance'),
+        category: t('shortcuts.navigation'),
+        action: () => setActiveTab('performance'),
+      },
+      {
+        key: '4',
+        description: t('shortcuts.goToAccounts'),
+        category: t('shortcuts.navigation'),
+        action: () => setActiveTab('accounts'),
+      },
+      {
+        key: '3',
+        description: t('shortcuts.goToStrategies'),
+        category: t('shortcuts.navigation'),
+        action: () => setActiveTab('strategies'),
+      },
+      {
+        key: '5',
+        description: t('shortcuts.goToTraders'),
+        category: t('shortcuts.navigation'),
+        action: () => setActiveTab('traders'),
+      },
+      {
+        key: 'd',
+        description: t('shortcuts.goToData'),
+        category: t('shortcuts.navigation'),
+        action: () => setActiveTab('data'),
+      },
+      {
+        key: '8',
+        description: t('shortcuts.goToAI'),
+        category: t('shortcuts.navigation'),
+        action: () => setActiveTab('ai'),
+      },
+      {
+        key: '9',
+        description: t('shortcuts.goToSettings'),
+        category: t('shortcuts.navigation'),
+        action: () => setActiveTab('settings'),
+      },
+      {
+        key: 'k',
+        ctrl: true,
+        description: 'Open AI Command Bar',
+        category: 'Actions',
+        action: () => setCommandBarOpen((v) => !v),
+      },
+      {
+        key: 'r',
+        ctrl: true,
+        description: 'Trigger Manual Scan',
+        category: 'Actions',
+        action: () => {
+          if (!globallyPaused) {
+            scanMutation.mutate()
+          }
+        },
+      },
+      {
+        key: '/',
+        description: 'Focus Search',
+        category: 'Actions',
+        action: () => {
+          headerSearchRef.current?.focus()
+          setHeaderSearchOpen(true)
+        },
+      },
+      {
+        key: '.',
+        ctrl: true,
+        description: 'Toggle AI Copilot',
+        category: 'Actions',
+        action: () => setCopilotOpen((v) => !v),
+      },
+      {
+        key: '?',
+        shift: true,
+        description: 'Show Keyboard Shortcuts',
+        category: 'Help',
+        action: () => setShortcutsHelpOpen((v) => !v),
+      },
+      {
+        key: 'Escape',
+        description: 'Close Modals / Panels',
+        category: 'Help',
+        action: () => {
+          setShortcutsHelpOpen(false)
+          setCommandBarOpen(false)
+          setCopilotOpen(false)
+          setAccountSettingsOpen(false)
+          setSearchFiltersOpen(false)
+          setNewsSettingsOpen(false)
+        },
+      },
+    ],
+    [globallyPaused, scanMutation, setShortcutsHelpOpen, t],
+  )
 
   useKeyboardShortcuts(shortcuts, !uiLockOverlayVisible)
 
@@ -2082,13 +2328,12 @@ function App() {
   }, [opportunitiesView, currentPage, totalPages, opportunitiesData])
 
   const scannerIsSettled =
-    scannerActivity.startsWith('Idle')
-    || scannerActivity.startsWith('Scan complete')
-    || scannerActivity.startsWith('Fast scan complete')
-    || scannerActivity.includes('unchanged, skipping')
+    scannerActivity.startsWith('Idle') ||
+    scannerActivity.startsWith('Scan complete') ||
+    scannerActivity.startsWith('Fast scan complete') ||
+    scannerActivity.includes('unchanged, skipping')
   const scannerHasError =
-    scannerActivity.startsWith('Scan error')
-    || scannerActivity.startsWith('Fast scan error')
+    scannerActivity.startsWith('Scan error') || scannerActivity.startsWith('Fast scan error')
   const marketEmptyState: { title: string; description: string } = (() => {
     if (!status?.enabled) {
       return {
@@ -2142,7 +2387,9 @@ function App() {
             <div className="w-7 h-7 bg-green-500/15 rounded-lg flex items-center justify-center border border-green-500/20">
               <Terminal className="w-4 h-4 text-green-400" />
             </div>
-            <span className="text-sm font-bold text-green-400 tracking-wider font-data">HOMERUN</span>
+            <span className="text-sm font-bold text-green-400 tracking-wider font-data">
+              HOMERUN
+            </span>
           </div>
 
           <AccountModeSelector />
@@ -2152,28 +2399,58 @@ function App() {
             <div className="stat-pill flex items-center gap-1 px-2 py-1 rounded-md">
               <Briefcase className="w-3 h-3 text-emerald-400" />
               <span className="text-muted-foreground">Value</span>
-              <FlashNumber value={headerStats.portfolioValue} prefix="$" decimals={2} className="font-data font-semibold text-foreground data-glow-green" />
+              <FlashNumber
+                value={headerStats.portfolioValue}
+                prefix="$"
+                decimals={2}
+                className="font-data font-semibold text-foreground data-glow-green"
+              />
             </div>
             <div className="text-border/60 mx-0.5">|</div>
             <div className="stat-pill flex items-center gap-1 px-2 py-1 rounded-md">
               <Wallet className="w-3 h-3 text-blue-400" />
               <span className="text-muted-foreground">Available Cash</span>
-              <FlashNumber value={headerStats.balance} prefix="$" decimals={2} className="font-data font-semibold text-foreground data-glow-blue" />
+              <FlashNumber
+                value={headerStats.balance}
+                prefix="$"
+                decimals={2}
+                className="font-data font-semibold text-foreground data-glow-blue"
+              />
             </div>
             <div className="stat-pill flex items-center gap-1 px-2 py-1 rounded-md">
               <TrendingUp className="w-3 h-3 text-green-400" />
               <span className="text-muted-foreground">PnL</span>
-              <FlashNumber value={headerStats.pnl} prefix="$" decimals={2} className={cn("font-data font-semibold", headerStats.pnl >= 0 ? "text-green-400" : "text-red-400")} />
+              <FlashNumber
+                value={headerStats.pnl}
+                prefix="$"
+                decimals={2}
+                className={cn(
+                  'font-data font-semibold',
+                  headerStats.pnl >= 0 ? 'text-green-400' : 'text-red-400',
+                )}
+              />
             </div>
             <div className="stat-pill flex items-center gap-1 px-2 py-1 rounded-md">
               <DollarSign className="w-3 h-3 text-yellow-400" />
               <span className="text-muted-foreground">ROI</span>
-              <FlashNumber value={headerStats.roi} suffix="%" decimals={1} className={cn("font-data font-semibold", headerStats.roi >= 0 ? "text-green-400" : "text-red-400")} />
+              <FlashNumber
+                value={headerStats.roi}
+                suffix="%"
+                decimals={1}
+                className={cn(
+                  'font-data font-semibold',
+                  headerStats.roi >= 0 ? 'text-green-400' : 'text-red-400',
+                )}
+              />
             </div>
             <div className="stat-pill flex items-center gap-1 px-2 py-1 rounded-md">
               <Activity className="w-3 h-3 text-purple-400" />
               <span className="text-muted-foreground">Pos</span>
-              <AnimatedNumber value={headerStats.positions} decimals={0} className="font-data font-semibold text-foreground" />
+              <AnimatedNumber
+                value={headerStats.positions}
+                decimals={0}
+                className="font-data font-semibold text-foreground"
+              />
             </div>
           </div>
 
@@ -2225,9 +2502,13 @@ function App() {
                     <Globe className="w-3.5 h-3.5 text-blue-400 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <span className="text-foreground">Search markets for </span>
-                      <span className="text-blue-400 font-medium truncate">&quot;{headerSearchQuery.trim()}&quot;</span>
+                      <span className="text-blue-400 font-medium truncate">
+                        &quot;{headerSearchQuery.trim()}&quot;
+                      </span>
                     </div>
-                    <kbd className="px-1 py-0.5 text-[9px] font-data bg-muted/50 rounded border border-border/50 text-muted-foreground shrink-0">Enter</kbd>
+                    <kbd className="px-1 py-0.5 text-[9px] font-data bg-muted/50 rounded border border-border/50 text-muted-foreground shrink-0">
+                      Enter
+                    </kbd>
                   </button>
                   <button
                     type="button"
@@ -2243,7 +2524,9 @@ function App() {
                     <Target className="w-3.5 h-3.5 text-green-400 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <span className="text-foreground">Filter opportunities for </span>
-                      <span className="text-green-400 font-medium truncate">&quot;{headerSearchQuery.trim()}&quot;</span>
+                      <span className="text-green-400 font-medium truncate">
+                        &quot;{headerSearchQuery.trim()}&quot;
+                      </span>
                     </div>
                   </button>
                   {/^0x[a-fA-F0-9]{6,}$/i.test(headerSearchQuery.trim()) && (
@@ -2262,7 +2545,10 @@ function App() {
                       <Wallet className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
                       <div className="flex-1 min-w-0">
                         <span className="text-foreground">Analyze wallet </span>
-                        <span className="text-yellow-400 font-medium font-data truncate">{headerSearchQuery.trim().slice(0, 10)}...{headerSearchQuery.trim().slice(-4)}</span>
+                        <span className="text-yellow-400 font-medium font-data truncate">
+                          {headerSearchQuery.trim().slice(0, 10)}...
+                          {headerSearchQuery.trim().slice(-4)}
+                        </span>
                       </div>
                     </button>
                   )}
@@ -2293,7 +2579,9 @@ function App() {
                   aria-label="Worker and VPN status"
                   className="h-8 w-8 rounded-md border border-border/60 bg-card/60 hover:bg-card/90 transition-colors flex items-center justify-center cursor-help"
                 >
-                  <span className={cn("h-2.5 w-2.5 rounded-full", WORKER_TONE_CLASS[workerAndVpnTone])} />
+                  <span
+                    className={cn('h-2.5 w-2.5 rounded-full', WORKER_TONE_CLASS[workerAndVpnTone])}
+                  />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" align="end" className="w-[280px] p-2.5">
@@ -2308,23 +2596,42 @@ function App() {
                     <div className="rounded-md border border-border/40 bg-background/70 px-2 py-1.5">
                       <div className="flex items-center justify-between text-[11px]">
                         <span className="flex items-center gap-1.5">
-                          <span className={cn("h-1.5 w-1.5 rounded-full", WORKER_TONE_CLASS[tradingVpnHealth.tone])} />
+                          <span
+                            className={cn(
+                              'h-1.5 w-1.5 rounded-full',
+                              WORKER_TONE_CLASS[tradingVpnHealth.tone],
+                            )}
+                          />
                           <span>{t('workers.tradingVpn')}</span>
                         </span>
-                        <span className="font-data text-muted-foreground">{tradingVpnHealth.state}</span>
+                        <span className="font-data text-muted-foreground">
+                          {tradingVpnHealth.state}
+                        </span>
                       </div>
-                      <p className="mt-1 text-[10px] text-muted-foreground truncate">{tradingVpnHealth.detail}</p>
+                      <p className="mt-1 text-[10px] text-muted-foreground truncate">
+                        {tradingVpnHealth.detail}
+                      </p>
                     </div>
                     {workerHealth.rows.map((worker) => (
-                      <div key={worker.workerName} className="rounded-md border border-border/40 bg-background/70 px-2 py-1.5">
+                      <div
+                        key={worker.workerName}
+                        className="rounded-md border border-border/40 bg-background/70 px-2 py-1.5"
+                      >
                         <div className="flex items-center justify-between text-[11px]">
                           <span className="flex items-center gap-1.5">
-                            <span className={cn("h-1.5 w-1.5 rounded-full", WORKER_TONE_CLASS[worker.tone])} />
+                            <span
+                              className={cn(
+                                'h-1.5 w-1.5 rounded-full',
+                                WORKER_TONE_CLASS[worker.tone],
+                              )}
+                            />
                             <span>{worker.label}</span>
                           </span>
                           <span className="font-data text-muted-foreground">{worker.state}</span>
                         </div>
-                        <p className="mt-1 text-[10px] text-muted-foreground truncate">{worker.detail}</p>
+                        <p className="mt-1 text-[10px] text-muted-foreground truncate">
+                          {worker.detail}
+                        </p>
                       </div>
                     ))}
                   </div>
@@ -2339,13 +2646,15 @@ function App() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => globallyPaused ? resumeAllMutation.mutate() : pauseAllMutation.mutate()}
+                  onClick={() =>
+                    globallyPaused ? resumeAllMutation.mutate() : pauseAllMutation.mutate()
+                  }
                   disabled={pauseAllMutation.isPending || resumeAllMutation.isPending}
                   className={cn(
-                    "h-7 px-2 text-xs gap-1",
+                    'h-7 px-2 text-xs gap-1',
                     globallyPaused
-                      ? "bg-green-500/10 text-green-500 hover:bg-green-500/20 hover:text-green-500"
-                      : "bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20 hover:text-yellow-500"
+                      ? 'bg-green-500/10 text-green-500 hover:bg-green-500/20 hover:text-green-500'
+                      : 'bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20 hover:text-yellow-500',
                   )}
                 >
                   {globallyPaused ? <Play className="w-3 h-3" /> : <Pause className="w-3 h-3" />}
@@ -2393,24 +2702,33 @@ function App() {
                     <button
                       onClick={() => setActiveTab(item.id)}
                       className={cn(
-                        "w-[72px] h-12 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all relative group",
+                        'w-[72px] h-12 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all relative group',
                         isActive
-                          ? (item.id === 'trading'
-                            ? "bg-card/70 shadow-[inset_2px_0_0_0_hsl(var(--primary))] text-green-400"
-                            : "sidebar-item-active text-green-400")
-                          : "text-muted-foreground hover:text-foreground hover:bg-card/60"
+                          ? item.id === 'trading'
+                            ? 'bg-card/70 shadow-[inset_2px_0_0_0_hsl(var(--primary))] text-green-400'
+                            : 'sidebar-item-active text-green-400'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-card/60',
                       )}
                     >
                       {isActive && (
                         <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-green-400 rounded-r shadow-[0_0_8px_rgba(0,255,136,0.3)]" />
                       )}
-                      <Icon className={cn("w-4 h-4", isActive && "drop-shadow-[0_0_4px_rgba(0,255,136,0.3)]")} />
-                      <span className="text-[9px] font-medium leading-none truncate max-w-full">{t(item.labelKey)}</span>
+                      <Icon
+                        className={cn(
+                          'w-4 h-4',
+                          isActive && 'drop-shadow-[0_0_4px_rgba(0,255,136,0.3)]',
+                        )}
+                      />
+                      <span className="text-[9px] font-medium leading-none truncate max-w-full">
+                        {t(item.labelKey)}
+                      </span>
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="right" className="flex items-center gap-2">
                     {t(item.labelKey)}
-                    <kbd className="px-1 py-0.5 text-[9px] font-data bg-muted rounded border border-border">{item.shortcut}</kbd>
+                    <kbd className="px-1 py-0.5 text-[9px] font-data bg-muted rounded border border-border">
+                      {item.shortcut}
+                    </kbd>
                   </TooltipContent>
                 </Tooltip>
               )
@@ -2453,16 +2771,21 @@ function App() {
                             if (key !== 'news') setNewsSearchQuery('')
                           }}
                           className={cn(
-                            "gap-1.5 text-xs h-8",
+                            'gap-1.5 text-xs h-8',
                             isActive
                               ? TAB_ACTIVE_CLASSES[config.color]
-                              : "bg-card text-muted-foreground hover:text-foreground border-border"
+                              : 'bg-card text-muted-foreground hover:text-foreground border-border',
                           )}
                         >
                           <Icon className="w-3.5 h-3.5" />
                           {label}
                           {count != null && (
-                            <span className={cn("ml-0.5 inline-flex items-center justify-center rounded-full text-[10px] font-data font-semibold min-w-[20px] h-4 px-1.5", TAB_COUNT_CLASSES[config.color])}>
+                            <span
+                              className={cn(
+                                'ml-0.5 inline-flex items-center justify-center rounded-full text-[10px] font-data font-semibold min-w-[20px] h-4 px-1.5',
+                                TAB_COUNT_CLASSES[config.color],
+                              )}
+                            >
                               <AnimatedNumber value={count} decimals={0} className="" />
                             </span>
                           )}
@@ -2477,15 +2800,17 @@ function App() {
                         size="sm"
                         onClick={() => setOpportunitiesView('search')}
                         className={cn(
-                          "gap-1.5 text-xs h-8",
+                          'gap-1.5 text-xs h-8',
                           opportunitiesView === 'search'
-                            ? "bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30 hover:text-blue-400"
-                            : "bg-card text-muted-foreground hover:text-foreground border-border"
+                            ? 'bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30 hover:text-blue-400'
+                            : 'bg-card text-muted-foreground hover:text-foreground border-border',
                         )}
                       >
                         <Globe className="w-3.5 h-3.5" />
                         {t('opportunitiesTab.search')}
-                        <span className="ml-0.5 max-w-[120px] truncate text-[10px] opacity-70">&quot;{polymarketSearchSubmitted}&quot;</span>
+                        <span className="ml-0.5 max-w-[120px] truncate text-[10px] opacity-70">
+                          &quot;{polymarketSearchSubmitted}&quot;
+                        </span>
                         <span
                           role="button"
                           tabIndex={0}
@@ -2510,28 +2835,44 @@ function App() {
                     )}
 
                     {/* View Mode Switcher — shown for tabs that support card/list/terminal */}
-                    {(opportunityTabs.find((t) => t.key === opportunitiesView)?.config.hasViewModeSwitcher || opportunitiesView === 'search') && (
+                    {(opportunityTabs.find((t) => t.key === opportunitiesView)?.config
+                      .hasViewModeSwitcher ||
+                      opportunitiesView === 'search') && (
                       <div className="flex items-center gap-0.5 ml-3 border border-border/50 rounded-lg p-0.5 bg-card/50">
-                        {([
-                          { mode: 'card' as const, icon: LayoutGrid, label: t('opportunitiesTab.viewModeCards') },
-                          { mode: 'list' as const, icon: List, label: t('opportunitiesTab.viewModeList') },
-                          { mode: 'terminal' as const, icon: Terminal, label: t('opportunitiesTab.viewModeTerminal') },
-                        ]).map(({ mode, icon: Icon, label }) => (
+                        {[
+                          {
+                            mode: 'card' as const,
+                            icon: LayoutGrid,
+                            label: t('opportunitiesTab.viewModeCards'),
+                          },
+                          {
+                            mode: 'list' as const,
+                            icon: List,
+                            label: t('opportunitiesTab.viewModeList'),
+                          },
+                          {
+                            mode: 'terminal' as const,
+                            icon: Terminal,
+                            label: t('opportunitiesTab.viewModeTerminal'),
+                          },
+                        ].map(({ mode, icon: Icon, label }) => (
                           <Tooltip key={mode} delayDuration={0}>
                             <TooltipTrigger asChild>
                               <button
                                 onClick={() => setOppsViewMode(mode)}
                                 className={cn(
-                                  "p-1.5 rounded-md transition-all",
+                                  'p-1.5 rounded-md transition-all',
                                   oppsViewMode === mode
-                                    ? "bg-primary/20 text-primary shadow-sm"
-                                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                    ? 'bg-primary/20 text-primary shadow-sm'
+                                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
                                 )}
                               >
                                 <Icon className="w-3.5 h-3.5" />
                               </button>
                             </TooltipTrigger>
-                            <TooltipContent side="bottom" className="text-xs">{label}</TooltipContent>
+                            <TooltipContent side="bottom" className="text-xs">
+                              {label}
+                            </TooltipContent>
                           </Tooltip>
                         ))}
                       </div>
@@ -2576,7 +2917,12 @@ function App() {
                               onClick={() => setAnalyzeMenuOpen((open) => !open)}
                               className="w-8 h-8 px-0 rounded-l-none"
                             >
-                              <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", analyzeMenuOpen && "rotate-180")} />
+                              <ChevronDown
+                                className={cn(
+                                  'w-3.5 h-3.5 transition-transform',
+                                  analyzeMenuOpen && 'rotate-180',
+                                )}
+                              />
                             </Button>
                             {analyzeMenuOpen && (
                               <div className="absolute right-0 top-full mt-1.5 w-44 rounded-lg border border-border bg-popover p-1.5 shadow-lg z-30">
@@ -2587,14 +2933,16 @@ function App() {
                                     setAnalyzeMenuOpen(false)
                                   }}
                                   className={cn(
-                                    "w-full rounded-md px-2 py-1.5 text-left text-xs transition-colors flex items-center justify-between",
+                                    'w-full rounded-md px-2 py-1.5 text-left text-xs transition-colors flex items-center justify-between',
                                     analyzeScope === 'visible'
-                                      ? "bg-primary/15 text-primary"
-                                      : "text-muted-foreground hover:text-foreground hover:bg-muted/70"
+                                      ? 'bg-primary/15 text-primary'
+                                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/70',
                                   )}
                                 >
                                   <span>{t('opportunities.analyzeVisible')}</span>
-                                  <span className="font-data text-[10px]">{analyzeVisibleCount}</span>
+                                  <span className="font-data text-[10px]">
+                                    {analyzeVisibleCount}
+                                  </span>
                                 </button>
                                 <button
                                   type="button"
@@ -2603,10 +2951,10 @@ function App() {
                                     setAnalyzeMenuOpen(false)
                                   }}
                                   className={cn(
-                                    "w-full rounded-md px-2 py-1.5 text-left text-xs transition-colors flex items-center justify-between",
+                                    'w-full rounded-md px-2 py-1.5 text-left text-xs transition-colors flex items-center justify-between',
                                     analyzeScope === 'all'
-                                      ? "bg-primary/15 text-primary"
-                                      : "text-muted-foreground hover:text-foreground hover:bg-muted/70"
+                                      ? 'bg-primary/15 text-primary'
+                                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/70',
                                   )}
                                 >
                                   <span>{t('opportunities.analyzeAll')}</span>
@@ -2631,7 +2979,9 @@ function App() {
                       ) : polymarketResults.length === 0 ? (
                         <div className="text-center py-12">
                           <AlertCircle className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
-                          <p className="text-muted-foreground">No markets found for &quot;{polymarketSearchSubmitted}&quot;</p>
+                          <p className="text-muted-foreground">
+                            No markets found for &quot;{polymarketSearchSubmitted}&quot;
+                          </p>
                           <p className="text-sm text-muted-foreground/70 mt-1">
                             Try different keywords or broader search terms
                           </p>
@@ -2641,20 +2991,28 @@ function App() {
                           {/* Result count + Sort pills (Polymarket-style) */}
                           <div className="flex items-center gap-2 mb-4 flex-wrap">
                             <span className="text-xs text-muted-foreground font-data">
-                              {polymarketTotalFiltered} result{polymarketTotalFiltered !== 1 ? 's' : ''} for <span className="text-blue-400 font-medium">&quot;{polymarketSearchSubmitted}&quot;</span>
+                              {polymarketTotalFiltered} result
+                              {polymarketTotalFiltered !== 1 ? 's' : ''} for{' '}
+                              <span className="text-blue-400 font-medium">
+                                &quot;{polymarketSearchSubmitted}&quot;
+                              </span>
                             </span>
 
                             <Separator orientation="vertical" className="h-4 mx-1" />
 
-                            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{t('common.sortBy')}</span>
-                            {([
-                              ['trending', 'Trending'],
-                              ['liquidity', 'Liquidity'],
-                              ['volume', 'Volume'],
-                              ['newest', 'Newest'],
-                              ['ending_soon', 'Ending Soon'],
-                              ['competitive', 'Competitive'],
-                            ] as const).map(([key, label]) => (
+                            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                              {t('common.sortBy')}
+                            </span>
+                            {(
+                              [
+                                ['trending', 'Trending'],
+                                ['liquidity', 'Liquidity'],
+                                ['volume', 'Volume'],
+                                ['newest', 'Newest'],
+                                ['ending_soon', 'Ending Soon'],
+                                ['competitive', 'Competitive'],
+                              ] as const
+                            ).map(([key, label]) => (
                               <button
                                 key={key}
                                 onClick={() => setSearchSort(key)}
@@ -2662,7 +3020,7 @@ function App() {
                                   'px-2.5 py-1 rounded-md text-xs font-medium transition-all',
                                   searchSort === key
                                     ? 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/30'
-                                    : 'bg-muted/40 text-muted-foreground hover:bg-muted/70 hover:text-foreground'
+                                    : 'bg-muted/40 text-muted-foreground hover:bg-muted/70 hover:text-foreground',
                                 )}
                               >
                                 {label}
@@ -2680,16 +3038,19 @@ function App() {
                                 variant="outline"
                                 onClick={() => {
                                   const conditionIds = processedPolymarketResults
-                                    .map(r => r.markets?.[0]?.id)
+                                    .map((r) => r.markets?.[0]?.id)
                                     .filter(Boolean)
                                   evaluateMutation.mutate(conditionIds)
                                 }}
-                                disabled={processedPolymarketResults.length === 0 || evaluateMutation.isPending}
+                                disabled={
+                                  processedPolymarketResults.length === 0 ||
+                                  evaluateMutation.isPending
+                                }
                                 className={cn(
-                                  "text-xs gap-1.5",
+                                  'text-xs gap-1.5',
                                   evalStatus === 'done'
-                                    ? "border-green-500/40 bg-green-500/10 text-green-400"
-                                    : "border-green-500/30 text-green-400 hover:bg-green-500/10 hover:text-green-400"
+                                    ? 'border-green-500/40 bg-green-500/10 text-green-400'
+                                    : 'border-green-500/30 text-green-400 hover:bg-green-500/10 hover:text-green-400',
                                 )}
                               >
                                 {evaluateMutation.isPending ? (
@@ -2699,7 +3060,11 @@ function App() {
                                 ) : (
                                   <Zap className="w-3 h-3" />
                                 )}
-                                {evaluateMutation.isPending ? 'Scanning...' : evalStatus === 'done' ? 'Scan Running' : 'Run Strategies'}
+                                {evaluateMutation.isPending
+                                  ? 'Scanning...'
+                                  : evalStatus === 'done'
+                                    ? 'Scan Running'
+                                    : 'Run Strategies'}
                               </Button>
                             </div>
                           </div>
@@ -2708,13 +3073,20 @@ function App() {
                           <div className="mb-4 rounded-xl border border-border/40 bg-card/40 p-3">
                             <div className="flex gap-3">
                               <div className="flex-1 max-w-xs">
-                                <label className="block text-[10px] text-muted-foreground mb-1 uppercase tracking-wider">{t('common.category')}</label>
-                                <Select value={selectedCategory || '_all'} onValueChange={(v) => setSelectedCategory(v === '_all' ? '' : v)}>
+                                <label className="block text-[10px] text-muted-foreground mb-1 uppercase tracking-wider">
+                                  {t('common.category')}
+                                </label>
+                                <Select
+                                  value={selectedCategory || '_all'}
+                                  onValueChange={(v) => setSelectedCategory(v === '_all' ? '' : v)}
+                                >
                                   <SelectTrigger className="w-full bg-card border-border h-8 text-sm">
                                     <SelectValue placeholder="All Categories" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="_all">{t('opportunities.allCategories')}</SelectItem>
+                                    <SelectItem value="_all">
+                                      {t('opportunities.allCategories')}
+                                    </SelectItem>
                                     {[
                                       { value: 'politics', label: 'Politics' },
                                       { value: 'sports', label: 'Sports' },
@@ -2756,7 +3128,7 @@ function App() {
                                 <OpportunityCard
                                   key={opp.id}
                                   opportunity={opp}
-    
+
                                   onOpenCopilot={handleOpenCopilotForOpportunity}
                                 />
                               ))}
@@ -2769,7 +3141,12 @@ function App() {
                               <Separator />
                               <div className="flex items-center justify-between pt-4">
                                 <div className="text-xs text-muted-foreground">
-                                  {currentPage * ITEMS_PER_PAGE + 1} - {Math.min((currentPage + 1) * ITEMS_PER_PAGE, polymarketTotalFiltered)} of {polymarketTotalFiltered}
+                                  {currentPage * ITEMS_PER_PAGE + 1} -{' '}
+                                  {Math.min(
+                                    (currentPage + 1) * ITEMS_PER_PAGE,
+                                    polymarketTotalFiltered,
+                                  )}{' '}
+                                  of {polymarketTotalFiltered}
                                   {selectedCategory && ` (filtered from ${polymarketTotal})`}
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -2777,7 +3154,7 @@ function App() {
                                     variant="outline"
                                     size="sm"
                                     className="h-7 text-xs"
-                                    onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                                    onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
                                     disabled={currentPage === 0}
                                   >
                                     <ChevronLeft className="w-3.5 h-3.5" />
@@ -2790,7 +3167,7 @@ function App() {
                                     variant="outline"
                                     size="sm"
                                     className="h-7 text-xs"
-                                    onClick={() => setCurrentPage(p => p + 1)}
+                                    onClick={() => setCurrentPage((p) => p + 1)}
                                     disabled={currentPage >= polymarketTotalPages - 1}
                                   >
                                     Next
@@ -2812,7 +3189,6 @@ function App() {
                     <NewsIntelligencePanel initialSearchQuery={newsSearchQuery} mode="workflow" />
                   ) : opportunitiesView === 'weather' ? (
                     <WeatherOpportunitiesPanel
-
                       viewMode={oppsViewMode}
                       showSettingsButton={false}
                       onAnalyzeTargetsChange={setWeatherAnalyzeTargets}
@@ -2832,7 +3208,6 @@ function App() {
                     />
                   ) : opportunitiesView === 'sports' ? (
                     <SportsOpportunitiesPanel
-
                       onOpenCopilot={handleOpenCopilotForOpportunity}
                       viewMode={oppsViewMode}
                     />
@@ -2853,7 +3228,7 @@ function App() {
                       {oppsViewMode === 'terminal' ? (
                         <OpportunityTerminal
                           opportunities={displayOpportunities}
-    
+
                           onOpenCopilot={handleOpenCopilotForOpportunity}
                           isConnected={isConnected}
                           totalCount={displayableOpportunityCount}
@@ -2861,7 +3236,7 @@ function App() {
                       ) : oppsViewMode === 'list' ? (
                         <OpportunityTable
                           opportunities={displayOpportunities}
-    
+
                           onOpenCopilot={handleOpenCopilotForOpportunity}
                         />
                       ) : (
@@ -2883,28 +3258,40 @@ function App() {
                           <Separator />
                           <div className="flex items-center justify-between pt-4">
                             <div className="text-xs text-muted-foreground">
-                              {currentPage * ITEMS_PER_PAGE + 1} - {Math.min((currentPage + 1) * ITEMS_PER_PAGE, displayOpportunities.length)} of {displayOpportunities.length}
+                              {currentPage * ITEMS_PER_PAGE + 1} -{' '}
+                              {Math.min(
+                                (currentPage + 1) * ITEMS_PER_PAGE,
+                                displayOpportunities.length,
+                              )}{' '}
+                              of {displayOpportunities.length}
                             </div>
                             <div className="flex items-center gap-2">
                               <Button
                                 variant="outline"
                                 size="sm"
                                 className="h-7 text-xs"
-                                onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                                onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
                                 disabled={currentPage === 0}
                               >
                                 <ChevronLeft className="w-3.5 h-3.5" />
                                 Prev
                               </Button>
                               <span className="px-2.5 py-1 bg-card rounded-lg text-xs border border-border font-mono">
-                                {currentPage + 1}/{Math.max(1, Math.ceil(displayOpportunities.length / ITEMS_PER_PAGE))}
+                                {currentPage + 1}/
+                                {Math.max(
+                                  1,
+                                  Math.ceil(displayOpportunities.length / ITEMS_PER_PAGE),
+                                )}
                               </span>
                               <Button
                                 variant="outline"
                                 size="sm"
                                 className="h-7 text-xs"
-                                onClick={() => setCurrentPage(p => p + 1)}
-                                disabled={currentPage >= Math.ceil(displayOpportunities.length / ITEMS_PER_PAGE) - 1}
+                                onClick={() => setCurrentPage((p) => p + 1)}
+                                disabled={
+                                  currentPage >=
+                                  Math.ceil(displayOpportunities.length / ITEMS_PER_PAGE) - 1
+                                }
                               >
                                 Next
                                 <ChevronRight className="w-3.5 h-3.5" />
@@ -2930,24 +3317,33 @@ function App() {
                             />
                           </div>
 
-                          <Select value={selectedStrategy || '_all'} onValueChange={(v) => setSelectedStrategy(v === '_all' ? '' : v)}>
+                          <Select
+                            value={selectedStrategy || '_all'}
+                            onValueChange={(v) => setSelectedStrategy(v === '_all' ? '' : v)}
+                          >
                             <SelectTrigger className="w-[170px] shrink-0 bg-card border-border h-8 text-xs">
                               <SelectValue placeholder="Strategy" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="_all">{t('opportunities.allDetectors')}</SelectItem>
+                              <SelectItem value="_all">
+                                {t('opportunities.allDetectors')}
+                              </SelectItem>
                               {groupedStrategies.map((group) => (
                                 <SelectGroup key={group.key}>
-                                  <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium px-2 py-1">{group.label}</SelectLabel>
+                                  <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium px-2 py-1">
+                                    {group.label}
+                                  </SelectLabel>
                                   {group.strategies.map((s) => (
                                     <SelectItem
                                       key={s.type}
                                       value={s.type}
-                                      suffix={strategyCounts[s.type] != null ? (
-                                        <span className="ml-auto pl-2 inline-flex items-center justify-center rounded-full bg-primary/15 text-primary text-[10px] font-medium min-w-[20px] h-4 px-1.5">
-                                          {strategyCounts[s.type]}
-                                        </span>
-                                      ) : undefined}
+                                      suffix={
+                                        strategyCounts[s.type] != null ? (
+                                          <span className="ml-auto pl-2 inline-flex items-center justify-center rounded-full bg-primary/15 text-primary text-[10px] font-medium min-w-[20px] h-4 px-1.5">
+                                            {strategyCounts[s.type]}
+                                          </span>
+                                        ) : undefined
+                                      }
                                     >
                                       {s.name}
                                     </SelectItem>
@@ -2969,22 +3365,26 @@ function App() {
                           {selectedStrategy && strategySubtypeOptions.length > 0 && (
                             <Select
                               value={selectedStrategySubtype || '_all'}
-                              onValueChange={(v) => setSelectedStrategySubtype(v === '_all' ? '' : v)}
+                              onValueChange={(v) =>
+                                setSelectedStrategySubtype(v === '_all' ? '' : v)
+                              }
                             >
                               <SelectTrigger className="w-[200px] shrink-0 bg-card border-border h-8 text-xs">
                                 <SelectValue placeholder="Subfilter" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="_all">{t('opportunities.allSubfilters')}</SelectItem>
+                                <SelectItem value="_all">
+                                  {t('opportunities.allSubfilters')}
+                                </SelectItem>
                                 {strategySubtypeOptions.map((option) => (
                                   <SelectItem
                                     key={option.value}
                                     value={option.value}
-                                    suffix={(
+                                    suffix={
                                       <span className="ml-auto pl-2 inline-flex items-center justify-center rounded-full bg-primary/15 text-primary text-[10px] font-medium min-w-[20px] h-4 px-1.5">
                                         {option.count}
                                       </span>
-                                    )}
+                                    }
                                   >
                                     {option.label}
                                   </SelectItem>
@@ -2993,12 +3393,17 @@ function App() {
                             </Select>
                           )}
 
-                          <Select value={selectedCategory || '_all'} onValueChange={(v) => setSelectedCategory(v === '_all' ? '' : v)}>
+                          <Select
+                            value={selectedCategory || '_all'}
+                            onValueChange={(v) => setSelectedCategory(v === '_all' ? '' : v)}
+                          >
                             <SelectTrigger className="w-[155px] shrink-0 bg-card border-border h-8 text-xs">
                               <SelectValue placeholder="Category" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="_all">{t('opportunities.allCategories')}</SelectItem>
+                              <SelectItem value="_all">
+                                {t('opportunities.allCategories')}
+                              </SelectItem>
                               {[
                                 { value: 'politics', label: 'Politics' },
                                 { value: 'sports', label: 'Sports' },
@@ -3012,11 +3417,13 @@ function App() {
                                 <SelectItem
                                   key={cat.value}
                                   value={cat.value}
-                                  suffix={categoryCounts[cat.value] != null ? (
-                                    <span className="ml-auto pl-2 inline-flex items-center justify-center rounded-full bg-primary/15 text-primary text-[10px] font-medium min-w-[20px] h-4 px-1.5">
-                                      {categoryCounts[cat.value]}
-                                    </span>
-                                  ) : undefined}
+                                  suffix={
+                                    categoryCounts[cat.value] != null ? (
+                                      <span className="ml-auto pl-2 inline-flex items-center justify-center rounded-full bg-primary/15 text-primary text-[10px] font-medium min-w-[20px] h-4 px-1.5">
+                                        {categoryCounts[cat.value]}
+                                      </span>
+                                    ) : undefined
+                                  }
                                 >
                                   {cat.label}
                                 </SelectItem>
@@ -3072,11 +3479,15 @@ function App() {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => setSortDir((d) => d === 'desc' ? 'asc' : 'desc')}
+                            onClick={() => setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'))}
                             className="w-8 h-8 p-0 shrink-0"
                             title={`Sort direction: ${sortDir === 'desc' ? 'descending' : 'ascending'}`}
                           >
-                            {sortDir === 'desc' ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+                            {sortDir === 'desc' ? (
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            ) : (
+                              <ChevronUp className="w-3.5 h-3.5" />
+                            )}
                           </Button>
 
                           <Button
@@ -3086,90 +3497,96 @@ function App() {
                             disabled={isRefreshingMarkets}
                             className="text-xs gap-1.5 h-8 px-2.5 shrink-0 whitespace-nowrap"
                           >
-                            <RefreshCw className={cn("w-3 h-3", isRefreshingMarkets && "animate-spin")} />
+                            <RefreshCw
+                              className={cn('w-3 h-3', isRefreshingMarkets && 'animate-spin')}
+                            />
                             Refresh
                           </Button>
-
                         </div>
                       </div>
 
-                          {/* Opportunities List */}
-                          {oppsLoading ? (
-                            <div className="flex items-center justify-center py-12">
-                              <RefreshCw className="w-8 h-8 animate-spin text-muted-foreground" />
-                            </div>
-                          ) : displayOpportunities.length === 0 ? (
-                            <OpportunityEmptyState
-                              title={marketEmptyState.title}
-                              description={marketEmptyState.description}
+                      {/* Opportunities List */}
+                      {oppsLoading ? (
+                        <div className="flex items-center justify-center py-12">
+                          <RefreshCw className="w-8 h-8 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : displayOpportunities.length === 0 ? (
+                        <OpportunityEmptyState
+                          title={marketEmptyState.title}
+                          description={marketEmptyState.description}
+                        />
+                      ) : (
+                        <>
+                          {oppsViewMode === 'terminal' ? (
+                            <OpportunityTerminal
+                              opportunities={displayOpportunities}
+
+                              onOpenCopilot={handleOpenCopilotForOpportunity}
+                              isConnected={isConnected}
+                              totalCount={displayableOpportunityCount}
+                            />
+                          ) : oppsViewMode === 'list' ? (
+                            <OpportunityTable
+                              opportunities={displayOpportunities}
+
+                              onOpenCopilot={handleOpenCopilotForOpportunity}
                             />
                           ) : (
-                            <>
-                              {oppsViewMode === 'terminal' ? (
-                              <OpportunityTerminal
-                                  opportunities={displayOpportunities}
-    
-                                  onOpenCopilot={handleOpenCopilotForOpportunity}
-                                  isConnected={isConnected}
-                                  totalCount={displayableOpportunityCount}
-                                />
-                              ) : oppsViewMode === 'list' ? (
-                                <OpportunityTable
-                                  opportunities={displayOpportunities}
-    
-                                  onOpenCopilot={handleOpenCopilotForOpportunity}
-                                />
-                              ) : (
-                                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3 card-stagger">
-                                  {displayOpportunities.map((opp) => (
-                                    <OpportunityCard
-                                      key={opp.stable_id || opp.id}
-                                      opportunity={opp}
-        
-                                      onOpenCopilot={handleOpenCopilotForOpportunity}
-                                      onSearchNews={handleSearchNewsForOpportunity}
-                                    />
-                                  ))}
-                                </div>
-                              )}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3 card-stagger">
+                              {displayOpportunities.map((opp) => (
+                                <OpportunityCard
+                                  key={opp.stable_id || opp.id}
+                                  opportunity={opp}
 
-                              {/* Pagination */}
-                              <div className="mt-5">
-                                <Separator />
-                                <div className="flex items-center justify-between pt-4">
-                                  <div className="text-xs text-muted-foreground">
-                                    {currentPage * ITEMS_PER_PAGE + 1} - {Math.min((currentPage + 1) * ITEMS_PER_PAGE, displayableOpportunityCount)} of {displayableOpportunityCount}
-                                    {searchQuery && ` (filtered)`}
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="h-7 text-xs"
-                                      onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
-                                      disabled={currentPage === 0}
-                                    >
-                                      <ChevronLeft className="w-3.5 h-3.5" />
-                                      Prev
-                                    </Button>
-                                    <span className="px-2.5 py-1 bg-card rounded-lg text-xs border border-border font-mono">
-                                      {currentPage + 1}/{totalPages || 1}
-                                    </span>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="h-7 text-xs"
-                                      onClick={() => setCurrentPage(p => p + 1)}
-                                      disabled={currentPage >= totalPages - 1}
-                                    >
-                                      Next
-                                      <ChevronRight className="w-3.5 h-3.5" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              </div>
-                            </>
+                                  onOpenCopilot={handleOpenCopilotForOpportunity}
+                                  onSearchNews={handleSearchNewsForOpportunity}
+                                />
+                              ))}
+                            </div>
                           )}
+
+                          {/* Pagination */}
+                          <div className="mt-5">
+                            <Separator />
+                            <div className="flex items-center justify-between pt-4">
+                              <div className="text-xs text-muted-foreground">
+                                {currentPage * ITEMS_PER_PAGE + 1} -{' '}
+                                {Math.min(
+                                  (currentPage + 1) * ITEMS_PER_PAGE,
+                                  displayableOpportunityCount,
+                                )}{' '}
+                                of {displayableOpportunityCount}
+                                {searchQuery && ` (filtered)`}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 text-xs"
+                                  onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
+                                  disabled={currentPage === 0}
+                                >
+                                  <ChevronLeft className="w-3.5 h-3.5" />
+                                  Prev
+                                </Button>
+                                <span className="px-2.5 py-1 bg-card rounded-lg text-xs border border-border font-mono">
+                                  {currentPage + 1}/{totalPages || 1}
+                                </span>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 text-xs"
+                                  onClick={() => setCurrentPage((p) => p + 1)}
+                                  disabled={currentPage >= totalPages - 1}
+                                >
+                                  Next
+                                  <ChevronRight className="w-3.5 h-3.5" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </>
                   )}
                 </div>
@@ -3234,10 +3651,10 @@ function App() {
                     size="sm"
                     onClick={() => setTradersSubTab('discovery')}
                     className={cn(
-                      "gap-1.5 text-xs h-8",
+                      'gap-1.5 text-xs h-8',
                       tradersSubTab === 'discovery'
-                        ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/30 hover:text-emerald-400"
-                        : "bg-card text-muted-foreground hover:text-foreground border-border"
+                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/30 hover:text-emerald-400'
+                        : 'bg-card text-muted-foreground hover:text-foreground border-border',
                     )}
                   >
                     <Target className="w-3.5 h-3.5" />
@@ -3248,10 +3665,10 @@ function App() {
                     size="sm"
                     onClick={() => setTradersSubTab('tracked')}
                     className={cn(
-                      "gap-1.5 text-xs h-8",
+                      'gap-1.5 text-xs h-8',
                       tradersSubTab === 'tracked'
-                        ? "bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30 hover:text-blue-400"
-                        : "bg-card text-muted-foreground hover:text-foreground border-border"
+                        ? 'bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30 hover:text-blue-400'
+                        : 'bg-card text-muted-foreground hover:text-foreground border-border',
                     )}
                   >
                     <Users className="w-3.5 h-3.5" />
@@ -3262,10 +3679,10 @@ function App() {
                     size="sm"
                     onClick={() => setTradersSubTab('pool')}
                     className={cn(
-                      "gap-1.5 text-xs h-8",
+                      'gap-1.5 text-xs h-8',
                       tradersSubTab === 'pool'
-                        ? "bg-amber-500/20 text-amber-300 border-amber-500/30 hover:bg-amber-500/30 hover:text-amber-300"
-                        : "bg-card text-muted-foreground hover:text-foreground border-border"
+                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/30 hover:bg-amber-500/30 hover:text-amber-300'
+                        : 'bg-card text-muted-foreground hover:text-foreground border-border',
                     )}
                   >
                     <Activity className="w-3.5 h-3.5" />
@@ -3276,10 +3693,10 @@ function App() {
                     size="sm"
                     onClick={() => setTradersSubTab('analysis')}
                     className={cn(
-                      "gap-1.5 text-xs h-8",
+                      'gap-1.5 text-xs h-8',
                       tradersSubTab === 'analysis'
-                        ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/30 hover:text-cyan-400"
-                        : "bg-card text-muted-foreground hover:text-foreground border-border"
+                        ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/30 hover:text-cyan-400'
+                        : 'bg-card text-muted-foreground hover:text-foreground border-border',
                     )}
                   >
                     <Search className="w-3.5 h-3.5" />
@@ -3290,10 +3707,10 @@ function App() {
                     size="sm"
                     onClick={() => setTradersSubTab('graph')}
                     className={cn(
-                      "gap-1.5 text-xs h-8",
+                      'gap-1.5 text-xs h-8',
                       tradersSubTab === 'graph'
-                        ? "bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/30 hover:bg-fuchsia-500/30 hover:text-fuchsia-300"
-                        : "bg-card text-muted-foreground hover:text-foreground border-border"
+                        ? 'bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/30 hover:bg-fuchsia-500/30 hover:text-fuchsia-300'
+                        : 'bg-card text-muted-foreground hover:text-foreground border-border',
                     )}
                   >
                     <Network className="w-3.5 h-3.5" />
@@ -3304,10 +3721,10 @@ function App() {
                     size="sm"
                     onClick={() => setTradersSubTab('manage')}
                     className={cn(
-                      "gap-1.5 text-xs h-8",
+                      'gap-1.5 text-xs h-8',
                       tradersSubTab === 'manage'
-                        ? "bg-violet-500/20 text-violet-300 border-violet-500/30 hover:bg-violet-500/30 hover:text-violet-300"
-                        : "bg-card text-muted-foreground hover:text-foreground border-border"
+                        ? 'bg-violet-500/20 text-violet-300 border-violet-500/30 hover:bg-violet-500/30 hover:text-violet-300'
+                        : 'bg-card text-muted-foreground hover:text-foreground border-border',
                     )}
                   >
                     <Code2 className="w-3.5 h-3.5" />
@@ -3326,18 +3743,12 @@ function App() {
                 >
                   <div className={tradersSubTab === 'discovery' ? '' : 'hidden'}>
                     <Suspense fallback={<PanelFallback label="Loading discovery" />}>
-                      <DiscoveryPanel
-                        view="discovery"
-                        onAnalyzeWallet={handleAnalyzeWallet}
-                      />
+                      <DiscoveryPanel view="discovery" onAnalyzeWallet={handleAnalyzeWallet} />
                     </Suspense>
                   </div>
                   <div className={tradersSubTab === 'pool' ? '' : 'hidden'}>
                     <Suspense fallback={<PanelFallback label="Loading pool" />}>
-                      <DiscoveryPanel
-                        view="pool"
-                        onAnalyzeWallet={handleAnalyzeWallet}
-                      />
+                      <DiscoveryPanel view="pool" onAnalyzeWallet={handleAnalyzeWallet} />
                     </Suspense>
                   </div>
                   <div className={tradersSubTab === 'tracked' ? '' : 'hidden'}>
@@ -3349,14 +3760,19 @@ function App() {
                       }}
                     />
                   </div>
-                  <div className={cn("h-full min-h-0", tradersSubTab === 'analysis' ? '' : 'hidden')}>
+                  <div
+                    className={cn('h-full min-h-0', tradersSubTab === 'analysis' ? '' : 'hidden')}
+                  >
                     <WalletAnalysisPanel
                       initialWallet={walletToAnalyze}
                       initialUsername={walletUsername}
-                      onWalletAnalyzed={() => { setWalletToAnalyze(null); setWalletUsername(null) }}
+                      onWalletAnalyzed={() => {
+                        setWalletToAnalyze(null)
+                        setWalletUsername(null)
+                      }}
                     />
                   </div>
-                  <div className={cn("h-full min-h-0", tradersSubTab === 'graph' ? '' : 'hidden')}>
+                  <div className={cn('h-full min-h-0', tradersSubTab === 'graph' ? '' : 'hidden')}>
                     <Suspense fallback={<PanelFallback label="Loading network graph" />}>
                       <TradersNetworkPanel
                         onAnalyzeWallet={handleAnalyzeWallet}
@@ -3367,7 +3783,7 @@ function App() {
                       />
                     </Suspense>
                   </div>
-                  <div className={cn("h-full min-h-0", tradersSubTab === 'manage' ? '' : 'hidden')}>
+                  <div className={cn('h-full min-h-0', tradersSubTab === 'manage' ? '' : 'hidden')}>
                     <Suspense fallback={<PanelFallback label="Loading profile manager" />}>
                       <DiscoveryProfilesManager />
                     </Suspense>
@@ -3403,7 +3819,13 @@ function App() {
                 Use visibility:hidden + h-0 instead of display:none so ResizeObservers
                 in charts can still measure. When tab activates, dispatch resize so any
                 charts that mounted while hidden recalculate their dimensions. */}
-            <div className={activeTab === 'ai' ? 'flex-1 overflow-hidden flex flex-col section-enter' : 'invisible h-0 overflow-hidden'}>
+            <div
+              className={
+                activeTab === 'ai'
+                  ? 'flex-1 overflow-hidden flex flex-col section-enter'
+                  : 'invisible h-0 overflow-hidden'
+              }
+            >
               <div className="flex-1 overflow-hidden min-h-0">
                 <AITab />
               </div>
@@ -3462,7 +3884,6 @@ function App() {
           onOpenSearchPage={(q) => setGlobalSearchQuery(q)}
         />
 
-
         {/* Keyboard Shortcuts Help Modal */}
         <KeyboardShortcutsHelp
           isOpen={shortcutsHelpOpen}
@@ -3483,7 +3904,11 @@ function App() {
           onManageStrategies={() => {
             setSearchFiltersOpen(false)
             setActiveTab('strategies')
-            window.dispatchEvent(new CustomEvent('navigate-strategies-subtab', { detail: { subtab: 'opportunity', sourceFilter: 'scanner' } }))
+            window.dispatchEvent(
+              new CustomEvent('navigate-strategies-subtab', {
+                detail: { subtab: 'opportunity', sourceFilter: 'scanner' },
+              }),
+            )
           }}
         />
 

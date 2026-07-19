@@ -2451,7 +2451,9 @@
     "modeLive": "ao vivo",
     "modePaper": "papel",
     "sourceSingular": "fonte",
-    "sourcePlural": "fontes"
+    "sourcePlural": "fontes",
+    "shadow": "Papel",
+    "modeShadow": "papel"
   },
   "restApiSourceForm": {
     "apiUrl": "URL da API",

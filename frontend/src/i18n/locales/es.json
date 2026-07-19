@@ -2451,7 +2451,9 @@
     "modeLive": "real",
     "modePaper": "simulado",
     "sourceSingular": "fuente",
-    "sourcePlural": "fuentes"
+    "sourcePlural": "fuentes",
+    "shadow": "Simulado",
+    "modeShadow": "simulado"
   },
   "restApiSourceForm": {
     "apiUrl": "URL de API",

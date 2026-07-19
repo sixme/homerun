@@ -2451,7 +2451,9 @@
     "modeLive": "реальный",
     "modePaper": "бумажный",
     "sourceSingular": "источник",
-    "sourcePlural": "источников"
+    "sourcePlural": "источников",
+    "shadow": "Бумажный",
+    "modeShadow": "бумажный"
   },
   "restApiSourceForm": {
     "apiUrl": "URL API",

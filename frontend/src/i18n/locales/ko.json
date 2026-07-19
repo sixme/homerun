@@ -2451,7 +2451,9 @@
     "modeLive": "라이브",
     "modePaper": "페이퍼",
     "sourceSingular": "소스",
-    "sourcePlural": "소스"
+    "sourcePlural": "소스",
+    "shadow": "페이퍼",
+    "modeShadow": "페이퍼"
   },
   "restApiSourceForm": {
     "apiUrl": "API URL",

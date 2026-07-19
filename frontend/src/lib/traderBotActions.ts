@@ -11,7 +11,9 @@ type TraderScopeMode = 'tracked' | 'pool' | 'individual' | 'group'
 const VALID_SCOPE_MODES = new Set<TraderScopeMode>(['tracked', 'pool', 'individual', 'group'])
 
 function normalizeWalletAddress(value: unknown): string {
-  return String(value || '').trim().toLowerCase()
+  return String(value || '')
+    .trim()
+    .toLowerCase()
 }
 
 function normalizeUniqueStringList(value: unknown, normalizeLower = false): string[] {
@@ -20,7 +22,9 @@ function normalizeUniqueStringList(value: unknown, normalizeLower = false): stri
   const seen = new Set<string>()
   for (const rawItem of value) {
     const item = normalizeLower
-      ? String(rawItem || '').trim().toLowerCase()
+      ? String(rawItem || '')
+          .trim()
+          .toLowerCase()
       : String(rawItem || '').trim()
     if (!item || seen.has(item)) continue
     seen.add(item)
@@ -34,7 +38,9 @@ function normalizeScopeModes(value: unknown, fallback: TraderScopeMode[]): Trade
   const out: TraderScopeMode[] = []
   const seen = new Set<TraderScopeMode>()
   for (const rawMode of value) {
-    const mode = String(rawMode || '').trim().toLowerCase() as TraderScopeMode
+    const mode = String(rawMode || '')
+      .trim()
+      .toLowerCase() as TraderScopeMode
     if (!VALID_SCOPE_MODES.has(mode) || seen.has(mode)) continue
     seen.add(mode)
     out.push(mode)
@@ -47,7 +53,8 @@ function mergeWalletIntoTradersScope(
   walletAddress: string,
   fallbackModes: TraderScopeMode[],
 ): Record<string, unknown> {
-  const scope = rawScope && typeof rawScope === 'object' ? { ...(rawScope as Record<string, unknown>) } : {}
+  const scope =
+    rawScope && typeof rawScope === 'object' ? { ...(rawScope as Record<string, unknown>) } : {}
   const modes = normalizeScopeModes(scope.modes, fallbackModes)
   const individualWallets = normalizeUniqueStringList(scope.individual_wallets, true)
   const groupIds = normalizeUniqueStringList(scope.group_ids, false)
@@ -67,7 +74,10 @@ function mergeWalletIntoTradersScope(
   }
 }
 
-function mergeWalletIntoSourceConfigs(sourceConfigs: TraderSourceConfig[], walletAddress: string): TraderSourceConfig[] {
+function mergeWalletIntoSourceConfigs(
+  sourceConfigs: TraderSourceConfig[],
+  walletAddress: string,
+): TraderSourceConfig[] {
   const nextSourceConfigs = Array.isArray(sourceConfigs)
     ? sourceConfigs
         .filter((sourceConfig) => sourceConfig && typeof sourceConfig === 'object')
@@ -78,7 +88,9 @@ function mergeWalletIntoSourceConfigs(sourceConfigs: TraderSourceConfig[], walle
 
   for (let index = 0; index < nextSourceConfigs.length; index += 1) {
     const sourceConfig = nextSourceConfigs[index]
-    const sourceKey = String(sourceConfig.source_key || '').trim().toLowerCase()
+    const sourceKey = String(sourceConfig.source_key || '')
+      .trim()
+      .toLowerCase()
     if (sourceKey !== 'traders') continue
 
     hasTradersSource = true
@@ -96,7 +108,10 @@ function mergeWalletIntoSourceConfigs(sourceConfigs: TraderSourceConfig[], walle
     nextSourceConfigs[index] = {
       ...sourceConfig,
       source_key: 'traders',
-      strategy_key: String(sourceConfig.strategy_key || '').trim().toLowerCase() || 'traders_copy_trade',
+      strategy_key:
+        String(sourceConfig.strategy_key || '')
+          .trim()
+          .toLowerCase() || 'traders_copy_trade',
       strategy_version: sourceConfig.strategy_version ?? null,
       strategy_params: strategyParams,
     }
@@ -127,7 +142,13 @@ function shortWalletLabel(walletAddress: string): string {
 
 function resolveUniqueTraderName(baseName: string, traders: Trader[]): string {
   const cleanBase = String(baseName || '').trim() || 'Wallet Copy Bot'
-  const existingNames = new Set(traders.map((trader) => String(trader.name || '').trim().toLowerCase()))
+  const existingNames = new Set(
+    traders.map((trader) =>
+      String(trader.name || '')
+        .trim()
+        .toLowerCase(),
+    ),
+  )
   if (!existingNames.has(cleanBase.toLowerCase())) {
     return cleanBase
   }
@@ -148,7 +169,14 @@ function resolveExistingTrader(traders: Trader[], identifier: string): Trader | 
   const byId = traders.find((trader) => String(trader.id || '').trim() === clean)
   if (byId) return byId
   const lowered = clean.toLowerCase()
-  return traders.find((trader) => String(trader.name || '').trim().toLowerCase() === lowered) || null
+  return (
+    traders.find(
+      (trader) =>
+        String(trader.name || '')
+          .trim()
+          .toLowerCase() === lowered,
+    ) || null
+  )
 }
 
 export type AddWalletToTraderBotTarget = 'new' | 'existing'
@@ -159,7 +187,7 @@ export interface AddWalletToTraderBotRequest {
   target: AddWalletToTraderBotTarget
   newTraderName?: string
   existingTraderIdOrName?: string
-  mode?: 'paper' | 'live'
+  mode?: 'shadow' | 'live'
   tradersSnapshot?: Trader[]
 }
 
@@ -186,7 +214,7 @@ export async function addWalletToTraderBot(
     const trader = await createTrader({
       name: traderName,
       description: `Wallet copy bot seeded from ${walletAddress}`,
-      mode: request.mode === 'live' ? 'live' : 'paper',
+      mode: request.mode === 'live' ? 'live' : 'shadow',
       source_configs: [
         {
           source_key: 'traders',
@@ -214,7 +242,10 @@ export async function addWalletToTraderBot(
     throw new Error(`Bot '${targetIdentifier}' not found`)
   }
 
-  const nextSourceConfigs = mergeWalletIntoSourceConfigs(existingTrader.source_configs || [], walletAddress)
+  const nextSourceConfigs = mergeWalletIntoSourceConfigs(
+    existingTrader.source_configs || [],
+    walletAddress,
+  )
   const trader = await updateTrader(existingTrader.id, { source_configs: nextSourceConfigs })
   return { trader, created: false }
 }

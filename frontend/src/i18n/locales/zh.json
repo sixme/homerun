@@ -2451,7 +2451,9 @@
     "modeLive": "实盘",
     "modePaper": "模拟",
     "sourceSingular": "数据源",
-    "sourcePlural": "数据源"
+    "sourcePlural": "数据源",
+    "shadow": "模拟",
+    "modeShadow": "模拟"
   },
   "restApiSourceForm": {
     "apiUrl": "API URL",

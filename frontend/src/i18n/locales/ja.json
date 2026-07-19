@@ -2451,7 +2451,9 @@
     "modeLive": "ライブ",
     "modePaper": "ペーパー",
     "sourceSingular": "ソース",
-    "sourcePlural": "ソース"
+    "sourcePlural": "ソース",
+    "shadow": "ペーパー",
+    "modeShadow": "ペーパー"
   },
   "restApiSourceForm": {
     "apiUrl": "API URL",

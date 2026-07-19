@@ -61,7 +61,7 @@ import { FlashNumber } from './AnimatedNumber'
 
 type ViewMode = 'all' | 'sandbox' | 'live'
 type LiveVenueFilter = 'all' | 'polymarket' | 'kalshi'
-type PositionVenue = 'sandbox' | 'autotrader-paper' | 'shadow-bot' | 'polymarket-live' | 'kalshi-live'
+type PositionVenue = 'sandbox' | 'shadow-bot' | 'polymarket-live' | 'kalshi-live'
 type PriceMarkMode = 'live' | 'entry_estimate'
 type SideFilter = 'all' | 'yes' | 'no' | 'other'
 type MarkFilter = 'all' | PriceMarkMode
@@ -69,10 +69,9 @@ type SortField = 'exposure' | 'unrealized' | 'pnl_percent' | 'cost_basis' | 'upd
 type SortDirection = 'asc' | 'desc'
 type ExposureFloor = 'all' | '100' | '500' | '1000' | '5000'
 
-// Shadow bots write mode=shadow (not paper). Include both so Positions tab
-// matches Trading → Bots → Positions for open paper/shadow inventory.
-const OPEN_PAPER_ORDER_STATUSES = new Set(['submitted', 'executed', 'open', 'working', 'partial'])
-const PAPER_SHADOW_ORDER_MODES = new Set(['paper', 'shadow'])
+// Canonical non-live bot mode is shadow (legacy "paper" alias was removed).
+const OPEN_SHADOW_ORDER_STATUSES = new Set(['submitted', 'executed', 'open', 'working', 'partial'])
+const SHADOW_ORDER_MODES = new Set(['shadow', 'paper']) // accept legacy paper reads as shadow
 const OPEN_LIVE_MANAGED_ORDER_STATUSES = new Set([
   'pending',
   'submitted',
@@ -84,7 +83,7 @@ const POSITIONS_TABLE_PAGE_SIZE = 100
 const LIVE_MARK_FRESH_MS = 15_000
 /** Shadow lifecycle may re-mark every few seconds; treat ≤2m as fresh. */
 const SHADOW_MARK_FRESH_MS = 120_000
-const CLOSED_PAPER_ORDER_STATUSES = new Set([
+const CLOSED_SHADOW_ORDER_STATUSES = new Set([
   'closed_win',
   'closed_loss',
   'resolved_win',
@@ -104,14 +103,14 @@ const LIVELINE_WINDOW_PRESETS: WindowOption[] = [
   { label: 'All', secs: 60 * 60 * 24 * 365 * 10 },
 ]
 
-const VENUE_META: Record<PositionVenue, {
-  label: string
-}> = {
+const VENUE_META: Record<
+  PositionVenue,
+  {
+    label: string
+  }
+> = {
   sandbox: {
     label: 'Sandbox',
-  },
-  'autotrader-paper': {
-    label: 'Autotrader Paper',
   },
   'shadow-bot': {
     label: 'Shadow Bot',
@@ -221,22 +220,28 @@ function readTimestamp(record: Record<string, unknown>, keys: string[]): string 
 }
 
 function normalizeTokenKey(value: unknown): string {
-  return String(value || '').trim().toLowerCase()
+  return String(value || '')
+    .trim()
+    .toLowerCase()
 }
 
 function extractManagedTokenFromOrder(order: TraderOrder): string | null {
-  const payload = (order.payload && typeof order.payload === 'object')
-    ? order.payload as Record<string, unknown>
-    : {}
-  const liveMarket = (payload.live_market && typeof payload.live_market === 'object')
-    ? payload.live_market as Record<string, unknown>
-    : {}
-  const providerReconciliation = (payload.provider_reconciliation && typeof payload.provider_reconciliation === 'object')
-    ? payload.provider_reconciliation as Record<string, unknown>
-    : {}
-  const providerSnapshot = (providerReconciliation.snapshot && typeof providerReconciliation.snapshot === 'object')
-    ? providerReconciliation.snapshot as Record<string, unknown>
-    : {}
+  const payload =
+    order.payload && typeof order.payload === 'object'
+      ? (order.payload as Record<string, unknown>)
+      : {}
+  const liveMarket =
+    payload.live_market && typeof payload.live_market === 'object'
+      ? (payload.live_market as Record<string, unknown>)
+      : {}
+  const providerReconciliation =
+    payload.provider_reconciliation && typeof payload.provider_reconciliation === 'object'
+      ? (payload.provider_reconciliation as Record<string, unknown>)
+      : {}
+  const providerSnapshot =
+    providerReconciliation.snapshot && typeof providerReconciliation.snapshot === 'object'
+      ? (providerReconciliation.snapshot as Record<string, unknown>)
+      : {}
 
   const candidates: unknown[] = [
     payload.selected_token_id,
@@ -296,7 +301,9 @@ function formatRelativeTime(value: string | null): string {
 }
 
 function normalizeDirection(raw: string | null | undefined): string {
-  const direction = String(raw || '').trim().toUpperCase()
+  const direction = String(raw || '')
+    .trim()
+    .toUpperCase()
   if (!direction) return 'N/A'
   if (direction === 'BUY_YES' || direction === 'SELL_YES') return 'YES'
   if (direction === 'BUY_NO' || direction === 'SELL_NO') return 'NO'
@@ -307,12 +314,16 @@ function normalizeDirection(raw: string | null | undefined): string {
 
 function isYesSide(side: string): boolean {
   const normalized = side.trim().toUpperCase()
-  return normalized === 'YES' || normalized === 'BUY' || normalized === 'LONG' || normalized === 'UP'
+  return (
+    normalized === 'YES' || normalized === 'BUY' || normalized === 'LONG' || normalized === 'UP'
+  )
 }
 
 function isNoSide(side: string): boolean {
   const normalized = side.trim().toUpperCase()
-  return normalized === 'NO' || normalized === 'SELL' || normalized === 'SHORT' || normalized === 'DOWN'
+  return (
+    normalized === 'NO' || normalized === 'SELL' || normalized === 'SHORT' || normalized === 'DOWN'
+  )
 }
 
 function sideBadgeClass(): string {
@@ -345,11 +356,11 @@ function readErrorMessage(error: unknown, fallback: string): string {
     }
     const responseData = candidate.response?.data
     const detail = String(
-      responseData?.detail
-      ?? responseData?.message
-      ?? responseData?.error
-      ?? candidate.message
-      ?? ''
+      responseData?.detail ??
+        responseData?.message ??
+        responseData?.error ??
+        candidate.message ??
+        '',
     ).trim()
     if (detail) return detail
   }
@@ -372,7 +383,9 @@ function toUnixSeconds(value: number): number {
   return Math.trunc(value)
 }
 
-function readHistoryPoint(point: unknown): { time: number; yes: number | null; no: number | null } | null {
+function readHistoryPoint(
+  point: unknown,
+): { time: number; yes: number | null; no: number | null } | null {
   if (Array.isArray(point)) {
     const rawTime = readFinite(point[0])
     if (rawTime === null || rawTime <= 0) return null
@@ -415,7 +428,7 @@ export default function PositionsPanel() {
   const queryClient = useQueryClient()
   const globalSelectedAccountId = useAtomValue(selectedAccountIdAtom)
 
-  // Always default to All so shadow/paper bot inventory is visible even when
+  // Always default to All so shadow bot inventory is visible even when
   // the header account is a live venue (previously forced Live-only and hid
   // every mode=shadow row).
   const [viewMode, setViewMode] = useState<ViewMode>('all')
@@ -480,13 +493,18 @@ export default function PositionsPanel() {
       closeRowModal()
     }
     window.addEventListener('keydown', onKey)
-    return () => { document.body.style.overflow = prev; window.removeEventListener('keydown', onKey) }
+    return () => {
+      document.body.style.overflow = prev
+      window.removeEventListener('keydown', onKey)
+    }
   }, [modalMarket, modalRow])
 
   const shouldShowSandbox = viewMode === 'sandbox' || viewMode === 'all'
   const shouldShowLive = viewMode === 'live' || viewMode === 'all'
-  const shouldFetchPolymarketLive = shouldShowLive && (liveVenueFilter === 'all' || liveVenueFilter === 'polymarket')
-  const shouldFetchKalshiLive = shouldShowLive && (liveVenueFilter === 'all' || liveVenueFilter === 'kalshi')
+  const shouldFetchPolymarketLive =
+    shouldShowLive && (liveVenueFilter === 'all' || liveVenueFilter === 'polymarket')
+  const shouldFetchKalshiLive =
+    shouldShowLive && (liveVenueFilter === 'all' || liveVenueFilter === 'kalshi')
 
   const {
     data: accounts = [],
@@ -498,8 +516,12 @@ export default function PositionsPanel() {
   })
 
   const simulationAccountKey = useMemo(
-    () => accounts.map((account) => account.id).sort().join('|'),
-    [accounts]
+    () =>
+      accounts
+        .map((account) => account.id)
+        .sort()
+        .join('|'),
+    [accounts],
   )
 
   const {
@@ -507,7 +529,12 @@ export default function PositionsPanel() {
     isLoading: simulationPositionsLoading,
     refetch: refetchSimulationPositions,
   } = useQuery<SimulationPositionsPayload>({
-    queryKey: ['positions-panel', 'simulation-open-positions', selectedSandboxAccount, simulationAccountKey],
+    queryKey: [
+      'positions-panel',
+      'simulation-open-positions',
+      selectedSandboxAccount,
+      simulationAccountKey,
+    ],
     queryFn: async () => {
       if (accounts.length === 0) return EMPTY_SIMULATION_PAYLOAD
 
@@ -521,7 +548,7 @@ export default function PositionsPanel() {
         targetAccounts.map(async (account) => ({
           account,
           positions: await getAccountPositions(account.id),
-        }))
+        })),
       )
 
       const positions: SimulationPositionWithAccount[] = []
@@ -538,7 +565,9 @@ export default function PositionsPanel() {
           })
           return
         }
-        failedAccounts.push(targetAccounts[index]?.name || targetAccounts[index]?.id || 'Unknown account')
+        failedAccounts.push(
+          targetAccounts[index]?.name || targetAccounts[index]?.id || 'Unknown account',
+        )
       })
 
       return { positions, failedAccounts }
@@ -563,7 +592,7 @@ export default function PositionsPanel() {
       }
     },
     enabled: shouldShowSandbox || shouldShowLive,
-    refetchInterval: shouldShowLive ? 2000 : (shouldShowSandbox ? 3000 : false),
+    refetchInterval: shouldShowLive ? 2000 : shouldShowSandbox ? 3000 : false,
     staleTime: 0,
     refetchOnMount: 'always',
     retry: false,
@@ -578,14 +607,16 @@ export default function PositionsPanel() {
       const mode = String(order.mode || '').toLowerCase()
       if (mode !== 'shadow' && mode !== 'paper') return
       const status = String(order.status || '').toLowerCase()
-      if (!CLOSED_PAPER_ORDER_STATUSES.has(status)) return
+      if (!CLOSED_SHADOW_ORDER_STATUSES.has(status)) return
       closed += 1
-      const payload = (order.payload && typeof order.payload === 'object')
-        ? order.payload as Record<string, unknown>
-        : {}
-      const positionClose = (payload.position_close && typeof payload.position_close === 'object')
-        ? payload.position_close as Record<string, unknown>
-        : null
+      const payload =
+        order.payload && typeof order.payload === 'object'
+          ? (order.payload as Record<string, unknown>)
+          : {}
+      const positionClose =
+        payload.position_close && typeof payload.position_close === 'object'
+          ? (payload.position_close as Record<string, unknown>)
+          : null
       const entry = resolveOrderEntryPrice(order)
       const notional = Math.max(
         Math.abs(toNumber(order.notional_usd)),
@@ -608,9 +639,7 @@ export default function PositionsPanel() {
     return { realized, wins, losses, closed }
   }, [traderOrders])
 
-  const {
-    data: liveTraders = [],
-  } = useQuery<Trader[]>({
+  const { data: liveTraders = [] } = useQuery<Trader[]>({
     queryKey: ['positions-panel', 'live-traders'],
     queryFn: () => getTraders({ mode: 'live' }),
     enabled: shouldShowLive,
@@ -620,9 +649,7 @@ export default function PositionsPanel() {
     retry: false,
   })
 
-  const {
-    data: shadowTraders = [],
-  } = useQuery<Trader[]>({
+  const { data: shadowTraders = [] } = useQuery<Trader[]>({
     queryKey: ['positions-panel', 'shadow-traders'],
     queryFn: () => getTraders({ mode: 'shadow' }),
     enabled: shouldShowSandbox,
@@ -743,7 +770,7 @@ export default function PositionsPanel() {
 
   const sortedLiveTraders = useMemo(
     () => [...liveTraders].sort((left, right) => left.name.localeCompare(right.name)),
-    [liveTraders]
+    [liveTraders],
   )
 
   const openRowModal = (row: PositionRow) => {
@@ -784,7 +811,9 @@ export default function PositionsPanel() {
         }
       })
       void queryClient.invalidateQueries({ queryKey: ['positions-panel', 'trader-orders-open'] })
-      void queryClient.invalidateQueries({ queryKey: ['positions-panel', 'polymarket-live-open-positions'] })
+      void queryClient.invalidateQueries({
+        queryKey: ['positions-panel', 'polymarket-live-open-positions'],
+      })
     },
     onError: (error: unknown) => {
       setAdoptError(readErrorMessage(error, 'Failed to assign position to bot'))
@@ -875,16 +904,23 @@ export default function PositionsPanel() {
   }, [modalRow])
 
   const managedBotByTokenId = useMemo(() => {
-    const map = new Map<string, {
-      traderId: string
-      traderName: string
-      orderId: string | null
-      updatedAtTs: number
-    }>()
+    const map = new Map<
+      string,
+      {
+        traderId: string
+        traderName: string
+        orderId: string | null
+        updatedAtTs: number
+      }
+    >()
     traderOrders.forEach((order) => {
-      const mode = String(order.mode || '').trim().toLowerCase()
+      const mode = String(order.mode || '')
+        .trim()
+        .toLowerCase()
       if (mode !== 'live') return
-      const status = String(order.status || '').trim().toLowerCase()
+      const status = String(order.status || '')
+        .trim()
+        .toLowerCase()
       if (!OPEN_LIVE_MANAGED_ORDER_STATUSES.has(status)) return
 
       const tokenKey = extractManagedTokenFromOrder(order)
@@ -905,41 +941,35 @@ export default function PositionsPanel() {
     return map
   }, [liveTraderNameById, traderOrders])
 
-  const simulationCoverageKeys = useMemo(() => {
-    const keys = new Set<string>()
-    simulationPayload.positions.forEach((position) => {
-      const key = `${position.accountId}:${position.market_id}:${normalizeDirection(position.side)}`
-      keys.add(key)
-    })
-    return keys
-  }, [simulationPayload.positions])
-
-  const autotraderPaperRows = useMemo<PositionRow[]>(() => {
-    const buckets = new Map<string, {
-      marketId: string
-      marketQuestion: string
-      side: string
-      sideLabel: string
-      linkedAccountId: string | null
-      costBasis: number
-      weightedEntry: number
-      weightedSize: number
-      lastUpdated: string | null
-      status: string | null
-      marketUrl: string | null
-      mode: 'paper' | 'shadow'
-      traderId: string | null
-      orderId: string | null
-      markPrice: number | null
-      markUpdatedAt: string | null
-      orderCount: number
-      unrealizedFromApi: number | null
-    }>()
+  const shadowBotRows = useMemo<PositionRow[]>(() => {
+    const buckets = new Map<
+      string,
+      {
+        marketId: string
+        marketQuestion: string
+        side: string
+        sideLabel: string
+        linkedAccountId: string | null
+        costBasis: number
+        weightedEntry: number
+        weightedSize: number
+        lastUpdated: string | null
+        status: string | null
+        marketUrl: string | null
+        mode: 'shadow'
+        traderId: string | null
+        orderId: string | null
+        markPrice: number | null
+        markUpdatedAt: string | null
+        orderCount: number
+        unrealizedFromApi: number | null
+      }
+    >()
 
     traderOrders.forEach((order) => {
       const mode = String(order.mode || '').toLowerCase()
       const status = String(order.status || '').toLowerCase()
-      if (!PAPER_SHADOW_ORDER_MODES.has(mode) || !OPEN_PAPER_ORDER_STATUSES.has(status)) return
+      if (!SHADOW_ORDER_MODES.has(mode) || !OPEN_SHADOW_ORDER_STATUSES.has(status)) return
 
       const marketId = readString(order.market_id) || ''
       if (!marketId) return
@@ -952,32 +982,34 @@ export default function PositionsPanel() {
         Math.abs(toNumber(order.filled_notional_usd)),
       )
       const entryPrice = resolveOrderEntryPrice(order)
-      const payload = (order.payload && typeof order.payload === 'object')
-        ? order.payload as Record<string, unknown>
-        : {}
-      const simulationLedger = (payload.simulation_ledger && typeof payload.simulation_ledger === 'object')
-        ? payload.simulation_ledger as Record<string, unknown>
-        : null
-      const positionState = (payload.position_state && typeof payload.position_state === 'object')
-        ? payload.position_state as Record<string, unknown>
-        : null
+      const payload =
+        order.payload && typeof order.payload === 'object'
+          ? (order.payload as Record<string, unknown>)
+          : {}
+      const simulationLedger =
+        payload.simulation_ledger && typeof payload.simulation_ledger === 'object'
+          ? (payload.simulation_ledger as Record<string, unknown>)
+          : null
+      const positionState =
+        payload.position_state && typeof payload.position_state === 'object'
+          ? (payload.position_state as Record<string, unknown>)
+          : null
       const linkedAccountId = readString(simulationLedger?.account_id)
       const traderId = readString(order.trader_id)
-      // Keep per-bot rows for shadow so Positions matches Bots → Positions.
-      const bucketScope = mode === 'shadow'
-        ? (traderId || linkedAccountId || 'unassigned')
-        : (linkedAccountId || 'unassigned')
-      const key = `${mode}:${bucketScope}:${marketId}:${side}`
+      // Keep per-bot rows so Positions matches Bots → Positions.
+      const bucketScope = traderId || linkedAccountId || 'unassigned'
+      const key = `shadow:${bucketScope}:${marketId}:${side}`
 
-      if (selectedSandboxAccount && linkedAccountId && linkedAccountId !== selectedSandboxAccount) return
+      if (selectedSandboxAccount && linkedAccountId && linkedAccountId !== selectedSandboxAccount)
+        return
 
       // Top-level mark fields from list_serialized_trader_orders, with
       // position_state as fallback (older rows).
       const markFromOrder = toNumber(order.current_price)
       const markFromState = toNumber(positionState?.last_mark_price)
       const markPriceRaw = markFromOrder > 0 ? markFromOrder : markFromState
-      const markUpdatedAt = readString(order.mark_updated_at)
-        || readString(positionState?.last_marked_at)
+      const markUpdatedAt =
+        readString(order.mark_updated_at) || readString(positionState?.last_marked_at)
 
       if (!buckets.has(key)) {
         buckets.set(key, {
@@ -996,7 +1028,7 @@ export default function PositionsPanel() {
             marketSlug: readString(payload.market_slug) || readString(payload.market_slug_hint),
             marketId,
           }),
-          mode: mode === 'shadow' ? 'shadow' : 'paper',
+          mode: 'shadow',
           traderId,
           orderId: readString(order.id),
           markPrice: markPriceRaw > 0 ? markPriceRaw : null,
@@ -1039,7 +1071,8 @@ export default function PositionsPanel() {
       const currentTs = toTimestamp(bucket.lastUpdated)
       const nextTs = toTimestamp(order.updated_at || order.executed_at || order.created_at)
       if (nextTs > currentTs) {
-        bucket.lastUpdated = order.updated_at || order.executed_at || order.created_at || bucket.lastUpdated
+        bucket.lastUpdated =
+          order.updated_at || order.executed_at || order.created_at || bucket.lastUpdated
         bucket.orderId = readString(order.id) || bucket.orderId
       }
     })
@@ -1049,42 +1082,35 @@ export default function PositionsPanel() {
       .map<PositionRow | null>(([key, bucket]) => {
         if (bucket.costBasis <= 0) return null
 
-        if (bucket.mode !== 'shadow' && bucket.linkedAccountId) {
-          const coverageKey = `${bucket.linkedAccountId}:${bucket.marketId}:${bucket.side}`
-          if (simulationCoverageKeys.has(coverageKey)) {
-            return null
-          }
-        }
-
         const entryPrice = bucket.costBasis > 0 ? bucket.weightedEntry / bucket.costBasis : null
         const size = bucket.weightedSize > 0 ? bucket.weightedSize : null
         const currentPrice = bucket.markPrice
-        const marketValue = (currentPrice !== null && size !== null && size > 0)
-          ? currentPrice * size
-          : bucket.costBasis
-        const computedU = (currentPrice !== null && entryPrice !== null && size !== null && size > 0)
-          ? (currentPrice - entryPrice) * size
-          : null
-        const unrealizedPnl = computedU !== null
-          ? computedU
-          : bucket.unrealizedFromApi
-        const pnlPercent = (unrealizedPnl !== null && bucket.costBasis > 0)
-          ? (unrealizedPnl / bucket.costBasis) * 100
-          : null
+        const marketValue =
+          currentPrice !== null && size !== null && size > 0
+            ? currentPrice * size
+            : bucket.costBasis
+        const computedU =
+          currentPrice !== null && entryPrice !== null && size !== null && size > 0
+            ? (currentPrice - entryPrice) * size
+            : null
+        const unrealizedPnl = computedU !== null ? computedU : bucket.unrealizedFromApi
+        const pnlPercent =
+          unrealizedPnl !== null && bucket.costBasis > 0
+            ? (unrealizedPnl / bucket.costBasis) * 100
+            : null
         const botName = bucket.traderId
-          ? (shadowTraderNameById.get(bucket.traderId) || bucket.traderId)
+          ? shadowTraderNameById.get(bucket.traderId) || bucket.traderId
           : null
         const accountLabel = bucket.linkedAccountId
-          ? (accountNameById.get(bucket.linkedAccountId) || (bucket.mode === 'shadow' ? 'Shadow account' : 'Autotrader (Paper)'))
-          : (bucket.mode === 'shadow' ? (botName || 'Shadow Bot') : 'Autotrader (Paper)')
-        const isShadow = bucket.mode === 'shadow'
-        const freshMs = isShadow ? SHADOW_MARK_FRESH_MS : LIVE_MARK_FRESH_MS
+          ? accountNameById.get(bucket.linkedAccountId) || 'Shadow account'
+          : botName || 'Shadow Bot'
         const markTs = toTimestamp(bucket.markUpdatedAt)
-        const markFresh = currentPrice !== null && markTs > 0 && markTs >= (nowMs - freshMs)
+        const markFresh =
+          currentPrice !== null && markTs > 0 && markTs >= nowMs - SHADOW_MARK_FRESH_MS
         return {
-          key: `${isShadow ? 'shadow' : 'paper'}:${key}`,
-          venue: isShadow ? 'shadow-bot' : 'autotrader-paper',
-          venueLabel: isShadow ? 'Shadow Bot' : 'Autotrader Paper',
+          key: `shadow:${key}`,
+          venue: 'shadow-bot',
+          venueLabel: 'Shadow Bot',
           accountLabel,
           marketId: bucket.marketId,
           marketQuestion: bucket.marketQuestion,
@@ -1113,11 +1139,10 @@ export default function PositionsPanel() {
       })
       .filter((row): row is PositionRow => row !== null)
       .sort((left, right) => right.marketValue - left.marketValue)
-  }, [accountNameById, selectedSandboxAccount, shadowTraderNameById, simulationCoverageKeys, traderOrders])
+  }, [accountNameById, selectedSandboxAccount, shadowTraderNameById, traderOrders])
   const polymarketLiveRows = useMemo<PositionRow[]>(() => {
-    const fallbackMarkTs = polymarketLiveUpdatedAt > 0
-      ? new Date(polymarketLiveUpdatedAt).toISOString()
-      : null
+    const fallbackMarkTs =
+      polymarketLiveUpdatedAt > 0 ? new Date(polymarketLiveUpdatedAt).toISOString() : null
     const now = Date.now()
     const freshCutoff = now - LIVE_MARK_FRESH_MS
     return polymarketLivePositions.map((position) => {
@@ -1127,7 +1152,8 @@ export default function PositionsPanel() {
       const unrealizedPnl = position.unrealized_pnl
       const pnlPercent = costBasis > 0 ? (unrealizedPnl / costBasis) * 100 : 0
       const side = normalizeDirection(position.outcome)
-      const markUpdatedAt = readTimestamp(record, ['mark_updated_at', 'last_marked_at', 'updated_at']) || fallbackMarkTs
+      const markUpdatedAt =
+        readTimestamp(record, ['mark_updated_at', 'last_marked_at', 'updated_at']) || fallbackMarkTs
       const markFresh = position.current_price > 0 && toTimestamp(markUpdatedAt) >= freshCutoff
       const managed = managedBotByTokenId.get(normalizeTokenKey(position.token_id))
       return {
@@ -1167,9 +1193,8 @@ export default function PositionsPanel() {
   }, [managedBotByTokenId, polymarketLivePositions, polymarketLiveUpdatedAt])
 
   const kalshiLiveRows = useMemo<PositionRow[]>(() => {
-    const fallbackMarkTs = kalshiLiveUpdatedAt > 0
-      ? new Date(kalshiLiveUpdatedAt).toISOString()
-      : null
+    const fallbackMarkTs =
+      kalshiLiveUpdatedAt > 0 ? new Date(kalshiLiveUpdatedAt).toISOString() : null
     const now = Date.now()
     const freshCutoff = now - LIVE_MARK_FRESH_MS
     return kalshiLivePositions.map((position) => {
@@ -1179,7 +1204,8 @@ export default function PositionsPanel() {
       const unrealizedPnl = position.unrealized_pnl
       const pnlPercent = costBasis > 0 ? (unrealizedPnl / costBasis) * 100 : 0
       const side = normalizeDirection(position.outcome)
-      const markUpdatedAt = readTimestamp(record, ['mark_updated_at', 'last_marked_at', 'updated_at']) || fallbackMarkTs
+      const markUpdatedAt =
+        readTimestamp(record, ['mark_updated_at', 'last_marked_at', 'updated_at']) || fallbackMarkTs
       const markFresh = position.current_price > 0 && toTimestamp(markUpdatedAt) >= freshCutoff
       const managed = managedBotByTokenId.get(normalizeTokenKey(position.token_id))
       return {
@@ -1218,13 +1244,15 @@ export default function PositionsPanel() {
   }, [kalshiLivePositions, kalshiLiveUpdatedAt, managedBotByTokenId])
 
   const baseRows = useMemo(() => {
-    if (viewMode === 'sandbox') return [...simulationRows, ...autotraderPaperRows]
+    if (viewMode === 'sandbox') return [...simulationRows, ...shadowBotRows]
     if (viewMode === 'live') return [...polymarketLiveRows, ...kalshiLiveRows]
-    return [...simulationRows, ...autotraderPaperRows, ...polymarketLiveRows, ...kalshiLiveRows]
-  }, [viewMode, simulationRows, autotraderPaperRows, polymarketLiveRows, kalshiLiveRows])
+    return [...simulationRows, ...shadowBotRows, ...polymarketLiveRows, ...kalshiLiveRows]
+  }, [viewMode, simulationRows, shadowBotRows, polymarketLiveRows, kalshiLiveRows])
 
   const accountOptions = useMemo(() => {
-    return Array.from(new Set(baseRows.map((row) => row.accountLabel))).sort((left, right) => left.localeCompare(right))
+    return Array.from(new Set(baseRows.map((row) => row.accountLabel))).sort((left, right) =>
+      left.localeCompare(right),
+    )
   }, [baseRows])
 
   const effectiveAccountFilter = accountOptions.includes(accountFilter) ? accountFilter : 'all'
@@ -1235,7 +1263,8 @@ export default function PositionsPanel() {
 
     return baseRows.filter((row) => {
       if (query) {
-        const haystack = `${row.marketQuestion} ${row.marketId} ${row.accountLabel} ${row.venueLabel} ${row.side} ${row.sideLabel} ${row.managedByBot || ''}`.toLowerCase()
+        const haystack =
+          `${row.marketQuestion} ${row.marketId} ${row.accountLabel} ${row.venueLabel} ${row.side} ${row.sideLabel} ${row.managedByBot || ''}`.toLowerCase()
         if (!haystack.includes(query)) return false
       }
 
@@ -1243,7 +1272,8 @@ export default function PositionsPanel() {
       if (sideFilter === 'no' && !isNoSide(row.side)) return false
       if (sideFilter === 'other' && (isYesSide(row.side) || isNoSide(row.side))) return false
       if (markFilter !== 'all' && row.markMode !== markFilter) return false
-      if (effectiveAccountFilter !== 'all' && row.accountLabel !== effectiveAccountFilter) return false
+      if (effectiveAccountFilter !== 'all' && row.accountLabel !== effectiveAccountFilter)
+        return false
       if (row.marketValue < minExposure) return false
 
       return true
@@ -1294,7 +1324,7 @@ export default function PositionsPanel() {
 
   const positionsPageCount = useMemo(
     () => Math.max(1, Math.ceil(sortedRows.length / POSITIONS_TABLE_PAGE_SIZE)),
-    [sortedRows.length]
+    [sortedRows.length],
   )
 
   useEffect(() => {
@@ -1314,7 +1344,9 @@ export default function PositionsPanel() {
     const totalUnrealizedPnl = markableRows.reduce((sum, row) => sum + (row.unrealizedPnl ?? 0), 0)
     const pnlPercent = markableCostBasis > 0 ? (totalUnrealizedPnl / markableCostBasis) * 100 : 0
     const markCoverage = sortedRows.length > 0 ? (markableRows.length / sortedRows.length) * 100 : 0
-    const staleMarks = sortedRows.filter((row) => row.currentPrice !== null && !row.markFresh).length
+    const staleMarks = sortedRows.filter(
+      (row) => row.currentPrice !== null && !row.markFresh,
+    ).length
     const shadowRows = sortedRows.filter((row) => row.venue === 'shadow-bot')
     const botsWithPositions = new Set(
       sortedRows.map((row) => row.managedBotId || row.managedByBot).filter(Boolean),
@@ -1332,15 +1364,16 @@ export default function PositionsPanel() {
 
     const largestPosition = sortedRows.reduce<PositionRow | null>(
       (max, row) => (max && max.marketValue > row.marketValue ? max : row),
-      null
+      null,
     )
 
-    const concentrationHhi = totalMarketValue > 0
-      ? sortedRows.reduce((sum, row) => {
-          const weight = row.marketValue / totalMarketValue
-          return sum + (weight * weight)
-        }, 0)
-      : 0
+    const concentrationHhi =
+      totalMarketValue > 0
+        ? sortedRows.reduce((sum, row) => {
+            const weight = row.marketValue / totalMarketValue
+            return sum + weight * weight
+          }, 0)
+        : 0
 
     return {
       totalCostBasis,
@@ -1366,7 +1399,7 @@ export default function PositionsPanel() {
 
   const sourceBreakdown = useMemo(() => {
     const totalExposure = sortedRows.reduce((sum, row) => sum + row.marketValue, 0)
-    const order: PositionVenue[] = ['sandbox', 'shadow-bot', 'autotrader-paper', 'polymarket-live', 'kalshi-live']
+    const order: PositionVenue[] = ['sandbox', 'shadow-bot', 'polymarket-live', 'kalshi-live']
 
     return order.map((venue) => {
       const rows = sortedRows.filter((row) => row.venue === venue)
@@ -1392,19 +1425,29 @@ export default function PositionsPanel() {
 
   useEffect(() => {
     setPositionsPage(1)
-  }, [viewMode, liveVenueFilter, selectedSandboxAccount, searchQuery, sideFilter, markFilter, effectiveAccountFilter, exposureFloor, sortField, sortDirection])
+  }, [
+    viewMode,
+    liveVenueFilter,
+    selectedSandboxAccount,
+    searchQuery,
+    sideFilter,
+    markFilter,
+    effectiveAccountFilter,
+    exposureFloor,
+    sortField,
+    sortDirection,
+  ])
 
-  const isLoading = (
-    (shouldShowSandbox && (accountsLoading || simulationPositionsLoading || traderOrdersLoading))
-    || (shouldShowLive && traderOrdersLoading)
-    || (shouldFetchPolymarketLive && polymarketLiveLoading)
-    || (shouldFetchKalshiLive && (kalshiStatusLoading || (Boolean(kalshiStatus?.authenticated) && kalshiLiveLoading)))
-  )
+  const isLoading =
+    (shouldShowSandbox && (accountsLoading || simulationPositionsLoading || traderOrdersLoading)) ||
+    (shouldShowLive && traderOrdersLoading) ||
+    (shouldFetchPolymarketLive && polymarketLiveLoading) ||
+    (shouldFetchKalshiLive &&
+      (kalshiStatusLoading || (Boolean(kalshiStatus?.authenticated) && kalshiLiveLoading)))
   const showLoadingSkeleton = isLoading && baseRows.length === 0
-  const showModalHistorySkeleton = (
-    modalRowHistoryQuery.isPending
-    || (modalRowHistoryQuery.isFetching && modalRowHistorySeries.length === 0)
-  )
+  const showModalHistorySkeleton =
+    modalRowHistoryQuery.isPending ||
+    (modalRowHistoryQuery.isFetching && modalRowHistorySeries.length === 0)
 
   const handleRefresh = () => {
     if (shouldShowSandbox) {
@@ -1454,13 +1497,27 @@ export default function PositionsPanel() {
               </Badge>
             )}
             {sortedRows.length > 0 && (
-              <Badge className={cn('rounded-md border-transparent text-xs', metrics.totalUnrealizedPnl >= 0 ? 'bg-emerald-500/15 text-emerald-300' : 'bg-red-500/15 text-red-300')}>
+              <Badge
+                className={cn(
+                  'rounded-md border-transparent text-xs',
+                  metrics.totalUnrealizedPnl >= 0
+                    ? 'bg-emerald-500/15 text-emerald-300'
+                    : 'bg-red-500/15 text-red-300',
+                )}
+              >
                 uPnL {formatSignedUsd(metrics.totalUnrealizedPnl)}
                 {metrics.pnlPercent !== 0 ? ` (${formatSignedPct(metrics.pnlPercent)})` : ''}
               </Badge>
             )}
             {metrics.closedTrades > 0 && (
-              <Badge className={cn('rounded-md border-transparent text-xs', metrics.realizedPnl >= 0 ? 'bg-emerald-500/15 text-emerald-300' : 'bg-red-500/15 text-red-300')}>
+              <Badge
+                className={cn(
+                  'rounded-md border-transparent text-xs',
+                  metrics.realizedPnl >= 0
+                    ? 'bg-emerald-500/15 text-emerald-300'
+                    : 'bg-red-500/15 text-red-300',
+                )}
+              >
                 realized {formatSignedUsd(metrics.realizedPnl)} · {metrics.wins}W/{metrics.losses}L
               </Badge>
             )}
@@ -1470,7 +1527,13 @@ export default function PositionsPanel() {
               </Badge>
             )}
           </div>
-          <Button variant="ghost" size="sm" onClick={handleRefresh} disabled={isLoading} className="h-7 px-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isLoading}
+            className="h-7 px-2"
+          >
             <RefreshCw className={cn('w-3.5 h-3.5', isLoading && 'animate-spin')} />
           </Button>
         </div>
@@ -1483,17 +1546,29 @@ export default function PositionsPanel() {
             </div>
             <div className="rounded-md border border-border/60 bg-card/50 px-2.5 py-1.5">
               <p className="text-[9px] uppercase text-muted-foreground">Mark value</p>
-              <p className="text-xs font-mono font-semibold">{formatUsd(metrics.totalMarketValue)}</p>
+              <p className="text-xs font-mono font-semibold">
+                {formatUsd(metrics.totalMarketValue)}
+              </p>
             </div>
             <div className="rounded-md border border-border/60 bg-card/50 px-2.5 py-1.5">
               <p className="text-[9px] uppercase text-muted-foreground">Unrealized</p>
-              <p className={cn('text-xs font-mono font-semibold', metrics.totalUnrealizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+              <p
+                className={cn(
+                  'text-xs font-mono font-semibold',
+                  metrics.totalUnrealizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400',
+                )}
+              >
                 {formatSignedUsd(metrics.totalUnrealizedPnl)}
               </p>
             </div>
             <div className="rounded-md border border-border/60 bg-card/50 px-2.5 py-1.5">
               <p className="text-[9px] uppercase text-muted-foreground">Realized</p>
-              <p className={cn('text-xs font-mono font-semibold', metrics.realizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+              <p
+                className={cn(
+                  'text-xs font-mono font-semibold',
+                  metrics.realizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400',
+                )}
+              >
                 {formatSignedUsd(metrics.realizedPnl)}
               </p>
             </div>
@@ -1514,28 +1589,42 @@ export default function PositionsPanel() {
         <div className="flex flex-wrap items-center gap-2">
           <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as ViewMode)}>
             <TabsList className="h-8">
-              <TabsTrigger value="all" className="text-xs h-7 px-3">{t('positions.tabAll')}</TabsTrigger>
-              <TabsTrigger value="sandbox" className="text-xs h-7 px-3">{t('positions.tabSandbox')}</TabsTrigger>
-              <TabsTrigger value="live" className="text-xs h-7 px-3">{t('positions.tabLive')}</TabsTrigger>
+              <TabsTrigger value="all" className="text-xs h-7 px-3">
+                {t('positions.tabAll')}
+              </TabsTrigger>
+              <TabsTrigger value="sandbox" className="text-xs h-7 px-3">
+                {t('positions.tabSandbox')}
+              </TabsTrigger>
+              <TabsTrigger value="live" className="text-xs h-7 px-3">
+                {t('positions.tabLive')}
+              </TabsTrigger>
             </TabsList>
           </Tabs>
 
           {shouldShowSandbox && (
-            <Select value={selectedSandboxAccount ?? 'all'} onValueChange={(value) => setSelectedSandboxAccount(value === 'all' ? null : value)}>
+            <Select
+              value={selectedSandboxAccount ?? 'all'}
+              onValueChange={(value) => setSelectedSandboxAccount(value === 'all' ? null : value)}
+            >
               <SelectTrigger className="h-8 w-[180px] bg-background/60 text-xs">
                 <SelectValue placeholder={t('positions.sandboxAccountPlaceholder')} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t('positions.allSandbox')}</SelectItem>
                 {accounts.map((account) => (
-                  <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
+                  <SelectItem key={account.id} value={account.id}>
+                    {account.name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           )}
 
           {shouldShowLive && (
-            <Select value={liveVenueFilter} onValueChange={(value) => setLiveVenueFilter(value as LiveVenueFilter)}>
+            <Select
+              value={liveVenueFilter}
+              onValueChange={(value) => setLiveVenueFilter(value as LiveVenueFilter)}
+            >
               <SelectTrigger className="h-8 w-[160px] bg-background/60 text-xs">
                 <SelectValue placeholder={t('positions.liveVenuePlaceholder')} />
               </SelectTrigger>
@@ -1590,12 +1679,17 @@ export default function PositionsPanel() {
             <SelectContent>
               <SelectItem value="all">{t('positions.allDesks')}</SelectItem>
               {accountOptions.map((account) => (
-                <SelectItem key={account} value={account}>{account}</SelectItem>
+                <SelectItem key={account} value={account}>
+                  {account}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
 
-          <Select value={exposureFloor} onValueChange={(value) => setExposureFloor(value as ExposureFloor)}>
+          <Select
+            value={exposureFloor}
+            onValueChange={(value) => setExposureFloor(value as ExposureFloor)}
+          >
             <SelectTrigger className="h-7 w-[90px] bg-background/60 text-xs">
               <SelectValue />
             </SelectTrigger>
@@ -1625,9 +1719,13 @@ export default function PositionsPanel() {
             <Button
               variant="ghost"
               className="h-7 w-7 px-0"
-              onClick={() => setSortDirection((current) => current === 'asc' ? 'desc' : 'asc')}
+              onClick={() => setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'))}
             >
-              {sortDirection === 'asc' ? <ArrowUpAZ className="w-3.5 h-3.5" /> : <ArrowDownAZ className="w-3.5 h-3.5" />}
+              {sortDirection === 'asc' ? (
+                <ArrowUpAZ className="w-3.5 h-3.5" />
+              ) : (
+                <ArrowDownAZ className="w-3.5 h-3.5" />
+              )}
             </Button>
           </div>
         </div>
@@ -1638,11 +1736,31 @@ export default function PositionsPanel() {
         <PositionsMetricSkeleton />
       ) : !isLoading && sortedRows.length > 0 ? (
         <div className="shrink-0 flex flex-wrap items-center gap-x-4 gap-y-1 border-y border-border/50 py-1.5 px-0.5">
-          <MetricChip icon={<Layers className="w-3.5 h-3.5 text-blue-300" />} label={t('positions.chipRisk')} value={sortedRows.length.toString()} />
-          <MetricChip icon={<CircleDollarSign className="w-3.5 h-3.5 text-blue-300" />} label={t('positions.chipExposure')} value={formatCompactUsd(metrics.totalMarketValue)} detail={formatUsd(metrics.totalMarketValue)} />
-          <MetricChip icon={<Shield className="w-3.5 h-3.5 text-amber-300" />} label={t('positions.chipCost')} value={formatCompactUsd(metrics.totalCostBasis)} detail={formatUsd(metrics.totalCostBasis)} />
           <MetricChip
-            icon={metrics.totalUnrealizedPnl >= 0 ? <TrendingUp className="w-3.5 h-3.5 text-emerald-300" /> : <TrendingDown className="w-3.5 h-3.5 text-red-300" />}
+            icon={<Layers className="w-3.5 h-3.5 text-blue-300" />}
+            label={t('positions.chipRisk')}
+            value={sortedRows.length.toString()}
+          />
+          <MetricChip
+            icon={<CircleDollarSign className="w-3.5 h-3.5 text-blue-300" />}
+            label={t('positions.chipExposure')}
+            value={formatCompactUsd(metrics.totalMarketValue)}
+            detail={formatUsd(metrics.totalMarketValue)}
+          />
+          <MetricChip
+            icon={<Shield className="w-3.5 h-3.5 text-amber-300" />}
+            label={t('positions.chipCost')}
+            value={formatCompactUsd(metrics.totalCostBasis)}
+            detail={formatUsd(metrics.totalCostBasis)}
+          />
+          <MetricChip
+            icon={
+              metrics.totalUnrealizedPnl >= 0 ? (
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-300" />
+              ) : (
+                <TrendingDown className="w-3.5 h-3.5 text-red-300" />
+              )
+            }
             label={t('positions.chipUnrealized')}
             value={formatSignedUsd(metrics.totalUnrealizedPnl)}
             detail={formatSignedPct(metrics.pnlPercent)}
@@ -1658,18 +1776,32 @@ export default function PositionsPanel() {
             icon={<Gauge className="w-3.5 h-3.5 text-purple-300" />}
             label={t('positions.chipHhi')}
             value={`${(metrics.concentrationHhi * 100).toFixed(1)}%`}
-            valueClassName={metrics.concentrationHhi >= 0.24 ? 'text-red-300' : metrics.concentrationHhi >= 0.14 ? 'text-amber-300' : 'text-emerald-300'}
+            valueClassName={
+              metrics.concentrationHhi >= 0.24
+                ? 'text-red-300'
+                : metrics.concentrationHhi >= 0.14
+                  ? 'text-amber-300'
+                  : 'text-emerald-300'
+            }
           />
           <MetricChip
             icon={<CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />}
             label={t('positions.chipMark')}
             value={`${metrics.markCoverage.toFixed(0)}%`}
-            valueClassName={metrics.markCoverage >= 80 ? 'text-emerald-300' : metrics.markCoverage >= 45 ? 'text-amber-300' : 'text-red-300'}
+            valueClassName={
+              metrics.markCoverage >= 80
+                ? 'text-emerald-300'
+                : metrics.markCoverage >= 45
+                  ? 'text-amber-300'
+                  : 'text-red-300'
+            }
           />
           <MetricChip
             icon={<Target className="w-3.5 h-3.5 text-orange-300" />}
             label={t('positions.chipLargest')}
-            value={metrics.largestPosition ? formatCompactUsd(metrics.largestPosition.marketValue) : '$0'}
+            value={
+              metrics.largestPosition ? formatCompactUsd(metrics.largestPosition.marketValue) : '$0'
+            }
             detail={metrics.largestPosition?.marketQuestion}
           />
         </div>
@@ -1683,7 +1815,9 @@ export default function PositionsPanel() {
           <div className="flex h-full flex-col items-center justify-center">
             <Briefcase className="w-10 h-10 text-muted-foreground/50 mb-3" />
             <p className="text-sm text-muted-foreground">{t('positions.noPositionsMatch')}</p>
-            <Button variant="outline" size="sm" className="mt-3" onClick={clearFilters}>{t('positions.clearFilters')}</Button>
+            <Button variant="outline" size="sm" className="mt-3" onClick={clearFilters}>
+              {t('positions.clearFilters')}
+            </Button>
           </div>
         ) : (
           <div className="h-full grid gap-2 xl:grid-cols-[minmax(0,1fr)_280px]">
@@ -1691,7 +1825,10 @@ export default function PositionsPanel() {
             <div className="flex min-h-0 flex-col gap-1.5">
               <div className="shrink-0 flex items-center justify-between px-1">
                 <span className="text-[10px] font-mono text-muted-foreground">
-                  {t('positions.rowsPerPage', { rows: sortedRows.length, pageSize: POSITIONS_TABLE_PAGE_SIZE })}
+                  {t('positions.rowsPerPage', {
+                    rows: sortedRows.length,
+                    pageSize: POSITIONS_TABLE_PAGE_SIZE,
+                  })}
                 </span>
                 <div className="flex items-center gap-1">
                   <Button
@@ -1710,7 +1847,9 @@ export default function PositionsPanel() {
                     size="sm"
                     variant="outline"
                     className="h-5 px-2 text-[10px]"
-                    onClick={() => setPositionsPage((page) => Math.min(positionsPageCount, page + 1))}
+                    onClick={() =>
+                      setPositionsPage((page) => Math.min(positionsPageCount, page + 1))
+                    }
                     disabled={positionsPage >= positionsPageCount}
                   >
                     {t('positions.next')}
@@ -1725,14 +1864,24 @@ export default function PositionsPanel() {
                         <TableHead className="text-[11px]">{t('positions.colMarket')}</TableHead>
                         <TableHead className="text-[11px]">{t('positions.colLink')}</TableHead>
                         <TableHead className="text-[11px]">{t('positions.colDir')}</TableHead>
-                        <TableHead className="text-[11px] text-right">{t('positions.colExposure')}</TableHead>
-                        <TableHead className="text-[11px] text-right">{t('positions.colAvgPx')}</TableHead>
-                        <TableHead className="text-[11px] text-right">{t('positions.colMark')}</TableHead>
-                        <TableHead className="text-[11px] text-right">{t('positions.colUPnl')}</TableHead>
+                        <TableHead className="text-[11px] text-right">
+                          {t('positions.colExposure')}
+                        </TableHead>
+                        <TableHead className="text-[11px] text-right">
+                          {t('positions.colAvgPx')}
+                        </TableHead>
+                        <TableHead className="text-[11px] text-right">
+                          {t('positions.colMark')}
+                        </TableHead>
+                        <TableHead className="text-[11px] text-right">
+                          {t('positions.colUPnl')}
+                        </TableHead>
                         <TableHead className="text-[11px] text-right">uPnL %</TableHead>
                         <TableHead className="text-[11px] text-right">Mark age</TableHead>
                         <TableHead className="text-[11px] text-right">Orders</TableHead>
-                        <TableHead className="text-[11px] text-right">{t('positions.colMode')}</TableHead>
+                        <TableHead className="text-[11px] text-right">
+                          {t('positions.colMode')}
+                        </TableHead>
                         <TableHead className="text-[11px]">{t('positions.colBot')}</TableHead>
                         <TableHead className="text-[11px]">{t('positions.colUpdated')}</TableHead>
                       </TableRow>
@@ -1740,22 +1889,30 @@ export default function PositionsPanel() {
                     <TableBody>
                       {pagedRows.map((row) => {
                         const hasLiveMark = row.markMode === 'live' && row.currentPrice !== null
-                        const modeLabel = row.venue === 'polymarket-live' || row.venue === 'kalshi-live'
-                          ? 'LIVE'
-                          : row.venue === 'shadow-bot'
-                            ? 'SHADOW'
-                            : 'PAPER'
-                        const exposureShare = totalExposure > 0 ? (row.marketValue / totalExposure) * 100 : 0
+                        const modeLabel =
+                          row.venue === 'polymarket-live' || row.venue === 'kalshi-live'
+                            ? 'LIVE'
+                            : 'SHADOW'
+                        const exposureShare =
+                          totalExposure > 0 ? (row.marketValue / totalExposure) * 100 : 0
                         return (
                           <TableRow
                             key={row.key}
                             className="cursor-pointer text-xs hover:bg-muted/30"
                             onClick={() => openRowModal(row)}
                           >
-                            <TableCell className="max-w-[260px] truncate py-1" title={row.marketQuestion}>
+                            <TableCell
+                              className="max-w-[260px] truncate py-1"
+                              title={row.marketQuestion}
+                            >
                               <p className="truncate">{row.marketQuestion}</p>
-                              <p className="text-[10px] text-muted-foreground truncate" title={`${row.marketId} • ${row.accountLabel} • ${row.venueLabel}${row.status ? ` • ${row.status}` : ''}${row.managedByBot ? ` • Bot ${row.managedByBot}` : ''}`}>
-                                {row.marketId} • {row.accountLabel} • {row.venueLabel}{row.status ? ` • ${row.status}` : ''}{row.managedByBot ? ` • Bot ${row.managedByBot}` : ''}
+                              <p
+                                className="text-[10px] text-muted-foreground truncate"
+                                title={`${row.marketId} • ${row.accountLabel} • ${row.venueLabel}${row.status ? ` • ${row.status}` : ''}${row.managedByBot ? ` • Bot ${row.managedByBot}` : ''}`}
+                              >
+                                {row.marketId} • {row.accountLabel} • {row.venueLabel}
+                                {row.status ? ` • ${row.status}` : ''}
+                                {row.managedByBot ? ` • Bot ${row.managedByBot}` : ''}
                               </p>
                             </TableCell>
                             <TableCell className="py-1">
@@ -1790,15 +1947,26 @@ export default function PositionsPanel() {
                               </div>
                             </TableCell>
                             <TableCell className="py-1">
-                              <Badge variant="outline" className={cn('h-5 max-w-[140px] truncate border-border/80 bg-muted/60 px-1.5 text-[10px] text-muted-foreground', sideBadgeClass())} title={row.sideLabel}>
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  'h-5 max-w-[140px] truncate border-border/80 bg-muted/60 px-1.5 text-[10px] text-muted-foreground',
+                                  sideBadgeClass(),
+                                )}
+                                title={row.sideLabel}
+                              >
                                 {row.sideLabel}
                               </Badge>
                             </TableCell>
                             <TableCell className="text-right font-mono py-1">
                               {formatUsd(row.marketValue)}
-                              <div className="text-[9px] text-muted-foreground">{exposureShare.toFixed(1)}%</div>
+                              <div className="text-[9px] text-muted-foreground">
+                                {exposureShare.toFixed(1)}%
+                              </div>
                             </TableCell>
-                            <TableCell className="text-right font-mono py-1">{formatOptionalPrice(row.entryPrice)}</TableCell>
+                            <TableCell className="text-right font-mono py-1">
+                              {formatOptionalPrice(row.entryPrice)}
+                            </TableCell>
                             <TableCell className="text-right font-mono py-1">
                               {row.currentPrice !== null ? (
                                 hasLiveMark && row.markFresh ? (
@@ -1816,10 +1984,30 @@ export default function PositionsPanel() {
                                 <span className="text-muted-foreground">n/a</span>
                               )}
                             </TableCell>
-                            <TableCell className={cn('text-right font-mono py-1', (row.unrealizedPnl || 0) > 0 ? 'text-emerald-500' : (row.unrealizedPnl || 0) < 0 ? 'text-red-500' : '')}>
-                              {row.unrealizedPnl !== null ? formatSignedUsd(row.unrealizedPnl) : '—'}
+                            <TableCell
+                              className={cn(
+                                'text-right font-mono py-1',
+                                (row.unrealizedPnl || 0) > 0
+                                  ? 'text-emerald-500'
+                                  : (row.unrealizedPnl || 0) < 0
+                                    ? 'text-red-500'
+                                    : '',
+                              )}
+                            >
+                              {row.unrealizedPnl !== null
+                                ? formatSignedUsd(row.unrealizedPnl)
+                                : '—'}
                             </TableCell>
-                            <TableCell className={cn('text-right font-mono py-1', (row.pnlPercent || 0) > 0 ? 'text-emerald-500' : (row.pnlPercent || 0) < 0 ? 'text-red-500' : '')}>
+                            <TableCell
+                              className={cn(
+                                'text-right font-mono py-1',
+                                (row.pnlPercent || 0) > 0
+                                  ? 'text-emerald-500'
+                                  : (row.pnlPercent || 0) < 0
+                                    ? 'text-red-500'
+                                    : '',
+                              )}
+                            >
                               {row.pnlPercent !== null ? formatSignedPct(row.pnlPercent) : '—'}
                             </TableCell>
                             <TableCell className="text-right font-mono py-1 text-[10px] text-muted-foreground">
@@ -1828,33 +2016,37 @@ export default function PositionsPanel() {
                                 <span className="block text-amber-400">stale</span>
                               ) : null}
                             </TableCell>
-                            <TableCell className="text-right font-mono py-1">{row.orderCount || 1}</TableCell>
+                            <TableCell className="text-right font-mono py-1">
+                              {row.orderCount || 1}
+                            </TableCell>
                             <TableCell className="text-right font-mono py-1">{modeLabel}</TableCell>
                             <TableCell className="py-1 text-[10px]">
                               {row.managedByBot ? (
                                 <Badge
                                   variant="outline"
                                   className="h-5 max-w-[180px] truncate border-border/80 bg-muted/60 px-1.5 text-[10px] text-cyan-300"
-                                  title={row.managedOrderId ? `${row.managedByBot} • order ${row.managedOrderId}` : row.managedByBot}
+                                  title={
+                                    row.managedOrderId
+                                      ? `${row.managedByBot} • order ${row.managedOrderId}`
+                                      : row.managedByBot
+                                  }
                                 >
                                   {t('positions.managedPrefix', { bot: row.managedByBot })}
                                 </Badge>
+                              ) : row.venue === 'polymarket-live' ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-5 px-1.5 text-[10px]"
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    openRowModal(row)
+                                  }}
+                                >
+                                  {t('positions.assign')}
+                                </Button>
                               ) : (
-                                row.venue === 'polymarket-live' ? (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-5 px-1.5 text-[10px]"
-                                    onClick={(event) => {
-                                      event.stopPropagation()
-                                      openRowModal(row)
-                                    }}
-                                  >
-                                    {t('positions.assign')}
-                                  </Button>
-                                ) : (
-                                  <span className="text-muted-foreground">—</span>
-                                )
+                                <span className="text-muted-foreground">—</span>
                               )}
                             </TableCell>
                             <TableCell className="py-1 text-[10px] text-muted-foreground">
@@ -1878,7 +2070,9 @@ export default function PositionsPanel() {
                     <div className="flex items-center justify-between gap-2 mb-2">
                       <p className="text-xs font-semibold">{t('positions.bookContribution')}</p>
                       <Badge className="rounded-md border-transparent bg-muted text-muted-foreground text-[10px]">
-                        {t('positions.activeCount', { n: sourceBreakdown.filter((row) => row.rows > 0).length })}
+                        {t('positions.activeCount', {
+                          n: sourceBreakdown.filter((row) => row.rows > 0).length,
+                        })}
                       </Badge>
                     </div>
                     <div className="space-y-2">
@@ -1903,13 +2097,35 @@ export default function PositionsPanel() {
                       <ArrowDownUp className="w-3.5 h-3.5 text-muted-foreground" />
                     </div>
                     <div className="space-y-2">
-                      <PressureLane label="YES" value={metrics.yesExposure} total={totalExposure} tone="green" />
-                      <PressureLane label="NO" value={metrics.noExposure} total={totalExposure} tone="red" />
-                      <PressureLane label="OTHER" value={metrics.otherExposure} total={totalExposure} tone="neutral" />
+                      <PressureLane
+                        label="YES"
+                        value={metrics.yesExposure}
+                        total={totalExposure}
+                        tone="green"
+                      />
+                      <PressureLane
+                        label="NO"
+                        value={metrics.noExposure}
+                        total={totalExposure}
+                        tone="red"
+                      />
+                      <PressureLane
+                        label="OTHER"
+                        value={metrics.otherExposure}
+                        total={totalExposure}
+                        tone="neutral"
+                      />
                     </div>
                     <div className="mt-3 rounded-lg border border-border/60 bg-muted/25 p-2">
-                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('positions.netBias')}</p>
-                      <p className={cn('mt-0.5 text-sm font-semibold font-mono', metrics.directionalNet >= 0 ? 'text-emerald-300' : 'text-red-300')}>
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                        {t('positions.netBias')}
+                      </p>
+                      <p
+                        className={cn(
+                          'mt-0.5 text-sm font-semibold font-mono',
+                          metrics.directionalNet >= 0 ? 'text-emerald-300' : 'text-red-300',
+                        )}
+                      >
                         {formatSignedUsd(metrics.directionalNet)}
                       </p>
                     </div>
@@ -1930,238 +2146,316 @@ export default function PositionsPanel() {
       )}
 
       {/* Market modal portal */}
-      {typeof document !== 'undefined' && createPortal(
-        <AnimatePresence>
-          {modalRow && (
-            <motion.div
-              key={`position-row-modal-${modalRow.key}`}
-              className="fixed inset-0 z-[121] flex items-center justify-center p-4 sm:p-6"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <AnimatePresence>
+            {modalRow && (
               <motion.div
-                className="absolute inset-0 bg-black/70 backdrop-blur-[2px]"
+                key={`position-row-modal-${modalRow.key}`}
+                className="fixed inset-0 z-[121] flex items-center justify-center p-4 sm:p-6"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                onClick={closeRowModal}
-                aria-hidden
-              />
-              <motion.div
-                className="relative z-10 w-full max-w-[960px] max-h-[90vh] overflow-y-auto rounded-2xl border border-border/70 bg-background p-4 shadow-2xl"
-                role="dialog"
-                aria-modal="true"
-                initial={{ scale: 0.94, opacity: 0, y: 22 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.97, opacity: 0, y: 14 }}
-                transition={{ type: 'spring', stiffness: 260, damping: 28, mass: 0.9 }}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h3 className="truncate text-sm font-semibold" title={modalRow.marketQuestion}>{modalRow.marketQuestion}</h3>
-                    <p className="truncate text-[11px] text-muted-foreground" title={modalRow.marketId}>
-                      {modalRow.marketId}
-                    </p>
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                      <Badge variant="outline" className="h-5 px-1.5 text-[10px]">{modalRow.venueLabel}</Badge>
-                      <Badge variant="outline" className="h-5 px-1.5 text-[10px]">{modalRow.sideLabel}</Badge>
-                      <Badge variant="outline" className="h-5 px-1.5 text-[10px] border-border/80 bg-muted/60 text-muted-foreground">{modalRow.accountLabel}</Badge>
-                      {modalRow.managedByBot ? (
+                <motion.div
+                  className="absolute inset-0 bg-black/70 backdrop-blur-[2px]"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={closeRowModal}
+                  aria-hidden
+                />
+                <motion.div
+                  className="relative z-10 w-full max-w-[960px] max-h-[90vh] overflow-y-auto rounded-2xl border border-border/70 bg-background p-4 shadow-2xl"
+                  role="dialog"
+                  aria-modal="true"
+                  initial={{ scale: 0.94, opacity: 0, y: 22 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  exit={{ scale: 0.97, opacity: 0, y: 14 }}
+                  transition={{ type: 'spring', stiffness: 260, damping: 28, mass: 0.9 }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3
+                        className="truncate text-sm font-semibold"
+                        title={modalRow.marketQuestion}
+                      >
+                        {modalRow.marketQuestion}
+                      </h3>
+                      <p
+                        className="truncate text-[11px] text-muted-foreground"
+                        title={modalRow.marketId}
+                      >
+                        {modalRow.marketId}
+                      </p>
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                        <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
+                          {modalRow.venueLabel}
+                        </Badge>
+                        <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
+                          {modalRow.sideLabel}
+                        </Badge>
                         <Badge
                           variant="outline"
-                          className="h-5 max-w-[220px] truncate border-border/80 bg-muted/60 px-1.5 text-[10px] text-cyan-300"
-                          title={modalRow.managedOrderId ? `${modalRow.managedByBot} • order ${modalRow.managedOrderId}` : modalRow.managedByBot}
+                          className="h-5 px-1.5 text-[10px] border-border/80 bg-muted/60 text-muted-foreground"
                         >
-                          {t('positions.managedByPrefix', { bot: modalRow.managedByBot })}
+                          {modalRow.accountLabel}
                         </Badge>
-                      ) : null}
+                        {modalRow.managedByBot ? (
+                          <Badge
+                            variant="outline"
+                            className="h-5 max-w-[220px] truncate border-border/80 bg-muted/60 px-1.5 text-[10px] text-cyan-300"
+                            title={
+                              modalRow.managedOrderId
+                                ? `${modalRow.managedByBot} • order ${modalRow.managedOrderId}`
+                                : modalRow.managedByBot
+                            }
+                          >
+                            {t('positions.managedByPrefix', { bot: modalRow.managedByBot })}
+                          </Badge>
+                        ) : null}
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {modalRow.marketUrl ? (
-                      <a
-                        href={modalRow.marketUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/60 text-muted-foreground transition-colors hover:text-foreground hover:bg-muted/60"
-                        title={t('positions.openMarket')}
-                      >
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </a>
-                    ) : null}
-                    {cryptoMarketsMap.has(modalRow.marketId) ? (
+                    <div className="flex items-center gap-1">
+                      {modalRow.marketUrl ? (
+                        <a
+                          href={modalRow.marketUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/60 text-muted-foreground transition-colors hover:text-foreground hover:bg-muted/60"
+                          title={t('positions.openMarket')}
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </a>
+                      ) : null}
+                      {cryptoMarketsMap.has(modalRow.marketId) ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2 text-[11px]"
+                          onClick={() => setModalMarket(cryptoMarketsMap.get(modalRow.marketId)!)}
+                        >
+                          <Maximize2 className="mr-1 h-3 w-3" />
+                          {t('positions.marketBtn')}
+                        </Button>
+                      ) : null}
                       <Button
                         type="button"
                         size="sm"
                         variant="outline"
                         className="h-7 px-2 text-[11px]"
-                        onClick={() => setModalMarket(cryptoMarketsMap.get(modalRow.marketId)!)}
+                        onClick={closeRowModal}
                       >
-                        <Maximize2 className="mr-1 h-3 w-3" />
-                        {t('positions.marketBtn')}
+                        {t('positions.close')}
                       </Button>
-                    ) : null}
-                    <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={closeRowModal}>
-                      {t('positions.close')}
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                  <div className="rounded-md border border-border/60 bg-card/80 px-2.5 py-2">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{t('positions.tileExposure')}</p>
-                    <p className="text-sm font-mono">{formatUsd(modalRow.marketValue)}</p>
-                    <p className="text-[10px] text-muted-foreground">{t('positions.tileCost', { value: formatUsd(modalRow.costBasis) })}</p>
-                  </div>
-                  <div className="rounded-md border border-border/60 bg-card/80 px-2.5 py-2">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{t('positions.tileEntryMark')}</p>
-                    <p className="text-sm font-mono">
-                      {formatOptionalPrice(modalRow.entryPrice)}
-                      <span className="mx-1 text-muted-foreground">→</span>
-                      {formatOptionalPrice(modalRow.currentPrice)}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">{modalRow.markMode === 'live' ? t('positions.liveMark') : t('positions.entryEstimate')}</p>
-                  </div>
-                  <div className="rounded-md border border-border/60 bg-card/80 px-2.5 py-2">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{t('positions.tileUnrealized')}</p>
-                    <p className={cn('text-sm font-mono', (modalRow.unrealizedPnl || 0) > 0 ? 'text-emerald-500' : (modalRow.unrealizedPnl || 0) < 0 ? 'text-red-500' : '')}>
-                      {modalRow.unrealizedPnl !== null ? formatSignedUsd(modalRow.unrealizedPnl) : '—'}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">{modalRow.pnlPercent !== null ? formatSignedPct(modalRow.pnlPercent) : '—'}</p>
-                  </div>
-                  <div className="rounded-md border border-border/60 bg-card/80 px-2.5 py-2">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{t('positions.tileTiming')}</p>
-                    <p className="text-sm font-mono">{formatRelativeTime(modalRow.markUpdatedAt || modalRow.openedAt)}</p>
-                    <p className="truncate text-[10px] text-muted-foreground" title={modalRow.tokenId || undefined}>
-                      {t('positions.token', { id: modalRow.tokenId || t('positions.tokenNone') })}
-                    </p>
-                  </div>
-                </div>
-
-                <div className={cn(
-                  'mt-3 overflow-hidden rounded-lg border',
-                  themeMode === 'dark'
-                    ? 'border-slate-700/40 bg-gradient-to-b from-slate-900/75 via-slate-950/80 to-black/90'
-                    : 'border-slate-200/90 bg-gradient-to-b from-white via-slate-50 to-slate-100/70'
-                )}>
-                  {modalRowHistorySeries.length >= 2 ? (
-                    <Liveline
-                      data={modalRowHistorySeries}
-                      value={modalRowLivelineValue}
-                      color={modalRowLivelineColor}
-                      theme={themeMode}
-                      showValue
-                      valueMomentumColor
-                      grid
-                      badge
-                      pulse
-                      fill
-                      window={60 * 60 * 24}
-                      windows={LIVELINE_WINDOW_PRESETS}
-                      windowStyle="rounded"
-                      lerpSpeed={0.1}
-                      padding={{ top: 8, right: 80, bottom: 24, left: 14 }}
-                      formatValue={(value) => `$${value.toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 })}`}
-                      referenceLine={modalRow.entryPrice !== null ? { value: modalRow.entryPrice, label: t('positions.entryRef') } : undefined}
-                      style={{ height: 260 }}
-                    />
-                  ) : showModalHistorySkeleton ? (
-                    <ModalHistorySkeleton />
-                  ) : (
-                    <div className="h-[260px] flex items-center justify-center text-xs text-muted-foreground">
-                      {t('positions.noMarketHistory')}
                     </div>
-                  )}
-                </div>
+                  </div>
 
-                {modalRow.venue === 'polymarket-live' && !modalRow.managedByBot && (
-                  <div className="mt-3 rounded-md border border-border/60 bg-card/80 p-3">
-                    <p className="text-[11px] font-semibold">{t('positions.assignToLiveBot')}</p>
-                    <p className="mt-0.5 text-[10px] text-muted-foreground">
-                      {t('positions.assignDesc')}
-                    </p>
-                    {sortedLiveTraders.length === 0 ? (
-                      <div className="mt-2 rounded-md border border-amber-500/35 bg-amber-500/10 px-2.5 py-2 text-xs text-amber-300">
-                        {t('positions.noLiveBots')}
-                      </div>
-                    ) : !modalRow.tokenId ? (
-                      <div className="mt-2 rounded-md border border-amber-500/35 bg-amber-500/10 px-2.5 py-2 text-xs text-amber-300">
-                        {t('positions.noTokenId')}
-                      </div>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="rounded-md border border-border/60 bg-card/80 px-2.5 py-2">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                        {t('positions.tileExposure')}
+                      </p>
+                      <p className="text-sm font-mono">{formatUsd(modalRow.marketValue)}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {t('positions.tileCost', { value: formatUsd(modalRow.costBasis) })}
+                      </p>
+                    </div>
+                    <div className="rounded-md border border-border/60 bg-card/80 px-2.5 py-2">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                        {t('positions.tileEntryMark')}
+                      </p>
+                      <p className="text-sm font-mono">
+                        {formatOptionalPrice(modalRow.entryPrice)}
+                        <span className="mx-1 text-muted-foreground">→</span>
+                        {formatOptionalPrice(modalRow.currentPrice)}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {modalRow.markMode === 'live'
+                          ? t('positions.liveMark')
+                          : t('positions.entryEstimate')}
+                      </p>
+                    </div>
+                    <div className="rounded-md border border-border/60 bg-card/80 px-2.5 py-2">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                        {t('positions.tileUnrealized')}
+                      </p>
+                      <p
+                        className={cn(
+                          'text-sm font-mono',
+                          (modalRow.unrealizedPnl || 0) > 0
+                            ? 'text-emerald-500'
+                            : (modalRow.unrealizedPnl || 0) < 0
+                              ? 'text-red-500'
+                              : '',
+                        )}
+                      >
+                        {modalRow.unrealizedPnl !== null
+                          ? formatSignedUsd(modalRow.unrealizedPnl)
+                          : '—'}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {modalRow.pnlPercent !== null ? formatSignedPct(modalRow.pnlPercent) : '—'}
+                      </p>
+                    </div>
+                    <div className="rounded-md border border-border/60 bg-card/80 px-2.5 py-2">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                        {t('positions.tileTiming')}
+                      </p>
+                      <p className="text-sm font-mono">
+                        {formatRelativeTime(modalRow.markUpdatedAt || modalRow.openedAt)}
+                      </p>
+                      <p
+                        className="truncate text-[10px] text-muted-foreground"
+                        title={modalRow.tokenId || undefined}
+                      >
+                        {t('positions.token', { id: modalRow.tokenId || t('positions.tokenNone') })}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div
+                    className={cn(
+                      'mt-3 overflow-hidden rounded-lg border',
+                      themeMode === 'dark'
+                        ? 'border-slate-700/40 bg-gradient-to-b from-slate-900/75 via-slate-950/80 to-black/90'
+                        : 'border-slate-200/90 bg-gradient-to-b from-white via-slate-50 to-slate-100/70',
+                    )}
+                  >
+                    {modalRowHistorySeries.length >= 2 ? (
+                      <Liveline
+                        data={modalRowHistorySeries}
+                        value={modalRowLivelineValue}
+                        color={modalRowLivelineColor}
+                        theme={themeMode}
+                        showValue
+                        valueMomentumColor
+                        grid
+                        badge
+                        pulse
+                        fill
+                        window={60 * 60 * 24}
+                        windows={LIVELINE_WINDOW_PRESETS}
+                        windowStyle="rounded"
+                        lerpSpeed={0.1}
+                        padding={{ top: 8, right: 80, bottom: 24, left: 14 }}
+                        formatValue={(value) =>
+                          `$${value.toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 })}`
+                        }
+                        referenceLine={
+                          modalRow.entryPrice !== null
+                            ? { value: modalRow.entryPrice, label: t('positions.entryRef') }
+                            : undefined
+                        }
+                        style={{ height: 260 }}
+                      />
+                    ) : showModalHistorySkeleton ? (
+                      <ModalHistorySkeleton />
                     ) : (
-                      <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
-                        <Select value={assignLiveTraderId} onValueChange={setAssignLiveTraderId}>
-                          <SelectTrigger className="h-8 w-full sm:w-[240px] bg-background/70 text-xs">
-                            <SelectValue placeholder={t('positions.selectLiveBot')} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {sortedLiveTraders.map((trader) => (
-                              <SelectItem key={trader.id} value={trader.id}>{trader.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Button
-                          size="sm"
-                          className="h-8 px-3 text-xs"
-                          disabled={!assignLiveTraderId || assignLivePositionMutation.isPending}
-                          onClick={() => assignLivePositionMutation.mutate({
-                            traderId: assignLiveTraderId,
-                            tokenId: modalRow.tokenId!,
-                          })}
-                        >
-                          {assignLivePositionMutation.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
-                          {t('positions.assignPosition')}
-                        </Button>
+                      <div className="h-[260px] flex items-center justify-center text-xs text-muted-foreground">
+                        {t('positions.noMarketHistory')}
                       </div>
                     )}
-                    {adoptError ? <p className="mt-2 text-xs text-red-500">{adoptError}</p> : null}
-                    {adoptSuccess ? <p className="mt-2 text-xs text-emerald-400">{adoptSuccess}</p> : null}
                   </div>
-                )}
+
+                  {modalRow.venue === 'polymarket-live' && !modalRow.managedByBot && (
+                    <div className="mt-3 rounded-md border border-border/60 bg-card/80 p-3">
+                      <p className="text-[11px] font-semibold">{t('positions.assignToLiveBot')}</p>
+                      <p className="mt-0.5 text-[10px] text-muted-foreground">
+                        {t('positions.assignDesc')}
+                      </p>
+                      {sortedLiveTraders.length === 0 ? (
+                        <div className="mt-2 rounded-md border border-amber-500/35 bg-amber-500/10 px-2.5 py-2 text-xs text-amber-300">
+                          {t('positions.noLiveBots')}
+                        </div>
+                      ) : !modalRow.tokenId ? (
+                        <div className="mt-2 rounded-md border border-amber-500/35 bg-amber-500/10 px-2.5 py-2 text-xs text-amber-300">
+                          {t('positions.noTokenId')}
+                        </div>
+                      ) : (
+                        <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+                          <Select value={assignLiveTraderId} onValueChange={setAssignLiveTraderId}>
+                            <SelectTrigger className="h-8 w-full sm:w-[240px] bg-background/70 text-xs">
+                              <SelectValue placeholder={t('positions.selectLiveBot')} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {sortedLiveTraders.map((trader) => (
+                                <SelectItem key={trader.id} value={trader.id}>
+                                  {trader.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            size="sm"
+                            className="h-8 px-3 text-xs"
+                            disabled={!assignLiveTraderId || assignLivePositionMutation.isPending}
+                            onClick={() =>
+                              assignLivePositionMutation.mutate({
+                                traderId: assignLiveTraderId,
+                                tokenId: modalRow.tokenId!,
+                              })
+                            }
+                          >
+                            {assignLivePositionMutation.isPending ? (
+                              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                            ) : null}
+                            {t('positions.assignPosition')}
+                          </Button>
+                        </div>
+                      )}
+                      {adoptError ? (
+                        <p className="mt-2 text-xs text-red-500">{adoptError}</p>
+                      ) : null}
+                      {adoptSuccess ? (
+                        <p className="mt-2 text-xs text-emerald-400">{adoptSuccess}</p>
+                      ) : null}
+                    </div>
+                  )}
+                </motion.div>
               </motion.div>
-            </motion.div>
-          )}
-          {modalMarket && (
-            <motion.div
-              key={`position-market-modal-${modalMarket.id}`}
-              className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
+            )}
+            {modalMarket && (
               <motion.div
-                className="absolute inset-0 bg-black/70 backdrop-blur-[2px]"
+                key={`position-market-modal-${modalMarket.id}`}
+                className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                onClick={closeMarketModal}
-                aria-hidden
-              />
-              <motion.div
-                className="relative z-10"
-                role="dialog"
-                aria-modal="true"
-                initial={{ scale: 0.94, opacity: 0, y: 22 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.97, opacity: 0, y: 14 }}
-                transition={{ type: 'spring', stiffness: 260, damping: 28, mass: 0.9 }}
               >
-                <CryptoMarketCard
-                  market={modalMarket}
-                  themeMode={themeMode}
-                  nowMs={Date.now()}
-                  isModalView
-                  onCloseModal={closeMarketModal}
+                <motion.div
+                  className="absolute inset-0 bg-black/70 backdrop-blur-[2px]"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={closeMarketModal}
+                  aria-hidden
                 />
+                <motion.div
+                  className="relative z-10"
+                  role="dialog"
+                  aria-modal="true"
+                  initial={{ scale: 0.94, opacity: 0, y: 22 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  exit={{ scale: 0.97, opacity: 0, y: 14 }}
+                  transition={{ type: 'spring', stiffness: 260, damping: 28, mass: 0.9 }}
+                >
+                  <CryptoMarketCard
+                    market={modalMarket}
+                    themeMode={themeMode}
+                    nowMs={Date.now()}
+                    isModalView
+                    onCloseModal={closeMarketModal}
+                  />
+                </motion.div>
               </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>,
-        document.body
-      )}
+            )}
+          </AnimatePresence>,
+          document.body,
+        )}
     </div>
   )
 }
@@ -2213,7 +2507,10 @@ function PositionsLoadingSkeleton() {
         <div className="flex-1 min-h-0 rounded-md border border-border/60 bg-card/60 p-3">
           <div className="space-y-2">
             {Array.from({ length: 11 }).map((_, index) => (
-              <div key={`positions-table-skeleton-${index}`} className="grid grid-cols-[2.8fr_0.4fr_0.8fr_1fr_0.9fr_0.9fr_1fr_0.9fr_0.7fr_0.7fr_0.7fr_1.2fr_0.9fr] gap-3 rounded border border-border/35 bg-background/25 px-3 py-2">
+              <div
+                key={`positions-table-skeleton-${index}`}
+                className="grid grid-cols-[2.8fr_0.4fr_0.8fr_1fr_0.9fr_0.9fr_1fr_0.9fr_0.7fr_0.7fr_0.7fr_1.2fr_0.9fr] gap-3 rounded border border-border/35 bg-background/25 px-3 py-2"
+              >
                 <div className="h-2.5 rounded bg-muted/45" />
                 <div className="h-2.5 rounded bg-muted/35" />
                 <div className="h-2.5 rounded bg-muted/40" />
@@ -2239,7 +2536,10 @@ function PositionsLoadingSkeleton() {
               <div className="h-3 w-28 rounded bg-muted/55" />
               <div className="mt-3 space-y-2">
                 {Array.from({ length: 4 }).map((_, index) => (
-                  <div key={`positions-sidebar-book-${index}`} className="rounded-lg border border-border/75 bg-muted/20 px-2.5 py-2">
+                  <div
+                    key={`positions-sidebar-book-${index}`}
+                    className="rounded-lg border border-border/75 bg-muted/20 px-2.5 py-2"
+                  >
                     <div className="flex items-center justify-between gap-2">
                       <div className="h-2.5 w-20 rounded bg-muted/45" />
                       <div className="h-2.5 w-14 rounded bg-muted/55" />
@@ -2282,7 +2582,10 @@ function ModalHistorySkeleton() {
       <div className="mt-4 h-[170px] rounded-md bg-muted/20" />
       <div className="mt-4 flex items-center gap-2">
         {Array.from({ length: 6 }).map((_, index) => (
-          <div key={`modal-history-window-skeleton-${index}`} className="h-6 w-10 rounded-full bg-muted/35" />
+          <div
+            key={`modal-history-window-skeleton-${index}`}
+            className="h-6 w-10 rounded-full bg-muted/35"
+          />
         ))}
       </div>
     </div>
@@ -2309,17 +2612,24 @@ function BreakdownLane({
       <div className="flex items-center justify-between gap-2 text-xs">
         <div className="min-w-0">
           <p className="truncate">{label}</p>
-          <p className="text-[10px] text-muted-foreground">{rowCount} rows · {liveMarks} live marks</p>
+          <p className="text-[10px] text-muted-foreground">
+            {rowCount} rows · {liveMarks} live marks
+          </p>
         </div>
         <div className="text-right">
           <p className="font-mono">{formatCompactUsd(exposure)}</p>
-          <p className={cn('text-[10px] font-mono', pnl >= 0 ? 'text-emerald-300' : 'text-red-300')}>
+          <p
+            className={cn('text-[10px] font-mono', pnl >= 0 ? 'text-emerald-300' : 'text-red-300')}
+          >
             {formatSignedUsd(pnl)}
           </p>
         </div>
       </div>
       <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
-        <div className="h-full rounded-full bg-blue-400" style={{ width: `${Math.max(2, Math.min(100, share))}%` }} />
+        <div
+          className="h-full rounded-full bg-blue-400"
+          style={{ width: `${Math.max(2, Math.min(100, share))}%` }}
+        />
       </div>
       <div className="mt-1 text-[10px] text-muted-foreground">{share.toFixed(1)}% share</div>
     </div>
@@ -2338,7 +2648,8 @@ function PressureLane({
   tone: 'green' | 'red' | 'neutral'
 }) {
   const share = total > 0 ? (value / total) * 100 : 0
-  const toneClass = tone === 'green' ? 'bg-emerald-400' : tone === 'red' ? 'bg-red-400' : 'bg-slate-400'
+  const toneClass =
+    tone === 'green' ? 'bg-emerald-400' : tone === 'red' ? 'bg-red-400' : 'bg-slate-400'
 
   return (
     <div>
@@ -2347,7 +2658,10 @@ function PressureLane({
         <span className="font-mono">{formatCompactUsd(value)}</span>
       </div>
       <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted">
-        <div className={cn('h-full rounded-full', toneClass)} style={{ width: `${Math.max(2, Math.min(100, share))}%` }} />
+        <div
+          className={cn('h-full rounded-full', toneClass)}
+          style={{ width: `${Math.max(2, Math.min(100, share))}%` }}
+        />
       </div>
       <div className="mt-0.5 text-[10px] text-muted-foreground">{share.toFixed(1)}%</div>
     </div>

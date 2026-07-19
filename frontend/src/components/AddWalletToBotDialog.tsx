@@ -4,12 +4,23 @@ import type { TFunction } from 'i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Bot, Loader2, PlusCircle } from 'lucide-react'
 import { Button } from './ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { getTraders, type Trader } from '../services/api'
-import { addWalletToTraderBot, type AddWalletToTraderBotResult, type AddWalletToTraderBotTarget } from '../lib/traderBotActions'
+import {
+  addWalletToTraderBot,
+  type AddWalletToTraderBotResult,
+  type AddWalletToTraderBotTarget,
+} from '../lib/traderBotActions'
 
 interface AddWalletToBotDialogProps {
   open: boolean
@@ -32,7 +43,11 @@ function errorMessage(error: unknown, t: TFunction): string {
   return t('addWalletToBotDialog.failedToAdd')
 }
 
-function resolveDefaultBotName(walletAddress: string, walletLabel: string | null | undefined, t: TFunction): string {
+function resolveDefaultBotName(
+  walletAddress: string,
+  walletLabel: string | null | undefined,
+  t: TFunction,
+): string {
   const label = String(walletLabel || '').trim()
   const suffix = t('addWalletToBotDialog.copyBotSuffix')
   if (label) return `${label} ${suffix}`
@@ -41,12 +56,14 @@ function resolveDefaultBotName(walletAddress: string, walletLabel: string | null
 
 function resolveTraderCaption(trader: Trader, t: TFunction): string {
   const sourceCount = Array.isArray(trader.source_configs) ? trader.source_configs.length : 0
-  const mode = trader.mode === 'live'
-    ? t('addWalletToBotDialog.modeLive')
-    : t('addWalletToBotDialog.modePaper')
-  const sourcesLabel = sourceCount === 1
-    ? t('addWalletToBotDialog.sourceSingular')
-    : t('addWalletToBotDialog.sourcePlural')
+  const mode =
+    trader.mode === 'live'
+      ? t('addWalletToBotDialog.modeLive')
+      : t('addWalletToBotDialog.modeShadow')
+  const sourcesLabel =
+    sourceCount === 1
+      ? t('addWalletToBotDialog.sourceSingular')
+      : t('addWalletToBotDialog.sourcePlural')
   return `${mode} | ${sourceCount} ${sourcesLabel}`
 }
 
@@ -61,7 +78,7 @@ export default function AddWalletToBotDialog({
   const queryClient = useQueryClient()
   const [target, setTarget] = useState<AddWalletToTraderBotTarget>('new')
   const [newTraderName, setNewTraderName] = useState('')
-  const [newTraderMode, setNewTraderMode] = useState<'paper' | 'live'>('paper')
+  const [newTraderMode, setNewTraderMode] = useState<'shadow' | 'live'>('shadow')
   const [existingTraderId, setExistingTraderId] = useState('')
 
   const tradersQuery = useQuery({
@@ -85,7 +102,7 @@ export default function AddWalletToBotDialog({
   useEffect(() => {
     if (!open || !walletAddress) return
     setTarget('new')
-    setNewTraderMode('paper')
+    setNewTraderMode('shadow')
     setNewTraderName(resolveDefaultBotName(walletAddress, walletLabel, t))
     setExistingTraderId('')
   }, [open, walletAddress, walletLabel, t])
@@ -123,10 +140,7 @@ export default function AddWalletToBotDialog({
     },
   })
 
-  const canSubmit = Boolean(
-    walletAddress
-    && (target === 'new' || existingTraderId),
-  )
+  const canSubmit = Boolean(walletAddress && (target === 'new' || existingTraderId))
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -136,14 +150,14 @@ export default function AddWalletToBotDialog({
             <Bot className="h-4 w-4 text-sky-400" />
             {t('addWalletToBotDialog.title')}
           </DialogTitle>
-          <DialogDescription>
-            {t('addWalletToBotDialog.description')}
-          </DialogDescription>
+          <DialogDescription>{t('addWalletToBotDialog.description')}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
           <div className="rounded-md border border-border bg-muted/35 px-3 py-2">
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{t('addWalletToBotDialog.wallet')}</p>
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              {t('addWalletToBotDialog.wallet')}
+            </p>
             <p className="mt-0.5 font-mono text-sm">{walletAddress || '--'}</p>
             {walletLabel && (
               <p className="mt-0.5 text-[11px] text-muted-foreground">{walletLabel}</p>
@@ -152,13 +166,18 @@ export default function AddWalletToBotDialog({
 
           <div className="space-y-1">
             <Label>{t('addWalletToBotDialog.target')}</Label>
-            <Select value={target} onValueChange={(value) => setTarget(value as AddWalletToTraderBotTarget)}>
+            <Select
+              value={target}
+              onValueChange={(value) => setTarget(value as AddWalletToTraderBotTarget)}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="new">{t('addWalletToBotDialog.createNewBot')}</SelectItem>
-                <SelectItem value="existing">{t('addWalletToBotDialog.addToExistingBot')}</SelectItem>
+                <SelectItem value="existing">
+                  {t('addWalletToBotDialog.addToExistingBot')}
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -175,12 +194,15 @@ export default function AddWalletToBotDialog({
               </div>
               <div className="space-y-1">
                 <Label>{t('addWalletToBotDialog.mode')}</Label>
-                <Select value={newTraderMode} onValueChange={(value) => setNewTraderMode(value === 'live' ? 'live' : 'paper')}>
+                <Select
+                  value={newTraderMode}
+                  onValueChange={(value) => setNewTraderMode(value === 'live' ? 'live' : 'shadow')}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="paper">{t('addWalletToBotDialog.paper')}</SelectItem>
+                    <SelectItem value="shadow">{t('addWalletToBotDialog.shadow')}</SelectItem>
                     <SelectItem value="live">{t('addWalletToBotDialog.live')}</SelectItem>
                   </SelectContent>
                 </Select>
@@ -189,9 +211,19 @@ export default function AddWalletToBotDialog({
           ) : (
             <div className="space-y-1">
               <Label>{t('addWalletToBotDialog.existingBot')}</Label>
-              <Select value={existingTraderId} onValueChange={setExistingTraderId} disabled={existingTraderOptions.length === 0 || tradersQuery.isLoading}>
+              <Select
+                value={existingTraderId}
+                onValueChange={setExistingTraderId}
+                disabled={existingTraderOptions.length === 0 || tradersQuery.isLoading}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder={tradersQuery.isLoading ? t('addWalletToBotDialog.loadingBots') : t('addWalletToBotDialog.selectBot')} />
+                  <SelectValue
+                    placeholder={
+                      tradersQuery.isLoading
+                        ? t('addWalletToBotDialog.loadingBots')
+                        : t('addWalletToBotDialog.selectBot')
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {existingTraderOptions.map((option) => (
@@ -202,7 +234,9 @@ export default function AddWalletToBotDialog({
                 </SelectContent>
               </Select>
               {!tradersQuery.isLoading && existingTraderOptions.length === 0 && (
-                <p className="text-xs text-muted-foreground">{t('addWalletToBotDialog.noExistingBots')}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t('addWalletToBotDialog.noExistingBots')}
+                </p>
               )}
             </div>
           )}
@@ -213,7 +247,11 @@ export default function AddWalletToBotDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={addWalletMutation.isPending}>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={addWalletMutation.isPending}
+          >
             {t('common.cancel')}
           </Button>
           <Button
@@ -221,8 +259,14 @@ export default function AddWalletToBotDialog({
             disabled={!canSubmit || addWalletMutation.isPending}
             className="gap-2"
           >
-            {addWalletMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlusCircle className="h-4 w-4" />}
-            {target === 'new' ? t('addWalletToBotDialog.createBotAndAddWallet') : t('addWalletToBotDialog.addWallet')}
+            {addWalletMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <PlusCircle className="h-4 w-4" />
+            )}
+            {target === 'new'
+              ? t('addWalletToBotDialog.createBotAndAddWallet')
+              : t('addWalletToBotDialog.addWallet')}
           </Button>
         </DialogFooter>
       </DialogContent>

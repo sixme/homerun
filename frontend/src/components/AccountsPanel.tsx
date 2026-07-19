@@ -102,7 +102,9 @@ function formatSignedPct(value: number): string {
 }
 
 function normalizeDirection(raw: string | null | undefined): string {
-  const direction = String(raw || '').trim().toUpperCase()
+  const direction = String(raw || '')
+    .trim()
+    .toUpperCase()
   if (!direction) return 'N/A'
   if (direction === 'BUY_YES' || direction === 'SELL_YES') return 'YES'
   if (direction === 'BUY_NO' || direction === 'SELL_NO') return 'NO'
@@ -112,7 +114,9 @@ function normalizeDirection(raw: string | null | undefined): string {
 }
 
 function tradeStatusClass(statusRaw: string): string {
-  const status = String(statusRaw || '').trim().toLowerCase()
+  const status = String(statusRaw || '')
+    .trim()
+    .toLowerCase()
   if (status.includes('win') || status.includes('resolved_win') || status === 'closed_win') {
     return 'border-emerald-500/40 text-emerald-300'
   }
@@ -126,11 +130,23 @@ function tradeStatusClass(statusRaw: string): string {
 }
 
 function liveOrderStatusClass(statusRaw: string): string {
-  const status = String(statusRaw || '').trim().toLowerCase()
-  if (status === 'filled' || status === 'executed' || status === 'complete' || status === 'completed') {
+  const status = String(statusRaw || '')
+    .trim()
+    .toLowerCase()
+  if (
+    status === 'filled' ||
+    status === 'executed' ||
+    status === 'complete' ||
+    status === 'completed'
+  ) {
     return 'border-emerald-500/40 text-emerald-300'
   }
-  if (status === 'open' || status === 'pending' || status === 'partially_filled' || status === 'submitted') {
+  if (
+    status === 'open' ||
+    status === 'pending' ||
+    status === 'partially_filled' ||
+    status === 'submitted'
+  ) {
     return 'border-cyan-500/40 text-cyan-300'
   }
   if (status === 'cancelled' || status === 'canceled') {
@@ -169,7 +185,10 @@ function parseApiError(error: unknown, fallback: string): string {
       .filter(Boolean)
     if (parts.length) return parts.join('; ')
   }
-  if (typeof maybeAxios.response?.data?.message === 'string' && maybeAxios.response.data.message.trim()) {
+  if (
+    typeof maybeAxios.response?.data?.message === 'string' &&
+    maybeAxios.response.data.message.trim()
+  ) {
     return maybeAxios.response.data.message
   }
   if (typeof maybeAxios.message === 'string' && maybeAxios.message.trim()) return maybeAxios.message
@@ -181,7 +200,9 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
   const queryClient = useQueryClient()
   const [accountMode, setAccountMode] = useAtom(accountModeAtom)
   const [selectedAccountId, setSelectedAccountId] = useAtom(selectedAccountIdAtom)
-  const [workspaceTab, setWorkspaceTab] = useState<AccountsWorkspaceTab>(accountMode === 'live' ? 'live' : 'overview')
+  const [workspaceTab, setWorkspaceTab] = useState<AccountsWorkspaceTab>(
+    accountMode === 'live' ? 'live' : 'overview',
+  )
   const [sandboxView, setSandboxView] = useState<DeskView>('overview')
   const [liveView, setLiveView] = useState<DeskView>('overview')
   const [createSandboxOpen, setCreateSandboxOpen] = useState(false)
@@ -197,7 +218,10 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
   const openCreateSandboxDialog = () => {
     setSandboxForm({
       ...DEFAULT_SANDBOX_FORM,
-      name: sandboxAccounts.length === 0 ? 'Paper Trading' : `Paper Trading ${sandboxAccounts.length + 1}`,
+      name:
+        sandboxAccounts.length === 0
+          ? 'Shadow Trading'
+          : `Shadow Trading ${sandboxAccounts.length + 1}`,
     })
     setCreateSandboxError(null)
     setCreateSandboxOpen(true)
@@ -211,7 +235,9 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
       const maxPositions = Number(sandboxForm.maxPositions)
 
       if (!name) {
-        throw new Error(t('accounts.createSandboxNameRequired', { defaultValue: 'Account name is required.' }))
+        throw new Error(
+          t('accounts.createSandboxNameRequired', { defaultValue: 'Account name is required.' }),
+        )
       }
       if (!Number.isFinite(initialCapital) || initialCapital < 100 || initialCapital > 10_000_000) {
         throw new Error(
@@ -320,8 +346,9 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
     retry: false,
   })
 
-  const shadowModeActive = Boolean(orchestratorOverview?.control?.is_enabled)
-    && String(orchestratorOverview?.control?.mode || '').toLowerCase() === 'shadow'
+  const shadowModeActive =
+    Boolean(orchestratorOverview?.control?.is_enabled) &&
+    String(orchestratorOverview?.control?.mode || '').toLowerCase() === 'shadow'
 
   const { data: traderOrders = [] } = useQuery({
     queryKey: ['accounts-panel', 'trader-orders'],
@@ -370,13 +397,15 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
 
   const autotraderOverlay = useMemo(() => {
     const linkedAccount = autotraderShadowMetrics.linkedSandboxAccountId
-      ? sandboxAccounts.find((account) => account.id === autotraderShadowMetrics.linkedSandboxAccountId)
+      ? sandboxAccounts.find(
+          (account) => account.id === autotraderShadowMetrics.linkedSandboxAccountId,
+        )
       : undefined
 
     const shouldOverlay = Boolean(
-      linkedAccount
-      && autotraderShadowMetrics.openPositions > 0
-      && (linkedAccount.open_positions || 0) === 0
+      linkedAccount &&
+      autotraderShadowMetrics.openPositions > 0 &&
+      (linkedAccount.open_positions || 0) === 0,
     )
 
     return {
@@ -388,14 +417,27 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
   }, [autotraderShadowMetrics, sandboxAccounts])
 
   const sandboxMetrics = useMemo(() => {
-    const totalInitial = sandboxAccounts.reduce((sum, account) => sum + (account.initial_capital || 0), 0)
-    const totalCapital = sandboxAccounts.reduce((sum, account) => sum + (account.current_capital || 0), 0)
+    const totalInitial = sandboxAccounts.reduce(
+      (sum, account) => sum + (account.initial_capital || 0),
+      0,
+    )
+    const totalCapital = sandboxAccounts.reduce(
+      (sum, account) => sum + (account.current_capital || 0),
+      0,
+    )
     const realizedPnl = sandboxAccounts.reduce((sum, account) => sum + (account.total_pnl || 0), 0)
-    const unrealizedPnl = sandboxAccounts.reduce((sum, account) => sum + (account.unrealized_pnl || 0), 0)
+    const unrealizedPnl = sandboxAccounts.reduce(
+      (sum, account) => sum + (account.unrealized_pnl || 0),
+      0,
+    )
     const totalPnl = realizedPnl + unrealizedPnl
-    const totalTrades = sandboxAccounts.reduce((sum, account) => sum + (account.total_trades || 0), 0)
-    const totalOpenPositions = sandboxAccounts.reduce((sum, account) => sum + (account.open_positions || 0), 0)
-      + autotraderOverlay.openPositions
+    const totalTrades = sandboxAccounts.reduce(
+      (sum, account) => sum + (account.total_trades || 0),
+      0,
+    )
+    const totalOpenPositions =
+      sandboxAccounts.reduce((sum, account) => sum + (account.open_positions || 0), 0) +
+      autotraderOverlay.openPositions
     const roi = totalInitial > 0 ? (totalPnl / totalInitial) * 100 : 0
     const deployableCapital = Math.max(0, totalCapital - autotraderOverlay.exposureUsd)
 
@@ -416,12 +458,17 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
     const visibleTradingPositions = polymarketReady
       ? tradingPositions.filter((position) => toFiniteNumber(position.size) > 0)
       : []
-    const openRiskTradingPositions = visibleTradingPositions.filter((position) => position.counts_as_open !== false)
+    const openRiskTradingPositions = visibleTradingPositions.filter(
+      (position) => position.counts_as_open !== false,
+    )
     const exposure = visibleTradingPositions.reduce(
       (sum, pos) => sum + toFiniteNumber(pos.size) * toFiniteNumber(pos.current_price),
-      0
+      0,
     )
-    const unrealizedPnl = visibleTradingPositions.reduce((sum, pos) => sum + toFiniteNumber(pos.unrealized_pnl), 0)
+    const unrealizedPnl = visibleTradingPositions.reduce(
+      (sum, pos) => sum + toFiniteNumber(pos.unrealized_pnl),
+      0,
+    )
     return {
       id: 'polymarket',
       label: 'Polymarket',
@@ -450,23 +497,37 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
       : []
     const exposure = visibleKalshiPositions.reduce(
       (sum, pos) => sum + toFiniteNumber(pos.size) * toFiniteNumber(pos.current_price),
-      0
+      0,
     )
-    const unrealizedPnl = visibleKalshiPositions.reduce((sum, pos) => sum + toFiniteNumber(pos.unrealized_pnl), 0)
+    const unrealizedPnl = visibleKalshiPositions.reduce(
+      (sum, pos) => sum + toFiniteNumber(pos.unrealized_pnl),
+      0,
+    )
     return {
       id: 'kalshi',
       label: 'Kalshi',
       connected: kalshiConnected,
-      accountLabel: kalshiStatus?.email || (kalshiStatus?.member_id ? t('accounts.memberPrefix', { id: kalshiStatus.member_id }) : t('accounts.noAccount')),
-      balance: kalshiConnected ? toFiniteNumber(kalshiBalance?.balance ?? kalshiStatus?.balance?.balance) : 0,
-      available: kalshiConnected ? toFiniteNumber(kalshiBalance?.available ?? kalshiStatus?.balance?.available) : 0,
+      accountLabel:
+        kalshiStatus?.email ||
+        (kalshiStatus?.member_id
+          ? t('accounts.memberPrefix', { id: kalshiStatus.member_id })
+          : t('accounts.noAccount')),
+      balance: kalshiConnected
+        ? toFiniteNumber(kalshiBalance?.balance ?? kalshiStatus?.balance?.balance)
+        : 0,
+      available: kalshiConnected
+        ? toFiniteNumber(kalshiBalance?.available ?? kalshiStatus?.balance?.available)
+        : 0,
       exposure,
       openPositions: visibleKalshiPositions.length,
       unrealizedPnl,
     }
   }, [kalshiStatus, kalshiBalance?.balance, kalshiBalance?.available, kalshiPositions])
 
-  const venueSnapshots = useMemo(() => [polymarketSnapshot, kalshiSnapshot], [polymarketSnapshot, kalshiSnapshot])
+  const venueSnapshots = useMemo(
+    () => [polymarketSnapshot, kalshiSnapshot],
+    [polymarketSnapshot, kalshiSnapshot],
+  )
 
   const liveMetrics = useMemo(() => {
     const totalBalance = venueSnapshots.reduce((sum, venue) => sum + venue.balance, 0)
@@ -493,19 +554,21 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
 
   const activeSandboxAccount = useMemo(
     () => sandboxAccounts.find((account) => account.id === activeSandboxAccountId) || null,
-    [sandboxAccounts, activeSandboxAccountId]
+    [sandboxAccounts, activeSandboxAccountId],
   )
 
   const { data: sandboxPositions = [] } = useQuery({
     queryKey: ['accounts-panel', 'sandbox-positions', activeSandboxAccountId],
-    queryFn: () => (activeSandboxAccountId ? getAccountPositions(activeSandboxAccountId) : Promise.resolve([])),
+    queryFn: () =>
+      activeSandboxAccountId ? getAccountPositions(activeSandboxAccountId) : Promise.resolve([]),
     enabled: workspaceTab === 'sandbox' && Boolean(activeSandboxAccountId),
     refetchInterval: 10000,
   })
 
   const { data: sandboxTrades = [] } = useQuery({
     queryKey: ['accounts-panel', 'sandbox-trades', activeSandboxAccountId],
-    queryFn: () => (activeSandboxAccountId ? getAccountTrades(activeSandboxAccountId, 250) : Promise.resolve([])),
+    queryFn: () =>
+      activeSandboxAccountId ? getAccountTrades(activeSandboxAccountId, 250) : Promise.resolve([]),
     enabled: workspaceTab === 'sandbox' && Boolean(activeSandboxAccountId),
     refetchInterval: 10000,
   })
@@ -575,27 +638,43 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
   const riskSignals = useMemo(() => {
     return [
       {
-        label: sandboxMetrics.count === 0 ? t('accounts.riskNoSandbox') : t('accounts.riskSandboxOnline', { n: sandboxMetrics.count }),
+        label:
+          sandboxMetrics.count === 0
+            ? t('accounts.riskNoSandbox')
+            : t('accounts.riskSandboxOnline', { n: sandboxMetrics.count }),
         tone: sandboxMetrics.count === 0 ? 'amber' : 'green',
       },
       {
-        label: liveMetrics.connectedVenues === 2 ? t('accounts.riskBothVenues') : t('accounts.riskVenuesConnected', { n: liveMetrics.connectedVenues }),
+        label:
+          liveMetrics.connectedVenues === 2
+            ? t('accounts.riskBothVenues')
+            : t('accounts.riskVenuesConnected', { n: liveMetrics.connectedVenues }),
         tone: liveMetrics.connectedVenues === 2 ? 'green' : 'amber',
       },
       {
-        label: liveMetrics.totalUnrealizedPnl >= 0 ? t('accounts.riskBookGreen') : t('accounts.riskBookRed'),
+        label:
+          liveMetrics.totalUnrealizedPnl >= 0
+            ? t('accounts.riskBookGreen')
+            : t('accounts.riskBookRed'),
         tone: liveMetrics.totalUnrealizedPnl >= 0 ? 'green' : 'red',
       },
       {
-        label: sandboxMetrics.totalOpenPositions + liveMetrics.totalOpenPositions > 40
-          ? t('accounts.riskHighPositions')
-          : t('accounts.riskNormalPositions'),
-        tone: sandboxMetrics.totalOpenPositions + liveMetrics.totalOpenPositions > 40 ? 'amber' : 'green',
+        label:
+          sandboxMetrics.totalOpenPositions + liveMetrics.totalOpenPositions > 40
+            ? t('accounts.riskHighPositions')
+            : t('accounts.riskNormalPositions'),
+        tone:
+          sandboxMetrics.totalOpenPositions + liveMetrics.totalOpenPositions > 40
+            ? 'amber'
+            : 'green',
       },
       {
-        label: sandboxMetrics.autotraderOverlay.openPositions > 0
-          ? t('accounts.riskAutotraderActive', { n: sandboxMetrics.autotraderOverlay.openPositions })
-          : t('accounts.riskNoAutotrader'),
+        label:
+          sandboxMetrics.autotraderOverlay.openPositions > 0
+            ? t('accounts.riskAutotraderActive', {
+                n: sandboxMetrics.autotraderOverlay.openPositions,
+              })
+            : t('accounts.riskNoAutotrader'),
         tone: sandboxMetrics.autotraderOverlay.openPositions > 0 ? 'amber' : 'green',
       },
     ] as const
@@ -614,10 +693,11 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
       .map((position) => {
         const quantity = toFiniteNumber(position.quantity)
         const entryPrice = toFiniteNumber(position.entry_price)
-        const markPrice = position.current_price != null ? toFiniteNumber(position.current_price) : entryPrice
-        const entryCost = toFiniteNumber(position.entry_cost) || (quantity * entryPrice)
+        const markPrice =
+          position.current_price != null ? toFiniteNumber(position.current_price) : entryPrice
+        const entryCost = toFiniteNumber(position.entry_cost) || quantity * entryPrice
         const marketValue = quantity * markPrice
-        const unrealizedPnl = toFiniteNumber(position.unrealized_pnl) || (marketValue - entryCost)
+        const unrealizedPnl = toFiniteNumber(position.unrealized_pnl) || marketValue - entryCost
         return {
           ...position,
           quantity,
@@ -633,7 +713,7 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
 
   const sandboxTradeRows = useMemo(() => {
     return [...sandboxTrades].sort(
-      (left, right) => new Date(right.executed_at).getTime() - new Date(left.executed_at).getTime()
+      (left, right) => new Date(right.executed_at).getTime() - new Date(left.executed_at).getTime(),
     )
   }, [sandboxTrades])
 
@@ -641,85 +721,104 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
     const polymarketRows = (polymarketReady ? tradingPositions : [])
       .filter((position) => toFiniteNumber(position.size) > 0)
       .map((position) => {
-      const size = toFiniteNumber(position.size)
-      const markPrice = toFiniteNumber(position.current_price)
-      const entryPrice = toFiniteNumber(position.average_cost)
-      const marketValue = size * markPrice
-      const costBasis = size * entryPrice
-      const unrealizedPnl = toFiniteNumber(position.unrealized_pnl) || (marketValue - costBasis)
-      return {
-        id: `polymarket:${position.token_id}:${position.market_id}`,
-        venue: 'Polymarket' as const,
-        marketQuestion: String(position.market_question || '').trim() || position.market_id,
-        marketId: String(position.market_id || '').trim(),
-        outcome: normalizeDirection(position.outcome),
-        size,
-        entryPrice,
-        markPrice,
-        costBasis,
-        marketValue,
-        unrealizedPnl,
-      }
-    })
+        const size = toFiniteNumber(position.size)
+        const markPrice = toFiniteNumber(position.current_price)
+        const entryPrice = toFiniteNumber(position.average_cost)
+        const marketValue = size * markPrice
+        const costBasis = size * entryPrice
+        const unrealizedPnl = toFiniteNumber(position.unrealized_pnl) || marketValue - costBasis
+        return {
+          id: `polymarket:${position.token_id}:${position.market_id}`,
+          venue: 'Polymarket' as const,
+          marketQuestion: String(position.market_question || '').trim() || position.market_id,
+          marketId: String(position.market_id || '').trim(),
+          outcome: normalizeDirection(position.outcome),
+          size,
+          entryPrice,
+          markPrice,
+          costBasis,
+          marketValue,
+          unrealizedPnl,
+        }
+      })
 
     const kalshiRows = (kalshiStatus?.authenticated ? kalshiPositions : [])
       .filter((position) => toFiniteNumber(position.size) > 0)
       .map((position) => {
-      const size = toFiniteNumber(position.size)
-      const markPrice = toFiniteNumber(position.current_price)
-      const entryPrice = toFiniteNumber(position.average_cost)
-      const marketValue = size * markPrice
-      const costBasis = size * entryPrice
-      const unrealizedPnl = toFiniteNumber(position.unrealized_pnl) || (marketValue - costBasis)
-      return {
-        id: `kalshi:${position.token_id}:${position.market_id}`,
-        venue: 'Kalshi' as const,
-        marketQuestion: String(position.market_question || '').trim() || position.market_id,
-        marketId: String(position.market_id || '').trim(),
-        outcome: normalizeDirection(position.outcome),
-        size,
-        entryPrice,
-        markPrice,
-        costBasis,
-        marketValue,
-        unrealizedPnl,
-      }
-    })
+        const size = toFiniteNumber(position.size)
+        const markPrice = toFiniteNumber(position.current_price)
+        const entryPrice = toFiniteNumber(position.average_cost)
+        const marketValue = size * markPrice
+        const costBasis = size * entryPrice
+        const unrealizedPnl = toFiniteNumber(position.unrealized_pnl) || marketValue - costBasis
+        return {
+          id: `kalshi:${position.token_id}:${position.market_id}`,
+          venue: 'Kalshi' as const,
+          marketQuestion: String(position.market_question || '').trim() || position.market_id,
+          marketId: String(position.market_id || '').trim(),
+          outcome: normalizeDirection(position.outcome),
+          size,
+          entryPrice,
+          markPrice,
+          costBasis,
+          marketValue,
+          unrealizedPnl,
+        }
+      })
 
-    return [...polymarketRows, ...kalshiRows].sort((left, right) => Math.abs(right.marketValue) - Math.abs(left.marketValue))
+    return [...polymarketRows, ...kalshiRows].sort(
+      (left, right) => Math.abs(right.marketValue) - Math.abs(left.marketValue),
+    )
   }, [polymarketReady, tradingPositions, kalshiStatus?.authenticated, kalshiPositions])
 
   const liveOrderRows = useMemo(() => {
     return [...liveOrders].sort(
-      (left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime()
+      (left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime(),
     )
   }, [liveOrders])
 
   const liveOpenOrderCount = useMemo(() => {
     return liveOrderRows.filter((order) => {
-      const status = String(order.status || '').trim().toLowerCase()
-      return status === 'open' || status === 'pending' || status === 'partially_filled' || status === 'submitted'
+      const status = String(order.status || '')
+        .trim()
+        .toLowerCase()
+      return (
+        status === 'open' ||
+        status === 'pending' ||
+        status === 'partially_filled' ||
+        status === 'submitted'
+      )
     }).length
   }, [liveOrderRows])
 
-  const selectedSandboxOverlayOpen = activeSandboxAccount && sandboxMetrics.autotraderOverlay.accountId === activeSandboxAccount.id
-    ? sandboxMetrics.autotraderOverlay.openPositions
-    : 0
-  const selectedSandboxOverlayExposure = activeSandboxAccount && sandboxMetrics.autotraderOverlay.accountId === activeSandboxAccount.id
-    ? sandboxMetrics.autotraderOverlay.exposureUsd
-    : 0
-  const selectedSandboxOpenPositions = (activeSandboxAccount?.open_positions || 0) + selectedSandboxOverlayOpen
-  const selectedSandboxTotalPnl = (activeSandboxAccount?.total_pnl || 0) + (activeSandboxAccount?.unrealized_pnl || 0)
+  const selectedSandboxOverlayOpen =
+    activeSandboxAccount && sandboxMetrics.autotraderOverlay.accountId === activeSandboxAccount.id
+      ? sandboxMetrics.autotraderOverlay.openPositions
+      : 0
+  const selectedSandboxOverlayExposure =
+    activeSandboxAccount && sandboxMetrics.autotraderOverlay.accountId === activeSandboxAccount.id
+      ? sandboxMetrics.autotraderOverlay.exposureUsd
+      : 0
+  const selectedSandboxOpenPositions =
+    (activeSandboxAccount?.open_positions || 0) + selectedSandboxOverlayOpen
+  const selectedSandboxTotalPnl =
+    (activeSandboxAccount?.total_pnl || 0) + (activeSandboxAccount?.unrealized_pnl || 0)
 
   const activeLiveVenue: LiveVenue = selectedAccountId === 'live:kalshi' ? 'kalshi' : 'polymarket'
   const activeLiveSnapshot = activeLiveVenue === 'kalshi' ? kalshiSnapshot : polymarketSnapshot
   const activeLivePositions = useMemo(
-    () => livePositionRows.filter((row) => row.venue === (activeLiveVenue === 'kalshi' ? 'Kalshi' : 'Polymarket')),
-    [livePositionRows, activeLiveVenue]
+    () =>
+      livePositionRows.filter(
+        (row) => row.venue === (activeLiveVenue === 'kalshi' ? 'Kalshi' : 'Polymarket'),
+      ),
+    [livePositionRows, activeLiveVenue],
   )
 
   const sandboxStrategyRows = useMemo(() => {
-    const rollup = new Map<string, { strategy: string; trades: number; pnl: number; notional: number }>()
+    const rollup = new Map<
+      string,
+      { strategy: string; trades: number; pnl: number; notional: number }
+    >()
     for (const trade of sandboxTradeRows) {
       const strategy = String(trade.strategy_type || 'unknown').trim() || 'unknown'
       const current = rollup.get(strategy) || { strategy, trades: 0, pnl: 0, notional: 0 }
@@ -728,13 +827,18 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
       current.notional += toFiniteNumber(trade.total_cost)
       rollup.set(strategy, current)
     }
-    return Array.from(rollup.values()).sort((left, right) => Math.abs(right.pnl) - Math.abs(left.pnl))
+    return Array.from(rollup.values()).sort(
+      (left, right) => Math.abs(right.pnl) - Math.abs(left.pnl),
+    )
   }, [sandboxTradeRows])
 
   const sandboxTradeStatusRows = useMemo(() => {
     const rollup = new Map<string, number>()
     for (const trade of sandboxTradeRows) {
-      const status = String(trade.status || 'unknown').trim().toLowerCase() || 'unknown'
+      const status =
+        String(trade.status || 'unknown')
+          .trim()
+          .toLowerCase() || 'unknown'
       rollup.set(status, (rollup.get(status) || 0) + 1)
     }
     return Array.from(rollup.entries())
@@ -769,7 +873,9 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
         <CardContent className="p-0">
           <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/80 px-3 py-2.5">
             <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">{t('accounts.commandCenter')}</p>
+              <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">
+                {t('accounts.commandCenter')}
+              </p>
               <div className="mt-1 flex flex-wrap items-center gap-2">
                 <p className="text-sm font-medium text-foreground">{activeContext.accountLabel}</p>
                 <Badge
@@ -779,7 +885,7 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                     activeContext.tone === 'green' && 'bg-green-500/20 text-green-300',
                     activeContext.tone === 'blue' && 'bg-blue-500/20 text-blue-300',
                     activeContext.tone === 'amber' && 'bg-amber-500/20 text-amber-300',
-                    activeContext.tone === 'neutral' && 'bg-muted text-muted-foreground'
+                    activeContext.tone === 'neutral' && 'bg-muted text-muted-foreground',
                   )}
                 >
                   {activeContext.modeLabel}
@@ -806,7 +912,10 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
               value={formatUsd(sandboxMetrics.deployableCapital)}
               hint={
                 sandboxMetrics.autotraderOverlay.exposureUsd > 0
-                  ? t('accounts.ledgerDeployedHint', { ledger: formatUsd(sandboxMetrics.totalCapital), deployed: formatUsd(sandboxMetrics.autotraderOverlay.exposureUsd) })
+                  ? t('accounts.ledgerDeployedHint', {
+                      ledger: formatUsd(sandboxMetrics.totalCapital),
+                      deployed: formatUsd(sandboxMetrics.autotraderOverlay.exposureUsd),
+                    })
                   : t('accounts.accountsCount', { n: sandboxMetrics.count })
               }
               icon={Wallet}
@@ -830,7 +939,9 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
               value={sandboxMetrics.totalOpenPositions.toString()}
               hint={
                 sandboxMetrics.autotraderOverlay.openPositions > 0
-                  ? t('accounts.openWithAutotrader', { n: sandboxMetrics.autotraderOverlay.openPositions })
+                  ? t('accounts.openWithAutotrader', {
+                      n: sandboxMetrics.autotraderOverlay.openPositions,
+                    })
                   : t('accounts.openLabel')
               }
               icon={Briefcase}
@@ -875,18 +986,20 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
               className={cn(
                 'h-8 gap-1.5 text-xs',
                 workspaceTab === tab.id
-                  ? (
-                    tab.id === 'overview'
-                      ? 'bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30 hover:text-blue-400'
-                      : tab.id === 'sandbox'
-                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/30 hover:bg-amber-500/30 hover:text-amber-300'
-                        : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/30 hover:text-emerald-400'
-                  )
-                  : 'bg-card text-muted-foreground hover:text-foreground border-border'
+                  ? tab.id === 'overview'
+                    ? 'bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30 hover:text-blue-400'
+                    : tab.id === 'sandbox'
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/30 hover:bg-amber-500/30 hover:text-amber-300'
+                      : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/30 hover:text-emerald-400'
+                  : 'bg-card text-muted-foreground hover:text-foreground border-border',
               )}
             >
               <tab.icon className="h-3.5 w-3.5" />
-              {tab.id === 'overview' ? t('accounts.tabOverview') : tab.id === 'sandbox' ? t('accounts.tabSandboxDesk') : t('accounts.tabLiveDesk')}
+              {tab.id === 'overview'
+                ? t('accounts.tabOverview')
+                : tab.id === 'sandbox'
+                  ? t('accounts.tabSandboxDesk')
+                  : t('accounts.tabLiveDesk')}
             </Button>
           ))}
         </div>
@@ -899,8 +1012,12 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
               <CardContent className="flex h-full min-h-0 flex-col p-0">
                 <div className="flex shrink-0 items-center justify-between border-b border-border/70 px-3 py-2.5">
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70">{t('accounts.sandboxFleet')}</p>
-                    <p className="text-xs text-muted-foreground">{t('accounts.sandboxFleetDesc')}</p>
+                    <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70">
+                      {t('accounts.sandboxFleet')}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t('accounts.sandboxFleetDesc')}
+                    </p>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Button
@@ -926,7 +1043,9 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                 {sandboxAccounts.length === 0 ? (
                   <div className="px-4 py-8 text-center">
                     <Shield className="mx-auto mb-2 h-6 w-6 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">{t('accounts.noSandboxAccountsYet')}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {t('accounts.noSandboxAccountsYet')}
+                    </p>
                     <Button
                       size="sm"
                       onClick={openCreateSandboxDialog}
@@ -952,13 +1071,16 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                       </thead>
                       <tbody>
                         {sandboxAccounts.map((account) => {
-                          const autotraderOpenPositions = sandboxMetrics.autotraderOverlay.accountId === account.id
-                            ? sandboxMetrics.autotraderOverlay.openPositions
-                            : 0
-                          const autotraderExposure = sandboxMetrics.autotraderOverlay.accountId === account.id
-                            ? sandboxMetrics.autotraderOverlay.exposureUsd
-                            : 0
-                          const totalOpenPositions = (account.open_positions || 0) + autotraderOpenPositions
+                          const autotraderOpenPositions =
+                            sandboxMetrics.autotraderOverlay.accountId === account.id
+                              ? sandboxMetrics.autotraderOverlay.openPositions
+                              : 0
+                          const autotraderExposure =
+                            sandboxMetrics.autotraderOverlay.accountId === account.id
+                              ? sandboxMetrics.autotraderOverlay.exposureUsd
+                              : 0
+                          const totalOpenPositions =
+                            (account.open_positions || 0) + autotraderOpenPositions
                           const totalPnl = (account.total_pnl || 0) + (account.unrealized_pnl || 0)
                           const isSelected = selectedAccountId === account.id
                           return (
@@ -966,7 +1088,7 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                               key={account.id}
                               className={cn(
                                 'border-b border-border/40 transition-colors hover:bg-muted/40',
-                                isSelected && 'bg-blue-500/10'
+                                isSelected && 'bg-blue-500/10',
                               )}
                             >
                               <td className="px-3 py-2">
@@ -980,27 +1102,46 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                                 >
                                   <p className="font-medium text-foreground">{account.name}</p>
                                   <p className="text-[11px] text-muted-foreground">
-                                    {t('accounts.winRateLine', { rate: account.win_rate.toFixed(1), w: account.winning_trades, l: account.losing_trades })}
+                                    {t('accounts.winRateLine', {
+                                      rate: account.win_rate.toFixed(1),
+                                      w: account.winning_trades,
+                                      l: account.losing_trades,
+                                    })}
                                   </p>
                                 </button>
                               </td>
-                              <td className="px-3 py-2 text-right font-mono">{formatUsd(account.current_capital || 0)}</td>
                               <td className="px-3 py-2 text-right font-mono">
-                                <span className={cn(totalPnl >= 0 ? 'text-green-400' : 'text-red-400')}>
+                                {formatUsd(account.current_capital || 0)}
+                              </td>
+                              <td className="px-3 py-2 text-right font-mono">
+                                <span
+                                  className={cn(totalPnl >= 0 ? 'text-green-400' : 'text-red-400')}
+                                >
                                   {formatSignedUsd(totalPnl)}
                                 </span>
                               </td>
                               <td className="px-3 py-2 text-right font-mono">
-                                <span className={cn((account.roi_percent || 0) >= 0 ? 'text-green-400' : 'text-red-400')}>
+                                <span
+                                  className={cn(
+                                    (account.roi_percent || 0) >= 0
+                                      ? 'text-green-400'
+                                      : 'text-red-400',
+                                  )}
+                                >
                                   {formatSignedPct(account.roi_percent || 0)}
                                 </span>
                               </td>
-                              <td className="px-3 py-2 text-right font-mono">{account.total_trades || 0}</td>
+                              <td className="px-3 py-2 text-right font-mono">
+                                {account.total_trades || 0}
+                              </td>
                               <td className="px-3 py-2 text-right font-mono">
                                 <p>{totalOpenPositions}</p>
                                 {autotraderOpenPositions > 0 && (
                                   <p className="text-[10px] font-medium text-cyan-300">
-                                    {t('accounts.autoExposureLine', { n: autotraderOpenPositions, value: formatUsd(autotraderExposure) })}
+                                    {t('accounts.autoExposureLine', {
+                                      n: autotraderOpenPositions,
+                                      value: formatUsd(autotraderExposure),
+                                    })}
                                   </p>
                                 )}
                               </td>
@@ -1027,15 +1168,25 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
             <Card className="xl:col-span-4 min-h-0 border-border bg-card/40 shadow-none">
               <CardContent className="h-full min-h-0 space-y-2.5 overflow-y-auto p-3">
                 <div>
-                  <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70">{t('accounts.liveVenues')}</p>
+                  <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70">
+                    {t('accounts.liveVenues')}
+                  </p>
                   <p className="text-xs text-muted-foreground">{t('accounts.liveVenuesDesc')}</p>
                 </div>
                 {venueSnapshots.map((venue) => (
-                  <div key={venue.id} className="rounded-lg border border-border/70 bg-background/40 p-2.5">
+                  <div
+                    key={venue.id}
+                    className="rounded-lg border border-border/70 bg-background/40 p-2.5"
+                  >
                     <div className="mb-1.5 flex items-start justify-between gap-2">
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className={cn('h-2 w-2 rounded-full', venue.connected ? 'bg-green-400' : 'bg-amber-400')} />
+                          <span
+                            className={cn(
+                              'h-2 w-2 rounded-full',
+                              venue.connected ? 'bg-green-400' : 'bg-amber-400',
+                            )}
+                          />
                           <p className="text-sm font-medium">{venue.label}</p>
                         </div>
                         <p className="text-[11px] text-muted-foreground">{venue.accountLabel}</p>
@@ -1044,7 +1195,9 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                         variant="outline"
                         className={cn(
                           'border-transparent px-1.5 py-0.5 text-[10px]',
-                          venue.connected ? 'bg-green-500/20 text-green-300' : 'bg-amber-500/20 text-amber-300'
+                          venue.connected
+                            ? 'bg-green-500/20 text-green-300'
+                            : 'bg-amber-500/20 text-amber-300',
                         )}
                       >
                         {venue.connected ? t('accounts.connected') : t('accounts.disconnected')}
@@ -1052,8 +1205,14 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-[11px]">
                       <MetricPair label={t('accounts.balance')} value={formatUsd(venue.balance)} />
-                      <MetricPair label={t('accounts.available')} value={formatUsd(venue.available)} />
-                      <MetricPair label={t('accounts.exposure')} value={formatUsd(venue.exposure)} />
+                      <MetricPair
+                        label={t('accounts.available')}
+                        value={formatUsd(venue.available)}
+                      />
+                      <MetricPair
+                        label={t('accounts.exposure')}
+                        value={formatUsd(venue.exposure)}
+                      />
                       <MetricPair
                         label={t('accounts.unrealized')}
                         value={formatSignedUsd(venue.unrealizedPnl)}
@@ -1081,8 +1240,12 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
             <CardContent className="h-full min-h-0 space-y-3 overflow-y-auto p-3">
               <div className="flex flex-wrap items-center justify-between gap-1.5">
                 <div>
-                  <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70">{t('accounts.allocationRiskRadar')}</p>
-                  <p className="text-xs text-muted-foreground">{t('accounts.allocationRiskRadarDesc')}</p>
+                  <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70">
+                    {t('accounts.allocationRiskRadar')}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {t('accounts.allocationRiskRadarDesc')}
+                  </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">
                   {riskSignals.map((signal) => (
@@ -1093,7 +1256,7 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                         'h-5 border-transparent px-1.5 text-[10px]',
                         signal.tone === 'green' && 'bg-green-500/20 text-green-300',
                         signal.tone === 'amber' && 'bg-amber-500/20 text-amber-300',
-                        signal.tone === 'red' && 'bg-red-500/20 text-red-300'
+                        signal.tone === 'red' && 'bg-red-500/20 text-red-300',
                       )}
                     >
                       {signal.label}
@@ -1107,18 +1270,26 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                   <p className="text-xs text-muted-foreground">{t('accounts.noAccountBalances')}</p>
                 ) : (
                   allocationRows.map((row) => (
-                    <div key={row.id} className="rounded-lg border border-border/60 bg-background/40 p-2">
+                    <div
+                      key={row.id}
+                      className="rounded-lg border border-border/60 bg-background/40 p-2"
+                    >
                       <div className="mb-1 flex items-center justify-between gap-2 text-xs">
                         <span className="truncate text-muted-foreground">{row.label}</span>
                         <span className="font-mono text-foreground">{formatUsd(row.value)}</span>
                       </div>
                       <div className="h-1.5 overflow-hidden rounded-full bg-muted/80">
                         <div
-                          className={cn('h-full rounded-full', row.tone === 'green' ? 'bg-green-400/80' : 'bg-amber-400/80')}
+                          className={cn(
+                            'h-full rounded-full',
+                            row.tone === 'green' ? 'bg-green-400/80' : 'bg-amber-400/80',
+                          )}
                           style={{ width: `${Math.max(row.share, 3)}%` }}
                         />
                       </div>
-                      <p className="mt-0.5 text-right text-[11px] text-muted-foreground">{row.share.toFixed(1)}%</p>
+                      <p className="mt-0.5 text-right text-[11px] text-muted-foreground">
+                        {row.share.toFixed(1)}%
+                      </p>
                     </div>
                   ))
                 )}
@@ -1134,8 +1305,12 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
             <div className="shrink-0 border-b border-border/50 px-2.5 py-2">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('accounts.sandboxAccounts')}</p>
-                  <p className="text-[10px] text-muted-foreground">{t('accounts.desksConfigured', { n: sandboxAccounts.length })}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {t('accounts.sandboxAccounts')}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {t('accounts.desksConfigured', { n: sandboxAccounts.length })}
+                  </p>
                 </div>
                 <Button
                   variant="outline"
@@ -1152,7 +1327,9 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
               <div className="space-y-1.5 p-1.5">
                 {sandboxAccounts.length === 0 ? (
                   <div className="px-2 py-6 text-center">
-                    <p className="text-[11px] text-muted-foreground">{t('accounts.noSandboxConfigured')}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {t('accounts.noSandboxConfigured')}
+                    </p>
                     <Button
                       size="sm"
                       variant="outline"
@@ -1167,9 +1344,10 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                   sandboxAccounts.map((account) => {
                     const isActive = activeSandboxAccountId === account.id
                     const totalPnl = (account.total_pnl || 0) + (account.unrealized_pnl || 0)
-                    const autotraderPositions = sandboxMetrics.autotraderOverlay.accountId === account.id
-                      ? sandboxMetrics.autotraderOverlay.openPositions
-                      : 0
+                    const autotraderPositions =
+                      sandboxMetrics.autotraderOverlay.accountId === account.id
+                        ? sandboxMetrics.autotraderOverlay.openPositions
+                        : 0
                     return (
                       <button
                         key={account.id}
@@ -1180,20 +1358,33 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                         }}
                         className={cn(
                           'w-full rounded-md px-2 py-1.5 text-left transition-colors',
-                          isActive ? 'bg-amber-500/15 text-foreground' : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+                          isActive
+                            ? 'bg-amber-500/15 text-foreground'
+                            : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground',
                         )}
                       >
                         <div className="flex items-center justify-between gap-2">
                           <p className="truncate text-[11px] font-medium">{account.name}</p>
-                          <span className={cn('text-[10px] font-mono', totalPnl >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+                          <span
+                            className={cn(
+                              'text-[10px] font-mono',
+                              totalPnl >= 0 ? 'text-emerald-400' : 'text-red-400',
+                            )}
+                          >
                             {formatSignedUsd(totalPnl)}
                           </span>
                         </div>
                         <p className="mt-0.5 text-[9px] text-muted-foreground">
-                          {t('accounts.tradesWrLine', { n: account.total_trades, rate: (account.win_rate || 0).toFixed(1) })}
+                          {t('accounts.tradesWrLine', {
+                            n: account.total_trades,
+                            rate: (account.win_rate || 0).toFixed(1),
+                          })}
                         </p>
                         <p className="text-[9px] text-muted-foreground">
-                          {t('accounts.openCapitalLine', { n: account.open_positions + autotraderPositions, value: formatUsd(account.current_capital || 0) })}
+                          {t('accounts.openCapitalLine', {
+                            n: account.open_positions + autotraderPositions,
+                            value: formatUsd(account.current_capital || 0),
+                          })}
                         </p>
                       </button>
                     )
@@ -1206,29 +1397,63 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
           <div className="min-h-0 flex flex-col gap-2">
             <div className="grid gap-1.5 sm:grid-cols-2 xl:grid-cols-4">
               <div className="rounded-md border border-amber-500/25 bg-amber-500/10 px-2.5 py-1.5">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{t('accounts.activeDesk')}</p>
-                <p className="truncate text-[12px] font-semibold">{activeSandboxAccount?.name || t('accounts.none')}</p>
-                <p className="text-[10px] text-muted-foreground">{activeSandboxAccountId ? activeSandboxAccountId : t('accounts.selectAccount')}</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {t('accounts.activeDesk')}
+                </p>
+                <p className="truncate text-[12px] font-semibold">
+                  {activeSandboxAccount?.name || t('accounts.none')}
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  {activeSandboxAccountId ? activeSandboxAccountId : t('accounts.selectAccount')}
+                </p>
               </div>
               <div className="rounded-md border border-border/60 bg-background/70 px-2.5 py-1.5">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{t('accounts.openPositions')}</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {t('accounts.openPositions')}
+                </p>
                 <p className="text-[12px] font-mono">{selectedSandboxOpenPositions}</p>
                 <p className="text-[10px] text-muted-foreground">
-                  {selectedSandboxOverlayOpen > 0 ? t('accounts.includesAutotrader', { n: selectedSandboxOverlayOpen }) : t('accounts.manualStrategyFills')}
+                  {selectedSandboxOverlayOpen > 0
+                    ? t('accounts.includesAutotrader', { n: selectedSandboxOverlayOpen })
+                    : t('accounts.manualStrategyFills')}
                 </p>
               </div>
               <div className="rounded-md border border-border/60 bg-background/70 px-2.5 py-1.5">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{t('accounts.deskPnl')}</p>
-                <p className={cn('text-[12px] font-mono', selectedSandboxTotalPnl >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {t('accounts.deskPnl')}
+                </p>
+                <p
+                  className={cn(
+                    'text-[12px] font-mono',
+                    selectedSandboxTotalPnl >= 0 ? 'text-emerald-400' : 'text-red-400',
+                  )}
+                >
                   {formatSignedUsd(selectedSandboxTotalPnl)}
                 </p>
-                <p className="text-[10px] text-muted-foreground">{t('accounts.roiPrefix', { value: formatSignedPct(activeSandboxAccount?.roi_percent || 0) })}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {t('accounts.roiPrefix', {
+                    value: formatSignedPct(activeSandboxAccount?.roi_percent || 0),
+                  })}
+                </p>
               </div>
               <div className="rounded-md border border-border/60 bg-background/70 px-2.5 py-1.5">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{t('accounts.deployableCash')}</p>
-                <p className="text-[12px] font-mono">{formatUsd(Math.max(0, (activeSandboxAccount?.current_capital || 0) - selectedSandboxOverlayExposure))}</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {t('accounts.deployableCash')}
+                </p>
+                <p className="text-[12px] font-mono">
+                  {formatUsd(
+                    Math.max(
+                      0,
+                      (activeSandboxAccount?.current_capital || 0) - selectedSandboxOverlayExposure,
+                    ),
+                  )}
+                </p>
                 <p className="text-[10px] text-muted-foreground">
-                  {selectedSandboxOverlayExposure > 0 ? t('accounts.autoReserved', { value: formatUsd(selectedSandboxOverlayExposure) }) : t('accounts.noAutoReserve')}
+                  {selectedSandboxOverlayExposure > 0
+                    ? t('accounts.autoReserved', {
+                        value: formatUsd(selectedSandboxOverlayExposure),
+                      })
+                    : t('accounts.noAutoReserve')}
                 </p>
               </div>
             </div>
@@ -1242,7 +1467,7 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                   'h-7 gap-1.5 text-[11px]',
                   sandboxView === 'overview'
                     ? 'bg-amber-500/20 text-amber-300 border-amber-500/30 hover:bg-amber-500/30 hover:text-amber-300'
-                    : 'bg-card text-muted-foreground hover:text-foreground border-border'
+                    : 'bg-card text-muted-foreground hover:text-foreground border-border',
                 )}
               >
                 <LayoutDashboard className="h-3.5 w-3.5" />
@@ -1256,7 +1481,7 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                   'h-7 gap-1.5 text-[11px]',
                   sandboxView === 'positions'
                     ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/30 hover:text-cyan-400'
-                    : 'bg-card text-muted-foreground hover:text-foreground border-border'
+                    : 'bg-card text-muted-foreground hover:text-foreground border-border',
                 )}
               >
                 <Briefcase className="h-3.5 w-3.5" />
@@ -1270,7 +1495,7 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                   'h-7 gap-1.5 text-[11px]',
                   sandboxView === 'activity'
                     ? 'bg-violet-500/20 text-violet-400 border-violet-500/30 hover:bg-violet-500/30 hover:text-violet-400'
-                    : 'bg-card text-muted-foreground hover:text-foreground border-border'
+                    : 'bg-card text-muted-foreground hover:text-foreground border-border',
                 )}
               >
                 <Receipt className="h-3.5 w-3.5" />
@@ -1291,8 +1516,12 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
               <div className="flex-1 min-h-0 grid gap-2 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
                 <div className="min-h-0 rounded-lg border border-border/70 bg-card/80 overflow-hidden">
                   <div className="px-2.5 py-2 border-b border-border/50 flex items-center justify-between">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('accounts.deskSnapshot')}</span>
-                    <span className="text-[10px] font-mono text-muted-foreground">{t('accounts.positionsCount', { n: sandboxPositionRows.length })}</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      {t('accounts.deskSnapshot')}
+                    </span>
+                    <span className="text-[10px] font-mono text-muted-foreground">
+                      {t('accounts.positionsCount', { n: sandboxPositionRows.length })}
+                    </span>
                   </div>
                   <ScrollArea className="h-[260px] xl:h-full">
                     <table className="w-full text-[11px]">
@@ -1309,20 +1538,35 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                       <tbody>
                         {sandboxPositionRows.length === 0 ? (
                           <tr>
-                            <td colSpan={6} className="px-2 py-6 text-center text-muted-foreground">{t('accounts.noOpenPositions')}</td>
+                            <td colSpan={6} className="px-2 py-6 text-center text-muted-foreground">
+                              {t('accounts.noOpenPositions')}
+                            </td>
                           </tr>
                         ) : (
                           sandboxPositionRows.map((position) => (
                             <tr key={position.id} className="border-b border-border/40">
                               <td className="px-2 py-1.5">
                                 <p className="max-w-[360px] truncate">{position.market_question}</p>
-                                <p className="text-[9px] text-muted-foreground">{position.market_id}</p>
+                                <p className="text-[9px] text-muted-foreground">
+                                  {position.market_id}
+                                </p>
                               </td>
                               <td className="px-2 py-1.5 text-right font-mono">{position.side}</td>
-                              <td className="px-2 py-1.5 text-right font-mono">{position.quantity.toFixed(2)}</td>
-                              <td className="px-2 py-1.5 text-right font-mono">{position.entryPrice.toFixed(3)}</td>
-                              <td className="px-2 py-1.5 text-right font-mono">{position.markPrice.toFixed(3)}</td>
-                              <td className={cn('px-2 py-1.5 text-right font-mono', position.unrealizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+                              <td className="px-2 py-1.5 text-right font-mono">
+                                {position.quantity.toFixed(2)}
+                              </td>
+                              <td className="px-2 py-1.5 text-right font-mono">
+                                {position.entryPrice.toFixed(3)}
+                              </td>
+                              <td className="px-2 py-1.5 text-right font-mono">
+                                {position.markPrice.toFixed(3)}
+                              </td>
+                              <td
+                                className={cn(
+                                  'px-2 py-1.5 text-right font-mono',
+                                  position.unrealizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400',
+                                )}
+                              >
                                 {formatSignedUsd(position.unrealizedPnl)}
                               </td>
                             </tr>
@@ -1336,24 +1580,40 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                 <div className="min-h-0 flex flex-col gap-2">
                   <div className="rounded-lg border border-border/70 bg-card/80 overflow-hidden">
                     <div className="px-2.5 py-2 border-b border-border/50 flex items-center justify-between">
-                      <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('accounts.strategyMix')}</span>
-                      <span className="text-[10px] font-mono text-muted-foreground">{t('accounts.rowsCount', { n: sandboxStrategyRows.length })}</span>
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        {t('accounts.strategyMix')}
+                      </span>
+                      <span className="text-[10px] font-mono text-muted-foreground">
+                        {t('accounts.rowsCount', { n: sandboxStrategyRows.length })}
+                      </span>
                     </div>
                     <div className="space-y-1 p-2">
                       {sandboxStrategyRows.length === 0 ? (
-                        <p className="text-[11px] text-muted-foreground">{t('accounts.noTradeHistory')}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {t('accounts.noTradeHistory')}
+                        </p>
                       ) : (
                         sandboxStrategyRows.slice(0, 8).map((row) => (
-                          <div key={row.strategy} className="rounded border border-border/50 px-2 py-1">
+                          <div
+                            key={row.strategy}
+                            className="rounded border border-border/50 px-2 py-1"
+                          >
                             <div className="flex items-center justify-between gap-2">
                               <span className="truncate text-[11px]">{row.strategy}</span>
-                              <span className={cn('text-[10px] font-mono', row.pnl >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+                              <span
+                                className={cn(
+                                  'text-[10px] font-mono',
+                                  row.pnl >= 0 ? 'text-emerald-400' : 'text-red-400',
+                                )}
+                              >
                                 {formatSignedUsd(row.pnl)}
                               </span>
                             </div>
                             <div className="mt-0.5 flex items-center justify-between text-[10px] text-muted-foreground">
                               <span>{t('accounts.tradesCount', { n: row.trades })}</span>
-                              <span>{t('accounts.notionalLabel', { value: formatUsd(row.notional) })}</span>
+                              <span>
+                                {t('accounts.notionalLabel', { value: formatUsd(row.notional) })}
+                              </span>
                             </div>
                           </div>
                         ))
@@ -1363,18 +1623,31 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
 
                   <div className="rounded-lg border border-border/70 bg-card/80 overflow-hidden">
                     <div className="px-2.5 py-2 border-b border-border/50 flex items-center justify-between">
-                      <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('accounts.lifecycleMix')}</span>
-                      <span className="text-[10px] font-mono text-muted-foreground">{t('accounts.tradesCount', { n: sandboxTradeRows.length })}</span>
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        {t('accounts.lifecycleMix')}
+                      </span>
+                      <span className="text-[10px] font-mono text-muted-foreground">
+                        {t('accounts.tradesCount', { n: sandboxTradeRows.length })}
+                      </span>
                     </div>
                     <div className="space-y-1 p-2">
                       {sandboxTradeStatusRows.length === 0 ? (
-                        <p className="text-[11px] text-muted-foreground">{t('accounts.noLifecycleData')}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {t('accounts.noLifecycleData')}
+                        </p>
                       ) : (
                         sandboxTradeStatusRows.map((row) => (
-                          <div key={row.status} className="rounded border border-border/50 px-2 py-1">
+                          <div
+                            key={row.status}
+                            className="rounded border border-border/50 px-2 py-1"
+                          >
                             <div className="flex items-center justify-between">
-                              <span className="text-[11px] uppercase">{row.status.replace(/_/g, ' ')}</span>
-                              <span className="text-[10px] font-mono text-muted-foreground">{row.count}</span>
+                              <span className="text-[11px] uppercase">
+                                {row.status.replace(/_/g, ' ')}
+                              </span>
+                              <span className="text-[10px] font-mono text-muted-foreground">
+                                {row.count}
+                              </span>
                             </div>
                           </div>
                         ))
@@ -1405,22 +1678,41 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                     <tbody>
                       {sandboxPositionRows.length === 0 ? (
                         <tr>
-                          <td colSpan={9} className="px-2 py-8 text-center text-muted-foreground">{t('accounts.noPositionsForDesk')}</td>
+                          <td colSpan={9} className="px-2 py-8 text-center text-muted-foreground">
+                            {t('accounts.noPositionsForDesk')}
+                          </td>
                         </tr>
                       ) : (
                         sandboxPositionRows.map((position) => (
                           <tr key={position.id} className="border-b border-border/40">
                             <td className="px-2 py-1.5">
                               <p className="max-w-[420px] truncate">{position.market_question}</p>
-                              <p className="text-[9px] text-muted-foreground">{position.market_id}</p>
+                              <p className="text-[9px] text-muted-foreground">
+                                {position.market_id}
+                              </p>
                             </td>
                             <td className="px-2 py-1.5 text-right font-mono">{position.side}</td>
-                            <td className="px-2 py-1.5 text-right font-mono">{position.quantity.toFixed(2)}</td>
-                            <td className="px-2 py-1.5 text-right font-mono">{position.entryPrice.toFixed(3)}</td>
-                            <td className="px-2 py-1.5 text-right font-mono">{position.markPrice.toFixed(3)}</td>
-                            <td className="px-2 py-1.5 text-right font-mono">{formatUsd(position.entryCost)}</td>
-                            <td className="px-2 py-1.5 text-right font-mono">{formatUsd(position.marketValue)}</td>
-                            <td className={cn('px-2 py-1.5 text-right font-mono', position.unrealizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+                            <td className="px-2 py-1.5 text-right font-mono">
+                              {position.quantity.toFixed(2)}
+                            </td>
+                            <td className="px-2 py-1.5 text-right font-mono">
+                              {position.entryPrice.toFixed(3)}
+                            </td>
+                            <td className="px-2 py-1.5 text-right font-mono">
+                              {position.markPrice.toFixed(3)}
+                            </td>
+                            <td className="px-2 py-1.5 text-right font-mono">
+                              {formatUsd(position.entryCost)}
+                            </td>
+                            <td className="px-2 py-1.5 text-right font-mono">
+                              {formatUsd(position.marketValue)}
+                            </td>
+                            <td
+                              className={cn(
+                                'px-2 py-1.5 text-right font-mono',
+                                position.unrealizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400',
+                              )}
+                            >
                               {formatSignedUsd(position.unrealizedPnl)}
                             </td>
                             <td className="px-2 py-1.5 text-right">
@@ -1455,7 +1747,9 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                     <tbody>
                       {sandboxTradeRows.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="px-2 py-8 text-center text-muted-foreground">{t('accounts.noTradesForDesk')}</td>
+                          <td colSpan={7} className="px-2 py-8 text-center text-muted-foreground">
+                            {t('accounts.noTradesForDesk')}
+                          </td>
                         </tr>
                       ) : (
                         sandboxTradeRows.map((trade) => (
@@ -1465,16 +1759,39 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                             </td>
                             <td className="px-2 py-1.5">
                               <p className="font-medium">{trade.strategy_type}</p>
-                              <p className="text-[9px] text-muted-foreground">{trade.opportunity_id}</p>
+                              <p className="text-[9px] text-muted-foreground">
+                                {trade.opportunity_id}
+                              </p>
                             </td>
-                            <td className="px-2 py-1.5 text-right font-mono">{formatUsd(trade.total_cost)}</td>
-                            <td className="px-2 py-1.5 text-right font-mono">{formatUsd(trade.expected_profit || 0)}</td>
-                            <td className={cn('px-2 py-1.5 text-right font-mono', toFiniteNumber(trade.actual_pnl) >= 0 ? 'text-emerald-400' : 'text-red-400')}>
-                              {trade.actual_pnl == null ? '—' : formatSignedUsd(toFiniteNumber(trade.actual_pnl))}
+                            <td className="px-2 py-1.5 text-right font-mono">
+                              {formatUsd(trade.total_cost)}
                             </td>
-                            <td className="px-2 py-1.5 text-right font-mono">{formatUsd(trade.fees_paid || 0)}</td>
+                            <td className="px-2 py-1.5 text-right font-mono">
+                              {formatUsd(trade.expected_profit || 0)}
+                            </td>
+                            <td
+                              className={cn(
+                                'px-2 py-1.5 text-right font-mono',
+                                toFiniteNumber(trade.actual_pnl) >= 0
+                                  ? 'text-emerald-400'
+                                  : 'text-red-400',
+                              )}
+                            >
+                              {trade.actual_pnl == null
+                                ? '—'
+                                : formatSignedUsd(toFiniteNumber(trade.actual_pnl))}
+                            </td>
+                            <td className="px-2 py-1.5 text-right font-mono">
+                              {formatUsd(trade.fees_paid || 0)}
+                            </td>
                             <td className="px-2 py-1.5 text-right">
-                              <Badge variant="outline" className={cn('h-4 px-1 text-[9px] uppercase', tradeStatusClass(String(trade.status || 'unknown')))}>
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  'h-4 px-1 text-[9px] uppercase',
+                                  tradeStatusClass(String(trade.status || 'unknown')),
+                                )}
+                              >
                                 {String(trade.status || 'unknown').replace(/_/g, ' ')}
                               </Badge>
                             </td>
@@ -1493,13 +1810,19 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
         <div className="flex-1 min-h-0 grid gap-2 xl:grid-cols-[250px_minmax(0,1fr)]">
           <div className="hidden xl:flex min-h-0 flex-col rounded-lg border border-border/70 bg-card overflow-hidden">
             <div className="shrink-0 border-b border-border/50 px-2.5 py-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('accounts.liveVenues')}</p>
-              <p className="text-[10px] text-muted-foreground">{t('accounts.venuesConnectedShort', { n: liveMetrics.connectedVenues })}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {t('accounts.liveVenues')}
+              </p>
+              <p className="text-[10px] text-muted-foreground">
+                {t('accounts.venuesConnectedShort', { n: liveMetrics.connectedVenues })}
+              </p>
             </div>
             <ScrollArea className="flex-1 min-h-0">
               <div className="space-y-1.5 p-1.5">
                 {venueSnapshots.map((venue) => {
-                  const isActive = selectedAccountId === `live:${venue.id}` || (!selectedAccountId?.startsWith('live:') && venue.id === 'polymarket')
+                  const isActive =
+                    selectedAccountId === `live:${venue.id}` ||
+                    (!selectedAccountId?.startsWith('live:') && venue.id === 'polymarket')
                   return (
                     <button
                       key={venue.id}
@@ -1512,18 +1835,33 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                         'w-full rounded-md px-2 py-1.5 text-left transition-colors',
                         isActive
                           ? 'bg-emerald-500/15 text-foreground'
-                          : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+                          : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground',
                       )}
                     >
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-[11px] font-medium">{venue.label}</p>
-                        <span className={cn('h-1.5 w-1.5 rounded-full', venue.connected ? 'bg-emerald-400' : 'bg-amber-400')} />
+                        <span
+                          className={cn(
+                            'h-1.5 w-1.5 rounded-full',
+                            venue.connected ? 'bg-emerald-400' : 'bg-amber-400',
+                          )}
+                        />
                       </div>
-                      <p className="mt-0.5 text-[9px] text-muted-foreground">{venue.accountLabel}</p>
-                      <p className="text-[9px] text-muted-foreground">
-                        {t('accounts.cashPositionsLine', { value: formatUsd(venue.balance), n: venue.openPositions })}
+                      <p className="mt-0.5 text-[9px] text-muted-foreground">
+                        {venue.accountLabel}
                       </p>
-                      <p className={cn('text-[9px] font-mono', venue.unrealizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+                      <p className="text-[9px] text-muted-foreground">
+                        {t('accounts.cashPositionsLine', {
+                          value: formatUsd(venue.balance),
+                          n: venue.openPositions,
+                        })}
+                      </p>
+                      <p
+                        className={cn(
+                          'text-[9px] font-mono',
+                          venue.unrealizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400',
+                        )}
+                      >
                         {formatSignedUsd(venue.unrealizedPnl)}
                       </p>
                     </button>
@@ -1536,26 +1874,51 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
           <div className="min-h-0 flex flex-col gap-2">
             <div className="grid gap-1.5 sm:grid-cols-2 xl:grid-cols-4">
               <div className="rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1.5">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{t('accounts.activeVenue')}</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {t('accounts.activeVenue')}
+                </p>
                 <p className="text-[12px] font-semibold">{activeLiveSnapshot.label}</p>
-                <p className={cn('text-[10px]', activeLiveSnapshot.connected ? 'text-emerald-400' : 'text-amber-400')}>
-                  {activeLiveSnapshot.connected ? t('accounts.connected') : t('accounts.disconnected')}
+                <p
+                  className={cn(
+                    'text-[10px]',
+                    activeLiveSnapshot.connected ? 'text-emerald-400' : 'text-amber-400',
+                  )}
+                >
+                  {activeLiveSnapshot.connected
+                    ? t('accounts.connected')
+                    : t('accounts.disconnected')}
                 </p>
               </div>
               <div className="rounded-md border border-border/60 bg-background/70 px-2.5 py-1.5">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{t('accounts.freeCash')}</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {t('accounts.freeCash')}
+                </p>
                 <p className="text-[12px] font-mono">{formatUsd(activeLiveSnapshot.available)}</p>
-                <p className="text-[10px] text-muted-foreground">{t('accounts.balanceLabel', { value: formatUsd(activeLiveSnapshot.balance) })}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {t('accounts.balanceLabel', { value: formatUsd(activeLiveSnapshot.balance) })}
+                </p>
               </div>
               <div className="rounded-md border border-border/60 bg-background/70 px-2.5 py-1.5">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{t('accounts.openRisk')}</p>
-                <p className="text-[12px] font-mono">{t('accounts.positionsCount', { n: activeLiveSnapshot.openPositions })}</p>
-                <p className="text-[10px] text-muted-foreground">{t('accounts.exposureLabel', { value: formatUsd(activeLiveSnapshot.exposure) })}</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {t('accounts.openRisk')}
+                </p>
+                <p className="text-[12px] font-mono">
+                  {t('accounts.positionsCount', { n: activeLiveSnapshot.openPositions })}
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  {t('accounts.exposureLabel', { value: formatUsd(activeLiveSnapshot.exposure) })}
+                </p>
               </div>
               <div className="rounded-md border border-border/60 bg-background/70 px-2.5 py-1.5">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{t('accounts.recentOrders')}</p>
-                <p className="text-[12px] font-mono">{t('accounts.openCount', { n: liveOpenOrderCount })}</p>
-                <p className="text-[10px] text-muted-foreground">{t('accounts.totalCached', { n: liveOrderRows.length })}</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {t('accounts.recentOrders')}
+                </p>
+                <p className="text-[12px] font-mono">
+                  {t('accounts.openCount', { n: liveOpenOrderCount })}
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  {t('accounts.totalCached', { n: liveOrderRows.length })}
+                </p>
               </div>
             </div>
 
@@ -1568,7 +1931,7 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                   'h-7 gap-1.5 text-[11px]',
                   liveView === 'overview'
                     ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/30 hover:text-emerald-400'
-                    : 'bg-card text-muted-foreground hover:text-foreground border-border'
+                    : 'bg-card text-muted-foreground hover:text-foreground border-border',
                 )}
               >
                 <LayoutDashboard className="h-3.5 w-3.5" />
@@ -1582,7 +1945,7 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                   'h-7 gap-1.5 text-[11px]',
                   liveView === 'positions'
                     ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/30 hover:text-cyan-400'
-                    : 'bg-card text-muted-foreground hover:text-foreground border-border'
+                    : 'bg-card text-muted-foreground hover:text-foreground border-border',
                 )}
               >
                 <Briefcase className="h-3.5 w-3.5" />
@@ -1596,7 +1959,7 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                   'h-7 gap-1.5 text-[11px]',
                   liveView === 'activity'
                     ? 'bg-violet-500/20 text-violet-400 border-violet-500/30 hover:bg-violet-500/30 hover:text-violet-400'
-                    : 'bg-card text-muted-foreground hover:text-foreground border-border'
+                    : 'bg-card text-muted-foreground hover:text-foreground border-border',
                 )}
               >
                 <ListChecks className="h-3.5 w-3.5" />
@@ -1617,8 +1980,12 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
               <div className="flex-1 min-h-0 grid gap-2 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
                 <div className="min-h-0 rounded-lg border border-border/70 bg-card/80 overflow-hidden">
                   <div className="px-2.5 py-2 border-b border-border/50 flex items-center justify-between">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('accounts.venueBalanceSheet')}</span>
-                    <span className="text-[10px] font-mono text-muted-foreground">{t('accounts.fleetLabel', { value: formatUsd(liveMetrics.totalBalance) })}</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      {t('accounts.venueBalanceSheet')}
+                    </span>
+                    <span className="text-[10px] font-mono text-muted-foreground">
+                      {t('accounts.fleetLabel', { value: formatUsd(liveMetrics.totalBalance) })}
+                    </span>
                   </div>
                   <table className="w-full text-[11px]">
                     <thead>
@@ -1638,14 +2005,33 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                             <p className="font-medium">{venue.label}</p>
                             <p className="text-[9px] text-muted-foreground">{venue.accountLabel}</p>
                           </td>
-                          <td className="px-2 py-1.5 text-right font-mono">{formatUsd(venue.balance)}</td>
-                          <td className="px-2 py-1.5 text-right font-mono">{formatUsd(venue.available)}</td>
-                          <td className="px-2 py-1.5 text-right font-mono">{formatUsd(venue.exposure)}</td>
-                          <td className={cn('px-2 py-1.5 text-right font-mono', venue.unrealizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+                          <td className="px-2 py-1.5 text-right font-mono">
+                            {formatUsd(venue.balance)}
+                          </td>
+                          <td className="px-2 py-1.5 text-right font-mono">
+                            {formatUsd(venue.available)}
+                          </td>
+                          <td className="px-2 py-1.5 text-right font-mono">
+                            {formatUsd(venue.exposure)}
+                          </td>
+                          <td
+                            className={cn(
+                              'px-2 py-1.5 text-right font-mono',
+                              venue.unrealizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400',
+                            )}
+                          >
                             {formatSignedUsd(venue.unrealizedPnl)}
                           </td>
                           <td className="px-2 py-1.5 text-right">
-                            <Badge variant="outline" className={cn('h-4 px-1 text-[9px]', venue.connected ? 'border-emerald-500/40 text-emerald-300' : 'border-amber-500/40 text-amber-300')}>
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                'h-4 px-1 text-[9px]',
+                                venue.connected
+                                  ? 'border-emerald-500/40 text-emerald-300'
+                                  : 'border-amber-500/40 text-amber-300',
+                              )}
+                            >
                               {venue.connected ? t('accounts.connected') : t('accounts.offline')}
                             </Badge>
                           </td>
@@ -1658,32 +2044,67 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                 <div className="min-h-0 flex flex-col gap-2">
                   <div className="rounded-lg border border-border/70 bg-card/80 overflow-hidden">
                     <div className="px-2.5 py-2 border-b border-border/50 flex items-center justify-between">
-                      <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('accounts.polymarketLimits')}</span>
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        {t('accounts.polymarketLimits')}
+                      </span>
                       <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
                     </div>
                     <div className="grid grid-cols-2 gap-1.5 p-2">
-                      <MetricPair label={t('accounts.maxTrade')} value={formatUsd(toFiniteNumber(tradingStatus?.limits.max_trade_size_usd))} />
-                      <MetricPair label={t('accounts.maxDaily')} value={formatUsd(toFiniteNumber(tradingStatus?.limits.max_daily_volume))} />
-                      <MetricPair label={t('accounts.minOrder')} value={formatUsd(toFiniteNumber(tradingStatus?.limits.min_order_size_usd))} />
+                      <MetricPair
+                        label={t('accounts.maxTrade')}
+                        value={formatUsd(toFiniteNumber(tradingStatus?.limits.max_trade_size_usd))}
+                      />
+                      <MetricPair
+                        label={t('accounts.maxDaily')}
+                        value={formatUsd(toFiniteNumber(tradingStatus?.limits.max_daily_volume))}
+                      />
+                      <MetricPair
+                        label={t('accounts.minOrder')}
+                        value={formatUsd(toFiniteNumber(tradingStatus?.limits.min_order_size_usd))}
+                      />
                       <MetricPair
                         label={t('accounts.nativeGas')}
-                        value={tradingStatus?.native_gas ? formatNativeGas(toFiniteNumber(tradingStatus.native_gas.balance_native)) : '--'}
+                        value={
+                          tradingStatus?.native_gas
+                            ? formatNativeGas(
+                                toFiniteNumber(tradingStatus.native_gas.balance_native),
+                              )
+                            : '--'
+                        }
                         valueClass={
                           tradingStatus?.native_gas
-                            ? (toFiniteNumber(tradingStatus.native_gas.balance_native) > 0 ? 'text-emerald-300' : 'text-red-300')
+                            ? toFiniteNumber(tradingStatus.native_gas.balance_native) > 0
+                              ? 'text-emerald-300'
+                              : 'text-red-300'
                             : undefined
                         }
                       />
                       <MetricPair
                         label={t('accounts.gasNeeded')}
-                        value={tradingStatus?.native_gas ? formatNativeGas(toFiniteNumber(tradingStatus.native_gas.required_native_for_approval)) : '--'}
+                        value={
+                          tradingStatus?.native_gas
+                            ? formatNativeGas(
+                                toFiniteNumber(
+                                  tradingStatus.native_gas.required_native_for_approval,
+                                ),
+                              )
+                            : '--'
+                        }
                       />
                       <MetricPair
                         label={t('accounts.gasReady')}
-                        value={tradingStatus?.native_gas ? (tradingStatus.native_gas.affordable_for_approval ? t('accounts.yes') : t('accounts.no')) : '--'}
+                        value={
+                          tradingStatus?.native_gas
+                            ? tradingStatus.native_gas.affordable_for_approval
+                              ? t('accounts.yes')
+                              : t('accounts.no')
+                            : '--'
+                        }
                         valueClass={
                           tradingStatus?.native_gas
-                            ? (tradingStatus.native_gas.affordable_for_approval ? 'text-emerald-300' : 'text-red-300')
+                            ? tradingStatus.native_gas.affordable_for_approval
+                              ? 'text-emerald-300'
+                              : 'text-red-300'
                             : undefined
                         }
                       />
@@ -1699,19 +2120,34 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                   </div>
                   <div className="rounded-lg border border-border/70 bg-card/80 overflow-hidden">
                     <div className="px-2.5 py-2 border-b border-border/50 flex items-center justify-between">
-                      <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('accounts.activeVenueBook')}</span>
-                      <span className="text-[10px] font-mono text-muted-foreground">{t('accounts.positionsCount', { n: activeLivePositions.length })}</span>
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        {t('accounts.activeVenueBook')}
+                      </span>
+                      <span className="text-[10px] font-mono text-muted-foreground">
+                        {t('accounts.positionsCount', { n: activeLivePositions.length })}
+                      </span>
                     </div>
                     <div className="space-y-1 p-2">
                       {activeLivePositions.length === 0 ? (
-                        <p className="text-[11px] text-muted-foreground">{t('accounts.noOpenPositionsOn', { venue: activeLiveSnapshot.label })}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {t('accounts.noOpenPositionsOn', { venue: activeLiveSnapshot.label })}
+                        </p>
                       ) : (
                         activeLivePositions.slice(0, 8).map((row) => (
                           <div key={row.id} className="rounded border border-border/50 px-2 py-1">
-                            <p className="truncate text-[11px]" title={row.marketQuestion}>{row.marketQuestion}</p>
+                            <p className="truncate text-[11px]" title={row.marketQuestion}>
+                              {row.marketQuestion}
+                            </p>
                             <div className="mt-0.5 flex items-center justify-between text-[10px]">
-                              <span className="text-muted-foreground">{row.outcome} · {row.size.toFixed(2)}</span>
-                              <span className={cn('font-mono', row.unrealizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+                              <span className="text-muted-foreground">
+                                {row.outcome} · {row.size.toFixed(2)}
+                              </span>
+                              <span
+                                className={cn(
+                                  'font-mono',
+                                  row.unrealizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400',
+                                )}
+                              >
                                 {formatSignedUsd(row.unrealizedPnl)}
                               </span>
                             </div>
@@ -1744,7 +2180,9 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                     <tbody>
                       {livePositionRows.length === 0 ? (
                         <tr>
-                          <td colSpan={9} className="px-2 py-8 text-center text-muted-foreground">{t('accounts.noLivePositions')}</td>
+                          <td colSpan={9} className="px-2 py-8 text-center text-muted-foreground">
+                            {t('accounts.noLivePositions')}
+                          </td>
                         </tr>
                       ) : (
                         livePositionRows.map((row) => (
@@ -1754,17 +2192,40 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                               <p className="text-[9px] text-muted-foreground">{row.marketId}</p>
                             </td>
                             <td className="px-2 py-1.5 text-right">
-                              <Badge variant="outline" className={cn('h-4 px-1 text-[9px]', row.venue === 'Polymarket' ? 'border-cyan-500/40 text-cyan-300' : 'border-indigo-500/40 text-indigo-300')}>
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  'h-4 px-1 text-[9px]',
+                                  row.venue === 'Polymarket'
+                                    ? 'border-cyan-500/40 text-cyan-300'
+                                    : 'border-indigo-500/40 text-indigo-300',
+                                )}
+                              >
                                 {row.venue}
                               </Badge>
                             </td>
                             <td className="px-2 py-1.5 text-right font-mono">{row.outcome}</td>
-                            <td className="px-2 py-1.5 text-right font-mono">{row.size.toFixed(2)}</td>
-                            <td className="px-2 py-1.5 text-right font-mono">{row.entryPrice.toFixed(3)}</td>
-                            <td className="px-2 py-1.5 text-right font-mono">{row.markPrice.toFixed(3)}</td>
-                            <td className="px-2 py-1.5 text-right font-mono">{formatUsd(row.costBasis)}</td>
-                            <td className="px-2 py-1.5 text-right font-mono">{formatUsd(row.marketValue)}</td>
-                            <td className={cn('px-2 py-1.5 text-right font-mono', row.unrealizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+                            <td className="px-2 py-1.5 text-right font-mono">
+                              {row.size.toFixed(2)}
+                            </td>
+                            <td className="px-2 py-1.5 text-right font-mono">
+                              {row.entryPrice.toFixed(3)}
+                            </td>
+                            <td className="px-2 py-1.5 text-right font-mono">
+                              {row.markPrice.toFixed(3)}
+                            </td>
+                            <td className="px-2 py-1.5 text-right font-mono">
+                              {formatUsd(row.costBasis)}
+                            </td>
+                            <td className="px-2 py-1.5 text-right font-mono">
+                              {formatUsd(row.marketValue)}
+                            </td>
+                            <td
+                              className={cn(
+                                'px-2 py-1.5 text-right font-mono',
+                                row.unrealizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400',
+                              )}
+                            >
                               {formatSignedUsd(row.unrealizedPnl)}
                             </td>
                           </tr>
@@ -1795,7 +2256,9 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                     <tbody>
                       {liveOrderRows.length === 0 ? (
                         <tr>
-                          <td colSpan={8} className="px-2 py-8 text-center text-muted-foreground">{t('accounts.noLiveOrders')}</td>
+                          <td colSpan={8} className="px-2 py-8 text-center text-muted-foreground">
+                            {t('accounts.noLiveOrders')}
+                          </td>
                         </tr>
                       ) : (
                         liveOrderRows.map((order) => (
@@ -1804,16 +2267,30 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                               {new Date(order.created_at).toLocaleString()}
                             </td>
                             <td className="px-2 py-1.5">
-                              <p className="max-w-[360px] truncate">{order.market_question || order.token_id}</p>
+                              <p className="max-w-[360px] truncate">
+                                {order.market_question || order.token_id}
+                              </p>
                               <p className="text-[9px] text-muted-foreground">{order.token_id}</p>
                             </td>
                             <td className="px-2 py-1.5 text-right font-mono">{order.side}</td>
                             <td className="px-2 py-1.5 text-right font-mono">{order.order_type}</td>
-                            <td className="px-2 py-1.5 text-right font-mono">{toFiniteNumber(order.size).toFixed(2)}</td>
-                            <td className="px-2 py-1.5 text-right font-mono">{toFiniteNumber(order.price).toFixed(3)}</td>
-                            <td className="px-2 py-1.5 text-right font-mono">{toFiniteNumber(order.filled_size).toFixed(2)}</td>
+                            <td className="px-2 py-1.5 text-right font-mono">
+                              {toFiniteNumber(order.size).toFixed(2)}
+                            </td>
+                            <td className="px-2 py-1.5 text-right font-mono">
+                              {toFiniteNumber(order.price).toFixed(3)}
+                            </td>
+                            <td className="px-2 py-1.5 text-right font-mono">
+                              {toFiniteNumber(order.filled_size).toFixed(2)}
+                            </td>
                             <td className="px-2 py-1.5 text-right">
-                              <Badge variant="outline" className={cn('h-4 px-1 text-[9px] uppercase', liveOrderStatusClass(order.status))}>
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  'h-4 px-1 text-[9px] uppercase',
+                                  liveOrderStatusClass(order.status),
+                                )}
+                              >
                                 {order.status}
                               </Badge>
                             </td>
@@ -1847,7 +2324,7 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
             <DialogDescription>
               {t('accounts.createSandboxDescription', {
                 defaultValue:
-                  'Paper capital for shadow trading. No real money moves until you use a live bot.',
+                  'Shadow capital for simulated trading. No real money moves until you use a live bot.',
               })}
             </DialogDescription>
           </DialogHeader>
@@ -1860,8 +2337,12 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
               <Input
                 id="sandbox-account-name"
                 value={sandboxForm.name}
-                onChange={(e) => setSandboxForm((current) => ({ ...current, name: e.target.value }))}
-                placeholder={t('accounts.createSandboxNamePlaceholder', { defaultValue: 'Paper Trading' })}
+                onChange={(e) =>
+                  setSandboxForm((current) => ({ ...current, name: e.target.value }))
+                }
+                placeholder={t('accounts.createSandboxNamePlaceholder', {
+                  defaultValue: 'Shadow Trading',
+                })}
                 maxLength={100}
                 autoFocus
               />
@@ -1878,7 +2359,9 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                 max={10_000_000}
                 step={100}
                 value={sandboxForm.initialCapital}
-                onChange={(e) => setSandboxForm((current) => ({ ...current, initialCapital: e.target.value }))}
+                onChange={(e) =>
+                  setSandboxForm((current) => ({ ...current, initialCapital: e.target.value }))
+                }
               />
               <p className="text-[11px] text-muted-foreground">
                 {t('accounts.createSandboxCapitalHint', {
@@ -1899,7 +2382,9 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                   max={100}
                   step={1}
                   value={sandboxForm.maxPositionPct}
-                  onChange={(e) => setSandboxForm((current) => ({ ...current, maxPositionPct: e.target.value }))}
+                  onChange={(e) =>
+                    setSandboxForm((current) => ({ ...current, maxPositionPct: e.target.value }))
+                  }
                 />
               </div>
               <div className="grid gap-1.5">
@@ -1913,7 +2398,9 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
                   max={100}
                   step={1}
                   value={sandboxForm.maxPositions}
-                  onChange={(e) => setSandboxForm((current) => ({ ...current, maxPositions: e.target.value }))}
+                  onChange={(e) =>
+                    setSandboxForm((current) => ({ ...current, maxPositions: e.target.value }))
+                  }
                 />
               </div>
             </div>
@@ -1980,7 +2467,7 @@ function DenseMetric({
           'mt-1 font-mono text-sm font-semibold',
           tone === 'neutral' && 'text-foreground',
           tone === 'green' && 'text-green-400',
-          tone === 'red' && 'text-red-400'
+          tone === 'red' && 'text-red-400',
         )}
       >
         {value}
