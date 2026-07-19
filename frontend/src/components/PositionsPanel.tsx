@@ -1244,9 +1244,18 @@ export default function PositionsPanel() {
   }, [kalshiLivePositions, kalshiLiveUpdatedAt, managedBotByTokenId])
 
   const baseRows = useMemo(() => {
-    if (viewMode === 'sandbox') return [...simulationRows, ...shadowBotRows]
+    // After shadow fills ledger into simulation_positions, the same open
+    // inventory appears twice (Sandbox desk + Shadow Bot order). Prefer the
+    // bot-attributed shadow row and drop the matching desk-only row.
+    const shadowCoverage = new Set(
+      shadowBotRows.map((row) => `${row.accountLabel}|${row.marketId}|${row.side}`),
+    )
+    const dedupedSimulationRows = simulationRows.filter(
+      (row) => !shadowCoverage.has(`${row.accountLabel}|${row.marketId}|${row.side}`),
+    )
+    if (viewMode === 'sandbox') return [...dedupedSimulationRows, ...shadowBotRows]
     if (viewMode === 'live') return [...polymarketLiveRows, ...kalshiLiveRows]
-    return [...simulationRows, ...shadowBotRows, ...polymarketLiveRows, ...kalshiLiveRows]
+    return [...dedupedSimulationRows, ...shadowBotRows, ...polymarketLiveRows, ...kalshiLiveRows]
   }, [viewMode, simulationRows, shadowBotRows, polymarketLiveRows, kalshiLiveRows])
 
   const accountOptions = useMemo(() => {
