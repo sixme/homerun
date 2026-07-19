@@ -358,16 +358,6 @@ export interface RunBacktestRequest {
 }
 
 /**
- * Legacy synchronous run.  Returns the full result blob; blocks the
- * API process for the entire engine wall time.  Kept for back-compat;
- * the BacktestStudio now uses ``enqueueBacktest`` + polling.
- */
-export async function runUnifiedBacktest(req: RunBacktestRequest): Promise<UnifiedBacktestResult> {
-  const { data } = await api.post<UnifiedBacktestResult>('/backtest/run', req)
-  return data
-}
-
-/**
  * Async-by-default backtest enqueue.  Returns immediately with the
  * allocated ``run_id``; the engine runs in the dedicated worker
  * process (services/backtest/job_runner.py).  Operator polls
