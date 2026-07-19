@@ -7,7 +7,7 @@ import asyncio
 
 from models.database import get_db_session
 from services.polymarket import polymarket_client
-from services.simulation import simulation_service
+from services.simulation import compute_paper_equity_and_roi, simulation_service
 
 simulation_router = APIRouter()
 
@@ -61,7 +61,6 @@ async def list_simulation_accounts():
     accounts_with_positions = await simulation_service.get_all_accounts_with_positions()
     result = []
     for acc, positions in accounts_with_positions:
-        roi = (acc.current_capital - acc.initial_capital) / acc.initial_capital * 100 if acc.initial_capital > 0 else 0
         win_rate = acc.winning_trades / acc.total_trades * 100 if acc.total_trades > 0 else 0
         # Calculate unrealized P&L from open positions
         unrealized_pnl = sum(p.unrealized_pnl for p in positions)
@@ -69,12 +68,18 @@ async def list_simulation_accounts():
         book_value = sum(p.entry_cost for p in positions)
         # Market value = sum of current value of open positions
         market_value = sum(p.quantity * (p.current_price or p.entry_price) for p in positions)
+        equity, roi = compute_paper_equity_and_roi(
+            initial_capital=float(acc.initial_capital or 0.0),
+            current_capital=float(acc.current_capital or 0.0),
+            market_value=float(market_value or 0.0),
+        )
         result.append(
             {
                 "id": acc.id,
                 "name": acc.name,
                 "initial_capital": acc.initial_capital,
                 "current_capital": acc.current_capital,
+                "equity": equity,
                 "total_pnl": acc.total_pnl,
                 "total_trades": acc.total_trades,
                 "winning_trades": acc.winning_trades,
@@ -245,6 +250,11 @@ async def get_equity_history(account_id: str):
     unrealized_pnl = sum(p.unrealized_pnl for p in positions)
     book_value = sum(p.entry_cost for p in positions)
     market_value = sum(p.quantity * (p.current_price or p.entry_price) for p in positions)
+    equity, roi_percent = compute_paper_equity_and_roi(
+        initial_capital=float(account.initial_capital or 0.0),
+        current_capital=float(account.current_capital or 0.0),
+        market_value=float(market_value or 0.0),
+    )
 
     return {
         "account_id": account_id,
@@ -271,9 +281,8 @@ async def get_equity_history(account_id: str):
             "avg_win": avg_win,
             "avg_loss": avg_loss,
             "win_rate": account.winning_trades / account.total_trades * 100 if account.total_trades > 0 else 0,
-            "roi_percent": (account.current_capital - account.initial_capital) / account.initial_capital * 100
-            if account.initial_capital > 0
-            else 0,
+            "equity": equity,
+            "roi_percent": roi_percent,
         },
     }
 

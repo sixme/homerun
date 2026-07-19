@@ -37,7 +37,11 @@ ignore = [
 "tests/**/*.py" = ["E402"]
 "workers/*.py" = ["E402"]
 "workers/**/*.py" = ["E402"]
+# Legacy shim loads simulation.py then re-exports package submodules.
+# Both path shapes: CI runs from backend/; pre-commit from repo root.
 "services/simulation/__init__.py" = ["E402"]
+"**/services/simulation/__init__.py" = ["E402"]
+"backend/services/simulation/__init__.py" = ["E402"]
 
 [tool.ruff.format]
 quote-style = "double"

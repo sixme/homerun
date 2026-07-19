@@ -30,6 +30,7 @@ SimulationService = _legacy.SimulationService
 SlippageModel = _legacy.SlippageModel
 simulation_service = _legacy.simulation_service
 AsyncSessionLocal = _legacy.AsyncSessionLocal
+compute_paper_equity_and_roi = _legacy.compute_paper_equity_and_roi
 settings = getattr(_legacy, "settings", _settings)
 asyncio = getattr(_legacy, "asyncio", _asyncio)
 
@@ -42,6 +43,7 @@ __all__ = [
     "SlippageModel",
     "simulation_service",
     "AsyncSessionLocal",
+    "compute_paper_equity_and_roi",
     "settings",
     "asyncio",
     "ExecutionSimulator",

@@ -23,6 +23,27 @@ from utils.utcnow import utcnow
 logger = get_logger("simulation")
 
 
+def compute_paper_equity_and_roi(
+    *,
+    initial_capital: float,
+    current_capital: float,
+    market_value: float = 0.0,
+) -> tuple[float, float]:
+    """Equity and ROI for a paper/sandbox desk.
+
+    ``current_capital`` is free cash after open fills debit entry cost.
+    Open inventory lives in simulation positions; its mark is ``market_value``.
+    ROI must use equity (cash + mark), not free cash alone — otherwise a fully
+    deployed book at flat marks reports a large negative ROI while true equity
+    is near initial capital.
+    """
+    equity = float(current_capital or 0.0) + float(market_value or 0.0)
+    initial = float(initial_capital or 0.0)
+    if initial <= 0.0:
+        return equity, 0.0
+    return equity, ((equity - initial) / initial) * 100.0
+
+
 class SlippageModel:
     """Calculate execution slippage"""
 
@@ -738,16 +759,26 @@ class SimulationService:
 
             # Calculate additional stats
             win_rate = account.winning_trades / account.total_trades * 100 if account.total_trades > 0 else 0
-            roi = (account.current_capital - account.initial_capital) / account.initial_capital * 100
 
-            # Get open positions count
+            # Get open positions count + mark for equity ROI
             positions = await self.get_open_positions(account_id)
+            market_value = sum(
+                float(p.quantity or 0.0)
+                * float(p.current_price if p.current_price is not None else p.entry_price or 0.0)
+                for p in positions
+            )
+            equity, roi = compute_paper_equity_and_roi(
+                initial_capital=float(account.initial_capital or 0.0),
+                current_capital=float(account.current_capital or 0.0),
+                market_value=float(market_value),
+            )
 
             return {
                 "account_id": account.id,
                 "name": account.name,
                 "initial_capital": account.initial_capital,
                 "current_capital": account.current_capital,
+                "equity": equity,
                 "total_pnl": account.total_pnl,
                 "roi_percent": roi,
                 "total_trades": account.total_trades,
@@ -755,6 +786,7 @@ class SimulationService:
                 "losing_trades": account.losing_trades,
                 "win_rate": win_rate,
                 "open_positions": len(positions),
+                "market_value": market_value,
                 "max_positions": account.max_open_positions,
                 "created_at": account.created_at.isoformat(),
             }
