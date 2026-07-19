@@ -65,8 +65,9 @@ import {
   getSignalStats,
   pauseAllWorkers,
   resumeAllWorkers,
+  getAllTraderOrders,
 } from './services/apiTraders'
-import type { WorkerStatus } from './services/apiTraders'
+import type { TraderOrder, WorkerStatus } from './services/apiTraders'
 import {
   getUILockStatus,
   lockUILock,
@@ -149,6 +150,200 @@ type CopilotSeedPrompt = { id: number; prompt: string; autoSend: boolean }
 
 const ITEMS_PER_PAGE = 20
 const ANALYZE_ALL_IDS_PAGE_SIZE = 500
+
+// Mirror PositionsPanel: shadow bots write mode=shadow; paper mode also counts.
+const HEADER_OPEN_PAPER_ORDER_STATUSES = new Set(['submitted', 'executed', 'open', 'working', 'partial'])
+const HEADER_PAPER_SHADOW_ORDER_MODES = new Set(['paper', 'shadow'])
+const HEADER_CLOSED_PAPER_ORDER_STATUSES = new Set([
+  'closed_win',
+  'closed_loss',
+  'resolved_win',
+  'resolved_loss',
+  'resolved',
+  'closed',
+])
+
+function headerToNumber(value: unknown): number {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function headerReadString(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
+}
+
+function headerNormalizeDirection(raw: string | null | undefined): string {
+  const direction = String(raw || '').trim().toUpperCase()
+  if (!direction) return 'N/A'
+  if (direction === 'BUY_YES' || direction === 'SELL_YES') return 'YES'
+  if (direction === 'BUY_NO' || direction === 'SELL_NO') return 'NO'
+  if (direction === 'BUY' || direction === 'LONG' || direction === 'UP') return 'YES'
+  if (direction === 'SELL' || direction === 'SHORT' || direction === 'DOWN') return 'NO'
+  return direction
+}
+
+/** Prefer real fill/entry over a bogus tick-floor effective_price. */
+function headerResolveOrderEntryPrice(order: TraderOrder): number {
+  const entry = headerToNumber(order.entry_price)
+  const effective = headerToNumber(order.effective_price)
+  const avg = headerToNumber(order.average_fill_price)
+  if (avg >= 0.01) return avg
+  if (entry > 0 && effective > 0) {
+    const ratio = Math.max(entry, effective) / Math.max(Math.min(entry, effective), 1e-9)
+    if (ratio <= 3 && effective >= 0.01) return effective
+    return entry
+  }
+  if (entry > 0) return entry
+  return effective > 0 ? effective : 0
+}
+
+/**
+ * Aggregate open paper/shadow trader_orders for a simulation account.
+ *
+ * Prefer payload.simulation_ledger.account_id. Also include unlinked
+ * shadow/paper rows: many fills never stamped the ledger, and with a
+ * single paper desk they still belong to this account.
+ */
+function aggregateSandboxShadowInventory(
+  orders: TraderOrder[],
+  accountId: string,
+): {
+  openPositions: number
+  costBasis: number
+  marketValue: number
+  unrealizedPnl: number
+  closedRealizedPnl: number
+} {
+  const buckets = new Map<string, {
+    costBasis: number
+    weightedEntry: number
+    weightedSize: number
+    markPrice: number | null
+    unrealizedFromApi: number | null
+  }>()
+
+  let closedRealizedPnl = 0
+
+  for (const order of orders) {
+    const mode = String(order.mode || '').toLowerCase()
+    if (!HEADER_PAPER_SHADOW_ORDER_MODES.has(mode)) continue
+
+    const payload = (order.payload && typeof order.payload === 'object')
+      ? order.payload as Record<string, unknown>
+      : {}
+    const simulationLedger = (payload.simulation_ledger && typeof payload.simulation_ledger === 'object')
+      ? payload.simulation_ledger as Record<string, unknown>
+      : null
+    const linkedAccountId = headerReadString(simulationLedger?.account_id)
+    // Include: exact ledger match OR no ledger (orphan shadow fill).
+    // Exclude: ledger stamped to a *different* sandbox account.
+    if (linkedAccountId && linkedAccountId !== accountId) continue
+
+    const status = String(order.status || '').toLowerCase()
+    if (HEADER_CLOSED_PAPER_ORDER_STATUSES.has(status)) {
+      // Prefer position_close.realized_pnl, then actual_profit; recompute
+      // when fill price is a tick-floor bug (entry vs effective diverge).
+      const positionClose = (payload.position_close && typeof payload.position_close === 'object')
+        ? payload.position_close as Record<string, unknown>
+        : null
+      const closePx = headerToNumber(positionClose?.close_price)
+      const entry = headerResolveOrderEntryPrice(order)
+      const notional = Math.max(
+        Math.abs(headerToNumber(order.notional_usd)),
+        Math.abs(headerToNumber(order.filled_notional_usd)),
+      )
+      let closedPnl = headerToNumber(
+        positionClose?.realized_pnl ?? order.actual_profit,
+      )
+      if (entry >= 0.01 && closePx > 0 && notional > 0) {
+        const shares = notional / entry
+        const recomputed = shares * closePx - notional
+        // If stored PnL is outside feasible binary bounds, use recompute.
+        const lo = -notional
+        const hi = shares - notional
+        if (closedPnl < lo - 0.05 || closedPnl > hi + 0.05) {
+          closedPnl = recomputed
+        }
+      }
+      closedRealizedPnl += closedPnl
+      continue
+    }
+    if (!HEADER_OPEN_PAPER_ORDER_STATUSES.has(status)) continue
+
+    const marketId = headerReadString(order.market_id) || ''
+    if (!marketId) continue
+
+    const side = headerNormalizeDirection(order.direction_side ?? order.direction)
+    const traderId = headerReadString(order.trader_id)
+    // Keep per-bot rows for shadow so header Pos matches Positions / Bots.
+    const bucketScope = mode === 'shadow'
+      ? (traderId || linkedAccountId || 'unassigned')
+      : (linkedAccountId || 'unassigned')
+    const key = `${mode}:${bucketScope}:${marketId}:${side}`
+
+    const notional = Math.max(
+      Math.abs(headerToNumber(order.notional_usd)),
+      Math.abs(headerToNumber(order.filled_notional_usd)),
+    )
+    const entryPrice = headerResolveOrderEntryPrice(order)
+    const positionState = (payload.position_state && typeof payload.position_state === 'object')
+      ? payload.position_state as Record<string, unknown>
+      : null
+    const markFromOrder = headerToNumber(order.current_price)
+    const markFromState = headerToNumber(positionState?.last_mark_price)
+    const markPriceRaw = markFromOrder > 0 ? markFromOrder : markFromState
+
+    if (!buckets.has(key)) {
+      buckets.set(key, {
+        costBasis: 0,
+        weightedEntry: 0,
+        weightedSize: 0,
+        markPrice: markPriceRaw > 0 ? markPriceRaw : null,
+        unrealizedFromApi: null,
+      })
+    }
+    const bucket = buckets.get(key)!
+    if (markPriceRaw > 0) bucket.markPrice = markPriceRaw
+    const apiU = order.unrealized_pnl
+    if (typeof apiU === 'number' && Number.isFinite(apiU)) {
+      bucket.unrealizedFromApi = (bucket.unrealizedFromApi ?? 0) + apiU
+    }
+    if (notional <= 0) continue
+    bucket.costBasis += notional
+    if (entryPrice > 0) {
+      bucket.weightedEntry += entryPrice * notional
+      bucket.weightedSize += notional / entryPrice
+    }
+  }
+
+  let openPositions = 0
+  let costBasis = 0
+  let marketValue = 0
+  let unrealizedPnl = 0
+
+  for (const bucket of buckets.values()) {
+    if (bucket.costBasis <= 0) continue
+    openPositions += 1
+    costBasis += bucket.costBasis
+    const entryPrice = bucket.costBasis > 0 ? bucket.weightedEntry / bucket.costBasis : null
+    const size = bucket.weightedSize > 0 ? bucket.weightedSize : null
+    const currentPrice = bucket.markPrice
+    const rowMarketValue = (currentPrice !== null && size !== null && size > 0)
+      ? currentPrice * size
+      : bucket.costBasis
+    const computedU = (currentPrice !== null && entryPrice !== null && size !== null && size > 0)
+      ? (currentPrice - entryPrice) * size
+      : null
+    const rowUnrealized = computedU !== null ? computedU : (bucket.unrealizedFromApi ?? 0)
+    marketValue += rowMarketValue
+    unrealizedPnl += rowUnrealized
+  }
+
+  return { openPositions, costBasis, marketValue, unrealizedPnl, closedRealizedPnl }
+}
 
 function PanelFallback({ label }: { label: string }) {
   return (
@@ -1130,6 +1325,28 @@ function App() {
 
   const isLiveAccountSelected = selectedAccountId?.startsWith('live:') ?? false
   const selectedLivePlatform = selectedAccountId === 'live:kalshi' ? 'kalshi' : 'polymarket'
+  const selectedSandboxAccountId = (
+    !isLiveAccountSelected && selectedAccountId
+      ? selectedAccountId
+      : null
+  )
+
+  // Shadow bot inventory lives on trader_orders (mode=shadow/paper), not
+  // simulation_positions. Header must use the same source as Positions.
+  const { data: headerTraderOrders = [] } = useQuery({
+    queryKey: ['header-sandbox-trader-orders'],
+    queryFn: async () => {
+      try {
+        return await getAllTraderOrders(1000)
+      } catch {
+        return [] as TraderOrder[]
+      }
+    },
+    enabled: Boolean(selectedSandboxAccountId),
+    refetchInterval: selectedSandboxAccountId ? 5000 : false,
+    staleTime: 0,
+    retry: false,
+  })
 
   const { data: headerTradingStatus } = useQuery({
     queryKey: ['trading-status'],
@@ -1197,12 +1414,68 @@ function App() {
   const selectedAccount = sandboxAccounts.find(a => a.id === selectedAccountId)
   const headerStats = useMemo(() => {
     if (!isLiveAccountSelected) {
-      const balance = selectedAccount?.current_capital ?? 0
-      const initialCapital = selectedAccount?.initial_capital ?? balance
-      const pnl = selectedAccount?.total_pnl ?? 0
-      const roi = selectedAccount?.roi_percent ?? 0
-      const positions = selectedAccount?.open_positions ?? 0
-      return { portfolioValue: initialCapital + pnl, balance, pnl, roi, positions }
+      const cash = selectedAccount?.current_capital ?? 0
+      const initialCapital = selectedAccount?.initial_capital ?? cash
+      const simOpen = selectedAccount?.open_positions ?? 0
+      const simBook = selectedAccount?.book_value ?? 0
+      const simMarket = selectedAccount?.market_value ?? 0
+      const simRealized = selectedAccount?.total_pnl ?? 0
+
+      const shadow = selectedSandboxAccountId
+        ? aggregateSandboxShadowInventory(headerTraderOrders, selectedSandboxAccountId)
+        : { openPositions: 0, costBasis: 0, marketValue: 0, unrealizedPnl: 0, closedRealizedPnl: 0 }
+
+      // simulation_positions is often empty while shadow inventory lives on
+      // trader_orders. When the sim desk has no open book, trust order inventory.
+      const simInventoryEmpty = simOpen === 0 && simBook < 0.01
+      const useOrderInventory = simInventoryEmpty && (
+        shadow.openPositions > 0
+        || Math.abs(shadow.closedRealizedPnl) > 0.0001
+        || shadow.costBasis > 0
+      )
+
+      if (useOrderInventory) {
+        const realized = shadow.closedRealizedPnl
+        const unrealized = shadow.unrealizedPnl
+        // Equity is always: starting capital + closed P&L + open MTM.
+        // Never Value = stuck_$100 + mark_notional (double-counts opens).
+        const portfolioValue = initialCapital + realized + unrealized
+        const pnl = realized + unrealized
+        const roi = initialCapital > 0 ? (pnl / initialCapital) * 100 : 0
+        // Free cash when ledger never debited: leftover after open cost.
+        // Clamp at 0 so over-allocated paper (opens > bankroll) shows
+        // Bal $0 fully deployed, not a confusing negative balance.
+        const cashStuckAtInitial = Math.abs(cash - initialCapital) < 1.0
+        const freeCashRaw = cashStuckAtInitial
+          ? (initialCapital + realized - shadow.costBasis)
+          : cash
+        const balance = Math.max(0, freeCashRaw)
+        return {
+          portfolioValue,
+          balance,
+          pnl,
+          roi,
+          positions: shadow.openPositions,
+        }
+      }
+
+      // Sim desk has open positions (or no shadow inventory). Cash is
+      // current_capital; portfolio = cash + marked open inventory.
+      const balance = cash
+      const hasOpenInventory = simOpen > 0 || simMarket > 0
+      // If sim desk still shows empty book but cash is stuck while we have
+      // no order inventory either, fall through to account totals.
+      const portfolioValue = hasOpenInventory
+        ? (balance + simMarket)
+        : (initialCapital + simRealized)
+      const pnl = hasOpenInventory
+        ? (portfolioValue - initialCapital)
+        : simRealized
+      const roi = initialCapital > 0 ? (pnl / initialCapital) * 100 : 0
+      // Prefer the larger of sim desk vs shadow bot open count so Pos matches
+      // the book the user actually sees (ledger-backed fills appear in both).
+      const positions = Math.max(simOpen, shadow.openPositions)
+      return { portfolioValue, balance, pnl, roi, positions }
     }
 
     if (selectedLivePlatform === 'kalshi') {
@@ -1254,10 +1527,14 @@ function App() {
   }, [
     isLiveAccountSelected,
     selectedLivePlatform,
+    selectedSandboxAccountId,
     selectedAccount?.current_capital,
+    selectedAccount?.initial_capital,
     selectedAccount?.total_pnl,
-    selectedAccount?.roi_percent,
     selectedAccount?.open_positions,
+    selectedAccount?.book_value,
+    selectedAccount?.market_value,
+    headerTraderOrders,
     headerKalshiBalance?.balance,
     headerKalshiStatus?.balance?.balance,
     headerKalshiPositions,

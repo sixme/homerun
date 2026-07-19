@@ -580,7 +580,27 @@ export default function PositionsPanel() {
       const status = String(order.status || '').toLowerCase()
       if (!CLOSED_PAPER_ORDER_STATUSES.has(status)) return
       closed += 1
-      const pnl = toNumber(order.actual_profit)
+      const payload = (order.payload && typeof order.payload === 'object')
+        ? order.payload as Record<string, unknown>
+        : {}
+      const positionClose = (payload.position_close && typeof payload.position_close === 'object')
+        ? payload.position_close as Record<string, unknown>
+        : null
+      const entry = resolveOrderEntryPrice(order)
+      const notional = Math.max(
+        Math.abs(toNumber(order.notional_usd)),
+        Math.abs(toNumber(order.filled_notional_usd)),
+      )
+      const closePx = toNumber(positionClose?.close_price)
+      let pnl = toNumber(positionClose?.realized_pnl ?? order.actual_profit)
+      if (entry >= 0.01 && closePx > 0 && notional > 0) {
+        const shares = notional / entry
+        const lo = -notional
+        const hi = shares - notional
+        if (pnl < lo - 0.05 || pnl > hi + 0.05) {
+          pnl = shares * closePx - notional
+        }
+      }
       realized += pnl
       if (pnl > 0) wins += 1
       else if (pnl < 0) losses += 1

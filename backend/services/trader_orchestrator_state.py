@@ -11149,37 +11149,25 @@ async def get_trader_orders_summary(
     is_open = status_col.in_(open_statuses)
     is_resolved = status_col.in_(resolved_statuses)
     is_failed = status_col.in_(failed_statuses)
-    # Only count actual_profit for orders whose realized P&L was verified
-    # against Polymarket as the source of truth. The ONLY truly-verified
-    # statuses are:
-    #   * wallet_activity — actual on-chain trade matched by tx_hash
-    #     from polymarket.get_wallet_trades (covers bot SELLs, manual
-    #     user sells, and resolution payouts after Phase 4)
-    #   * venue_fill     — Polymarket CLOB order status confirmed filled
-    #     with an actual average_fill_price from the venue
-    #
-    # Everything else is inferred / pending and excluded from totals:
-    #   * wallet_position — wallet shows balance=0, close_price was
-    #     guessed from currentPrice / wallet aggregate (this is the
-    #     phantom-PnL path the user caught — Flash Crash $85)
-    #   * venue_order     — order on the book, not yet filled
-    #   * local           — bot's local belief, no venue confirmation
-    #   * summary_only    — wallet shows position closed but no trade
-    #     match (verifier will upgrade once trades data appears)
-    #   * disputed        — venue truth contradicts our internal claim
-    _UNVERIFIED_VERIFICATION_STATUSES = (
+    # Live: only count actual_profit when venue/wallet verified (avoids
+    # phantom on-chain PnL). Shadow/paper: there is no venue wallet — the
+    # lifecycle write with verification_status='local' IS the operational
+    # truth. Excluding 'local' made All Bots resolved PnL chart stay $0
+    # while individual closed rows showed R-P&L.
+    _UNVERIFIED_LIVE_VERIFICATION_STATUSES = (
         "summary_only",
         "local",
         "disputed",
         "wallet_position",
         "venue_order",
     )
-    is_pnl_verified = TraderOrder.verification_status.notin_(_UNVERIFIED_VERIFICATION_STATUSES)
+    is_shadow_mode = func.lower(func.coalesce(TraderOrder.mode, "")) == "shadow"
+    is_pnl_verified = or_(
+        is_shadow_mode,
+        TraderOrder.verification_status.notin_(_UNVERIFIED_LIVE_VERIFICATION_STATUSES),
+    )
     profit_col = func.coalesce(TraderOrder.actual_profit, 0.0)
-    # verified_profit_col is what gets summed for any "P&L" total. If the
-    # row's verification_status is unverified, contribute 0 to the sum so
-    # we never display a phantom number to the user. Counts (wins/losses)
-    # use the raw column so the operator can still see the order count.
+    # Countable profit for dashboard totals.
     verified_profit_col = case(
         (is_pnl_verified, profit_col),
         else_=0.0,

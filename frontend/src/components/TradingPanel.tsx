@@ -1376,13 +1376,23 @@ function resolveOrderModalSnapshot(order: TraderOrder): OrderModalSnapshot {
       ?? payload.filled_size
     )
   )
-  const entryPrice = toFiniteNumber(
+  // Prefer real fill/entry over a tick-floor effective_price (e.g. 0.001 vs 0.545).
+  const avgFill = toFiniteNumber(
     order.average_fill_price
     ?? providerReconciliation.average_fill_price
     ?? providerSnapshot.average_fill_price
-    ?? order.effective_price
-    ?? order.entry_price
   )
+  const rawEntry = toFiniteNumber(order.entry_price)
+  const rawEffective = toFiniteNumber(order.effective_price)
+  let entryPrice = avgFill
+  if (entryPrice === null || entryPrice < 0.01) {
+    if (rawEntry !== null && rawEntry > 0 && rawEffective !== null && rawEffective > 0) {
+      const ratio = Math.max(rawEntry, rawEffective) / Math.max(Math.min(rawEntry, rawEffective), 1e-9)
+      entryPrice = (ratio <= 3 && rawEffective >= 0.01) ? rawEffective : rawEntry
+    } else {
+      entryPrice = rawEntry ?? rawEffective
+    }
+  }
   const markPrice = toFiniteNumber(
     order.current_price
     ?? positionState.last_mark_price
@@ -1393,6 +1403,26 @@ function resolveOrderModalSnapshot(order: TraderOrder): OrderModalSnapshot {
   if (unrealizedPnl === null && markPrice !== null && filledShares > 0 && filledNotionalUsd > 0) {
     unrealizedPnl = (markPrice * filledShares) - filledNotionalUsd
   }
+  // Realized: prefer stored actual_profit; recompute from entry/close when
+  // the stored value is outside feasible binary bounds (tick-floor bugs).
+  const positionClose = isRecord(payload.position_close) ? payload.position_close : {}
+  const closePx = toFiniteNumber(positionClose.close_price)
+  let realizedPnl = toNumber(order.actual_profit)
+  if (
+    RESOLVED_ORDER_STATUSES.has(status)
+    && entryPrice !== null
+    && entryPrice >= 0.01
+    && closePx !== null
+    && closePx >= 0
+    && filledNotionalUsd > 0
+  ) {
+    const shares = filledShares > 0 ? filledShares : (filledNotionalUsd / entryPrice)
+    const lo = -filledNotionalUsd
+    const hi = shares - filledNotionalUsd
+    if (realizedPnl < lo - 0.05 || realizedPnl > hi + 0.05) {
+      realizedPnl = (shares * closePx) - filledNotionalUsd
+    }
+  }
   return {
     status,
     notionalUsd,
@@ -1401,7 +1431,7 @@ function resolveOrderModalSnapshot(order: TraderOrder): OrderModalSnapshot {
     entryPrice,
     markPrice,
     unrealizedPnl,
-    realizedPnl: toNumber(order.actual_profit),
+    realizedPnl,
     edgePercent: toFiniteNumber(order.edge_percent),
     confidencePercent: toFiniteNumber(order.confidence),
     source: String(order.source || '').trim().toUpperCase() || 'UNKNOWN',
