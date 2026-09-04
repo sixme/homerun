@@ -143,9 +143,7 @@ def test_reference_runtime_notifies_on_binance_and_chainlink_updates(monkeypatch
     fake_chainlink.emit(asset="ETH", source="chainlink")
     fake_chainlink.emit(asset="BTC", source="binance_direct")
 
-    assert fake_chainlink.binance_updates == [
-        ("btc", 70001.25, 70001.0, 70001.5, 1_700_000_000_001)
-    ]
+    assert fake_chainlink.binance_updates == [("btc", 70001.25, 70001.0, 70001.5, 1_700_000_000_001)]
     assert seen == ["BTC", "ETH"]
 
 
@@ -159,6 +157,11 @@ async def test_market_runtime_reacts_to_reference_updates_without_waiting_for_pe
     runtime._reference_runtime = fake_reference
     runtime._feed_manager = SimpleNamespace(_started=False)
     runtime._started = True
+    monkeypatch.setattr(
+        runtime,
+        "_read_crypto_control",
+        AsyncMock(return_value={"is_enabled": True, "is_paused": False, "interval_seconds": 1}),
+    )
     runtime._crypto_markets = [
         {
             "id": "btc-15m",
@@ -351,7 +354,17 @@ async def test_start_schedules_event_catalog_refresh_without_blocking_startup(mo
     refresh_crypto = AsyncMock()
 
     monkeypatch.setattr(market_runtime, "get_feed_manager", lambda: fake_feed_manager)
-    monkeypatch.setattr(runtime, "_schedule_event_catalog_refresh", lambda *, force=False: refresh_calls.append(bool(force)))
+    monkeypatch.setattr(market_runtime, "_ensure_crypto_update_topic_registered", AsyncMock())
+    monkeypatch.setattr(runtime, "_backfill_oracle_history_from_binance", AsyncMock())
+    monkeypatch.setattr(
+        runtime,
+        "_read_crypto_control",
+        AsyncMock(return_value={"is_enabled": True, "is_paused": False, "interval_seconds": 1}),
+    )
+    monkeypatch.setattr(runtime, "_run_loop", AsyncMock())
+    monkeypatch.setattr(
+        runtime, "_schedule_event_catalog_refresh", lambda *, force=False: refresh_calls.append(bool(force))
+    )
     monkeypatch.setattr(runtime, "_refresh_crypto_markets", refresh_crypto)
 
     await runtime.start()
@@ -361,6 +374,7 @@ async def test_start_schedules_event_catalog_refresh_without_blocking_startup(mo
     refresh_crypto.assert_awaited_once_with(trigger="startup", full_source_sweep=True)
     assert refresh_calls == [True]
     assert runtime.started is True
+    await runtime.stop()
 
 
 def test_get_market_snapshot_schedules_forced_catalog_refresh_on_event_market_miss(monkeypatch):
@@ -370,7 +384,9 @@ def test_get_market_snapshot_schedules_forced_catalog_refresh_on_event_market_mi
     refresh_calls: list[bool] = []
 
     monkeypatch.setattr(market_runtime, "_CATALOG_MISS_REFRESH_SECONDS", 0.0)
-    monkeypatch.setattr(runtime, "_schedule_event_catalog_refresh", lambda *, force=False: refresh_calls.append(bool(force)))
+    monkeypatch.setattr(
+        runtime, "_schedule_event_catalog_refresh", lambda *, force=False: refresh_calls.append(bool(force))
+    )
 
     snapshot = runtime.get_market_snapshot(
         "missing-market",
@@ -387,7 +403,9 @@ def test_get_market_snapshot_does_not_hydrate_event_catalog_when_inactive(monkey
     refresh_calls: list[bool] = []
 
     monkeypatch.setattr(market_runtime, "_CATALOG_MISS_REFRESH_SECONDS", 0.0)
-    monkeypatch.setattr(runtime, "_schedule_event_catalog_refresh", lambda *, force=False: refresh_calls.append(bool(force)))
+    monkeypatch.setattr(
+        runtime, "_schedule_event_catalog_refresh", lambda *, force=False: refresh_calls.append(bool(force))
+    )
 
     snapshot = runtime.get_market_snapshot(
         "missing-market",

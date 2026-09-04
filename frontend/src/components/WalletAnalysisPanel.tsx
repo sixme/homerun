@@ -57,7 +57,11 @@ const TIME_PERIOD_OPTIONS: Array<{ value: TimePeriod; labelKey: string }> = [
   { value: 'ALL', labelKey: 'walletAnalysisPanel.periodAll' },
 ]
 
-const TAB_OPTIONS: Array<{ id: AnalysisTab; labelKey: string; icon: ComponentType<{ className?: string }> }> = [
+const TAB_OPTIONS: Array<{
+  id: AnalysisTab
+  labelKey: string
+  icon: ComponentType<{ className?: string }>
+}> = [
   { id: 'overview', labelKey: 'walletAnalysisPanel.tabOverview', icon: BarChart3 },
   { id: 'trades', labelKey: 'walletAnalysisPanel.tabTrades', icon: History },
   { id: 'positions', labelKey: 'walletAnalysisPanel.tabPositions', icon: Briefcase },
@@ -82,7 +86,9 @@ function formatSignedPercent(value: number, decimals = 1): string {
 
 function formatCompact(value: number): string {
   if (!Number.isFinite(value)) return '0'
-  return Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(value)
+  return Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(
+    value,
+  )
 }
 
 function shortAddress(address: string): string {
@@ -202,9 +208,7 @@ function StatTile({
       </div>
       <p className="mt-1 text-lg font-semibold text-foreground">{value}</p>
       {delta && (
-        <p className={cn('text-xs', positive ? 'text-emerald-300' : 'text-red-300')}>
-          {delta}
-        </p>
+        <p className={cn('text-xs', positive ? 'text-emerald-300' : 'text-red-300')}>{delta}</p>
       )}
     </div>
   )
@@ -281,7 +285,15 @@ function PaginationControls({
   )
 }
 
-function EmptyData({ icon: Icon, title, subtitle }: { icon: ComponentType<{ className?: string }>; title: string; subtitle: string }) {
+function EmptyData({
+  icon: Icon,
+  title,
+  subtitle,
+}: {
+  icon: ComponentType<{ className?: string }>
+  title: string
+  subtitle: string
+}) {
   return (
     <div className="flex h-full min-h-[220px] flex-col items-center justify-center px-6 text-center">
       <Icon className="mb-3 h-10 w-10 text-muted-foreground/35" />
@@ -349,7 +361,11 @@ function OverviewHeroPanel({
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="flex items-start gap-3">
                 <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/10 p-3">
-                  {username ? <User className="h-5 w-5 text-cyan-700 dark:text-cyan-200" /> : <Wallet className="h-5 w-5 text-cyan-700 dark:text-cyan-200" />}
+                  {username ? (
+                    <User className="h-5 w-5 text-cyan-700 dark:text-cyan-200" />
+                  ) : (
+                    <Wallet className="h-5 w-5 text-cyan-700 dark:text-cyan-200" />
+                  )}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
@@ -366,15 +382,22 @@ function OverviewHeroPanel({
                       <ExternalLink className="h-3.5 w-3.5" />
                     </a>
                   </div>
-                  <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{activeWallet}</p>
+                  <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
+                    {activeWallet}
+                  </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className={riskBadgeClass}>
-                  {t('walletAnalysisPanel.anomalyPercent', { percent: (anomalyScore * 100).toFixed(0) })}
+                  {t('walletAnalysisPanel.anomalyPercent', {
+                    percent: (anomalyScore * 100).toFixed(0),
+                  })}
                 </Badge>
-                <Badge variant="outline" className="border-border bg-background/60 text-muted-foreground">
+                <Badge
+                  variant="outline"
+                  className="border-border bg-background/60 text-muted-foreground"
+                >
                   {(() => {
                     const opt = TIME_PERIOD_OPTIONS.find((option) => option.value === timePeriod)
                     return opt ? t(opt.labelKey) : ''
@@ -427,24 +450,46 @@ function OverviewHeroPanel({
         <Card className="col-span-12 border-border/80 bg-card/75 lg:col-span-4">
           <CardContent className="space-y-3 p-5">
             <div className="rounded-xl border border-border/70 bg-background/40 p-3">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('walletAnalysisPanel.realizedPnl')}</p>
-              <p className={cn('mt-1 text-lg font-semibold', realizedPnl >= 0 ? 'text-emerald-300' : 'text-red-300')}>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                {t('walletAnalysisPanel.realizedPnl')}
+              </p>
+              <p
+                className={cn(
+                  'mt-1 text-lg font-semibold',
+                  realizedPnl >= 0 ? 'text-emerald-300' : 'text-red-300',
+                )}
+              >
                 {formatSignedCurrency(realizedPnl)}
               </p>
             </div>
             <div className="rounded-xl border border-border/70 bg-background/40 p-3">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('walletAnalysisPanel.unrealizedPnl')}</p>
-              <p className={cn('mt-1 text-lg font-semibold', unrealizedPnl >= 0 ? 'text-emerald-300' : 'text-red-300')}>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                {t('walletAnalysisPanel.unrealizedPnl')}
+              </p>
+              <p
+                className={cn(
+                  'mt-1 text-lg font-semibold',
+                  unrealizedPnl >= 0 ? 'text-emerald-300' : 'text-red-300',
+                )}
+              >
                 {formatSignedCurrency(unrealizedPnl)}
               </p>
             </div>
             <div className="rounded-xl border border-border/70 bg-background/40 p-3">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('walletAnalysisPanel.dataHealth')}</p>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                {t('walletAnalysisPanel.dataHealth')}
+              </p>
               <p className="mt-1 text-sm text-foreground">
-                {isHeaderLoading ? t('walletAnalysisPanel.loadingFreshMetrics') : t('walletAnalysisPanel.metricsSynchronized')}
+                {isHeaderLoading
+                  ? t('walletAnalysisPanel.loadingFreshMetrics')
+                  : t('walletAnalysisPanel.metricsSynchronized')}
               </p>
               <p className="mt-1 text-[11px] text-muted-foreground">
-                {t('walletAnalysisPanel.dataHealthDetail', { trades: totalTrades, positions: positionsCount, anomalies: anomaliesCount })}
+                {t('walletAnalysisPanel.dataHealthDetail', {
+                  trades: totalTrades,
+                  positions: positionsCount,
+                  anomalies: anomaliesCount,
+                })}
               </p>
             </div>
           </CardContent>
@@ -473,7 +518,13 @@ function TradesPanel({
   if (isLoading) return <SectionLoading />
 
   if (trades.length === 0) {
-    return <EmptyData icon={History} title={t('walletAnalysisPanel.noTradesFound')} subtitle={t('walletAnalysisPanel.noTradesSubtitle')} />
+    return (
+      <EmptyData
+        icon={History}
+        title={t('walletAnalysisPanel.noTradesFound')}
+        subtitle={t('walletAnalysisPanel.noTradesSubtitle')}
+      />
+    )
   }
 
   const totalPages = Math.max(1, Math.ceil(trades.length / pageSize))
@@ -500,13 +551,23 @@ function TradesPanel({
           <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
             <TableRow className="border-b border-border/80 bg-muted/40">
               <TableHead className="h-9 px-3">{t('walletAnalysisPanel.colTime')}</TableHead>
-              <TableHead className="h-9 px-3 min-w-[240px]">{t('walletAnalysisPanel.colMarket')}</TableHead>
+              <TableHead className="h-9 px-3 min-w-[240px]">
+                {t('walletAnalysisPanel.colMarket')}
+              </TableHead>
               <TableHead className="h-9 px-3">{t('walletAnalysisPanel.colSide')}</TableHead>
               <TableHead className="h-9 px-3">{t('walletAnalysisPanel.colOutcome')}</TableHead>
-              <TableHead className="h-9 px-3 text-right">{t('walletAnalysisPanel.colSize')}</TableHead>
-              <TableHead className="h-9 px-3 text-right">{t('walletAnalysisPanel.colPrice')}</TableHead>
-              <TableHead className="h-9 px-3 text-right">{t('walletAnalysisPanel.colNotional')}</TableHead>
-              <TableHead className="h-9 px-3 text-right">{t('walletAnalysisPanel.colLinks')}</TableHead>
+              <TableHead className="h-9 px-3 text-right">
+                {t('walletAnalysisPanel.colSize')}
+              </TableHead>
+              <TableHead className="h-9 px-3 text-right">
+                {t('walletAnalysisPanel.colPrice')}
+              </TableHead>
+              <TableHead className="h-9 px-3 text-right">
+                {t('walletAnalysisPanel.colNotional')}
+              </TableHead>
+              <TableHead className="h-9 px-3 text-right">
+                {t('walletAnalysisPanel.colLinks')}
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -525,10 +586,15 @@ function TradesPanel({
                   </TableCell>
                   <TableCell className="px-3 py-2.5">
                     <div className="space-y-0.5">
-                      <p className="max-w-[360px] truncate text-foreground" title={trade.market_title || trade.market}>
+                      <p
+                        className="max-w-[360px] truncate text-foreground"
+                        title={trade.market_title || trade.market}
+                      >
                         {trade.market_title || trade.market}
                       </p>
-                      <p className="font-mono text-[10px] text-muted-foreground">{shortAddress(trade.market)}</p>
+                      <p className="font-mono text-[10px] text-muted-foreground">
+                        {shortAddress(trade.market)}
+                      </p>
                     </div>
                   </TableCell>
                   <TableCell className="px-3 py-2.5">
@@ -536,16 +602,26 @@ function TradesPanel({
                       variant="outline"
                       className={cn(
                         'text-[10px]',
-                        isBuy ? 'border-emerald-500/30 bg-emerald-500/15 text-emerald-300' : 'border-red-500/30 bg-red-500/15 text-red-300',
+                        isBuy
+                          ? 'border-emerald-500/30 bg-emerald-500/15 text-emerald-300'
+                          : 'border-red-500/30 bg-red-500/15 text-red-300',
                       )}
                     >
                       {trade.side}
                     </Badge>
                   </TableCell>
-                  <TableCell className="px-3 py-2.5 text-foreground/90">{trade.outcome || '--'}</TableCell>
-                  <TableCell className="px-3 py-2.5 text-right font-mono text-foreground">{trade.size.toFixed(2)}</TableCell>
-                  <TableCell className="px-3 py-2.5 text-right font-mono text-foreground">${trade.price.toFixed(4)}</TableCell>
-                  <TableCell className="px-3 py-2.5 text-right font-mono text-foreground">{formatCurrency(trade.cost)}</TableCell>
+                  <TableCell className="px-3 py-2.5 text-foreground/90">
+                    {trade.outcome || '--'}
+                  </TableCell>
+                  <TableCell className="px-3 py-2.5 text-right font-mono text-foreground">
+                    {trade.size.toFixed(2)}
+                  </TableCell>
+                  <TableCell className="px-3 py-2.5 text-right font-mono text-foreground">
+                    ${trade.price.toFixed(4)}
+                  </TableCell>
+                  <TableCell className="px-3 py-2.5 text-right font-mono text-foreground">
+                    {formatCurrency(trade.cost)}
+                  </TableCell>
                   <TableCell className="px-3 py-2.5">
                     <div className="flex items-center justify-end gap-2">
                       {marketUrl && (
@@ -609,7 +685,13 @@ function PositionsPanel({
   const positions = data?.positions ?? []
 
   if (positions.length === 0) {
-    return <EmptyData icon={Briefcase} title={t('walletAnalysisPanel.noOpenPositions')} subtitle={t('walletAnalysisPanel.noOpenPositionsSubtitle')} />
+    return (
+      <EmptyData
+        icon={Briefcase}
+        title={t('walletAnalysisPanel.noOpenPositions')}
+        subtitle={t('walletAnalysisPanel.noOpenPositionsSubtitle')}
+      />
+    )
   }
 
   const totalPages = Math.max(1, Math.ceil(positions.length / pageSize))
@@ -621,12 +703,23 @@ function PositionsPanel({
     <div className="flex h-full min-h-0 flex-col">
       <div className="grid shrink-0 grid-cols-1 gap-3 border-b border-border/70 px-4 py-3 md:grid-cols-2">
         <div className="rounded-lg border border-border/70 bg-background/40 p-3">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('walletAnalysisPanel.positionValue')}</p>
-          <p className="mt-1 text-lg font-semibold text-foreground">{formatCurrency(data?.total_value ?? 0)}</p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+            {t('walletAnalysisPanel.positionValue')}
+          </p>
+          <p className="mt-1 text-lg font-semibold text-foreground">
+            {formatCurrency(data?.total_value ?? 0)}
+          </p>
         </div>
         <div className="rounded-lg border border-border/70 bg-background/40 p-3">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('walletAnalysisPanel.unrealizedPnl')}</p>
-          <p className={cn('mt-1 text-lg font-semibold', (data?.total_unrealized_pnl ?? 0) >= 0 ? 'text-emerald-300' : 'text-red-300')}>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+            {t('walletAnalysisPanel.unrealizedPnl')}
+          </p>
+          <p
+            className={cn(
+              'mt-1 text-lg font-semibold',
+              (data?.total_unrealized_pnl ?? 0) >= 0 ? 'text-emerald-300' : 'text-red-300',
+            )}
+          >
             {formatSignedCurrency(data?.total_unrealized_pnl ?? 0)}
           </p>
         </div>
@@ -647,15 +740,31 @@ function PositionsPanel({
         <Table className="text-xs">
           <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
             <TableRow className="border-b border-border/80 bg-muted/40">
-              <TableHead className="h-9 px-3 min-w-[220px]">{t('walletAnalysisPanel.colMarket')}</TableHead>
+              <TableHead className="h-9 px-3 min-w-[220px]">
+                {t('walletAnalysisPanel.colMarket')}
+              </TableHead>
               <TableHead className="h-9 px-3">{t('walletAnalysisPanel.colOutcome')}</TableHead>
-              <TableHead className="h-9 px-3 text-right">{t('walletAnalysisPanel.colSize')}</TableHead>
-              <TableHead className="h-9 px-3 text-right">{t('walletAnalysisPanel.colAvg')}</TableHead>
-              <TableHead className="h-9 px-3 text-right">{t('walletAnalysisPanel.colCurrent')}</TableHead>
-              <TableHead className="h-9 px-3 text-right">{t('walletAnalysisPanel.colValue')}</TableHead>
-              <TableHead className="h-9 px-3 text-right">{t('walletAnalysisPanel.colUnrealized')}</TableHead>
-              <TableHead className="h-9 px-3 text-right">{t('walletAnalysisPanel.colRoi')}</TableHead>
-              <TableHead className="h-9 px-3 text-right">{t('walletAnalysisPanel.colLink')}</TableHead>
+              <TableHead className="h-9 px-3 text-right">
+                {t('walletAnalysisPanel.colSize')}
+              </TableHead>
+              <TableHead className="h-9 px-3 text-right">
+                {t('walletAnalysisPanel.colAvg')}
+              </TableHead>
+              <TableHead className="h-9 px-3 text-right">
+                {t('walletAnalysisPanel.colCurrent')}
+              </TableHead>
+              <TableHead className="h-9 px-3 text-right">
+                {t('walletAnalysisPanel.colValue')}
+              </TableHead>
+              <TableHead className="h-9 px-3 text-right">
+                {t('walletAnalysisPanel.colUnrealized')}
+              </TableHead>
+              <TableHead className="h-9 px-3 text-right">
+                {t('walletAnalysisPanel.colRoi')}
+              </TableHead>
+              <TableHead className="h-9 px-3 text-right">
+                {t('walletAnalysisPanel.colLink')}
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -668,24 +777,52 @@ function PositionsPanel({
               const positive = position.unrealized_pnl >= 0
 
               return (
-                <TableRow key={`${position.market}-${position.outcome}`} className="border-border/70">
+                <TableRow
+                  key={`${position.market}-${position.outcome}`}
+                  className="border-border/70"
+                >
                   <TableCell className="px-3 py-2.5">
                     <div className="space-y-0.5">
-                      <p className="max-w-[360px] truncate text-foreground" title={position.title || position.market}>
+                      <p
+                        className="max-w-[360px] truncate text-foreground"
+                        title={position.title || position.market}
+                      >
                         {position.title || position.market}
                       </p>
-                      <p className="font-mono text-[10px] text-muted-foreground">{shortAddress(position.market)}</p>
+                      <p className="font-mono text-[10px] text-muted-foreground">
+                        {shortAddress(position.market)}
+                      </p>
                     </div>
                   </TableCell>
-                  <TableCell className="px-3 py-2.5 text-foreground/90">{position.outcome || '--'}</TableCell>
-                  <TableCell className="px-3 py-2.5 text-right font-mono text-foreground">{position.size.toFixed(2)}</TableCell>
-                  <TableCell className="px-3 py-2.5 text-right font-mono text-foreground">${position.avg_price.toFixed(4)}</TableCell>
-                  <TableCell className="px-3 py-2.5 text-right font-mono text-foreground">${position.current_price.toFixed(4)}</TableCell>
-                  <TableCell className="px-3 py-2.5 text-right font-mono text-foreground">{formatCurrency(position.current_value)}</TableCell>
-                  <TableCell className={cn('px-3 py-2.5 text-right font-mono', positive ? 'text-emerald-300' : 'text-red-300')}>
+                  <TableCell className="px-3 py-2.5 text-foreground/90">
+                    {position.outcome || '--'}
+                  </TableCell>
+                  <TableCell className="px-3 py-2.5 text-right font-mono text-foreground">
+                    {position.size.toFixed(2)}
+                  </TableCell>
+                  <TableCell className="px-3 py-2.5 text-right font-mono text-foreground">
+                    ${position.avg_price.toFixed(4)}
+                  </TableCell>
+                  <TableCell className="px-3 py-2.5 text-right font-mono text-foreground">
+                    ${position.current_price.toFixed(4)}
+                  </TableCell>
+                  <TableCell className="px-3 py-2.5 text-right font-mono text-foreground">
+                    {formatCurrency(position.current_value)}
+                  </TableCell>
+                  <TableCell
+                    className={cn(
+                      'px-3 py-2.5 text-right font-mono',
+                      positive ? 'text-emerald-300' : 'text-red-300',
+                    )}
+                  >
                     {formatSignedCurrency(position.unrealized_pnl)}
                   </TableCell>
-                  <TableCell className={cn('px-3 py-2.5 text-right font-mono', position.roi_percent >= 0 ? 'text-emerald-300' : 'text-red-300')}>
+                  <TableCell
+                    className={cn(
+                      'px-3 py-2.5 text-right font-mono',
+                      position.roi_percent >= 0 ? 'text-emerald-300' : 'text-red-300',
+                    )}
+                  >
                     {formatSignedPercent(position.roi_percent)}
                   </TableCell>
                   <TableCell className="px-3 py-2.5 text-right">
@@ -732,7 +869,13 @@ function RiskPanel({
   if (isLoading) return <SectionLoading />
 
   if (!data) {
-    return <EmptyData icon={ShieldAlert} title={t('walletAnalysisPanel.noRiskAnalysis')} subtitle={t('walletAnalysisPanel.noRiskAnalysisSubtitle')} />
+    return (
+      <EmptyData
+        icon={ShieldAlert}
+        title={t('walletAnalysisPanel.noRiskAnalysis')}
+        subtitle={t('walletAnalysisPanel.noRiskAnalysisSubtitle')}
+      />
+    )
   }
 
   const risk = riskModel(data.anomaly_score)
@@ -746,13 +889,19 @@ function RiskPanel({
     <div className="flex h-full min-h-0 flex-col">
       <div className="grid shrink-0 grid-cols-1 gap-3 border-b border-border/70 px-4 py-3 lg:grid-cols-3">
         <div className={cn('rounded-lg border bg-background/40 p-3', risk.borderClass)}>
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('walletAnalysisPanel.anomalyScore')}</p>
-          <p className={cn('mt-1 text-2xl font-semibold', risk.textClass)}>{(data.anomaly_score * 100).toFixed(0)}%</p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+            {t('walletAnalysisPanel.anomalyScore')}
+          </p>
+          <p className={cn('mt-1 text-2xl font-semibold', risk.textClass)}>
+            {(data.anomaly_score * 100).toFixed(0)}%
+          </p>
           <p className="mt-1 text-xs text-muted-foreground">{t(risk.labelKey)}</p>
         </div>
 
         <div className="rounded-lg border border-border/70 bg-background/40 p-3 lg:col-span-2">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('walletAnalysisPanel.recommendation')}</p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+            {t('walletAnalysisPanel.recommendation')}
+          </p>
           <p className="mt-1 text-sm text-foreground">{data.recommendation}</p>
           <div className="mt-2 flex flex-wrap gap-2">
             <Badge variant="outline" className={risk.badgeClass}>
@@ -766,7 +915,9 @@ function RiskPanel({
                   : 'border-border bg-background/60 text-muted-foreground',
               )}
             >
-              {data.is_profitable_pattern ? t('walletAnalysisPanel.profitablePattern') : t('walletAnalysisPanel.patternUnclear')}
+              {data.is_profitable_pattern
+                ? t('walletAnalysisPanel.profitablePattern')
+                : t('walletAnalysisPanel.patternUnclear')}
             </Badge>
           </div>
         </div>
@@ -775,12 +926,18 @@ function RiskPanel({
       <div className="flex shrink-0 items-center justify-between border-b border-border/70 px-4 py-3">
         <div className="flex flex-wrap gap-1.5">
           {data.strategies_detected.slice(0, 5).map((strategy) => (
-            <Badge key={strategy} variant="outline" className="border-cyan-500/30 bg-cyan-500/10 text-cyan-700 dark:text-cyan-200">
+            <Badge
+              key={strategy}
+              variant="outline"
+              className="border-cyan-500/30 bg-cyan-500/10 text-cyan-700 dark:text-cyan-200"
+            >
               {strategy}
             </Badge>
           ))}
           {data.strategies_detected.length === 0 && (
-            <span className="text-xs text-muted-foreground">{t('walletAnalysisPanel.noStrategyFingerprint')}</span>
+            <span className="text-xs text-muted-foreground">
+              {t('walletAnalysisPanel.noStrategyFingerprint')}
+            </span>
           )}
         </div>
         <PaginationControls
@@ -806,9 +963,15 @@ function RiskPanel({
               <TableRow className="border-b border-border/80 bg-muted/40">
                 <TableHead className="h-9 px-3">{t('walletAnalysisPanel.colSeverity')}</TableHead>
                 <TableHead className="h-9 px-3">{t('walletAnalysisPanel.colTypeHeader')}</TableHead>
-                <TableHead className="h-9 px-3 text-right">{t('walletAnalysisPanel.colScore')}</TableHead>
-                <TableHead className="h-9 px-3 min-w-[280px]">{t('walletAnalysisPanel.colDescription')}</TableHead>
-                <TableHead className="h-9 px-3 min-w-[200px]">{t('walletAnalysisPanel.colEvidence')}</TableHead>
+                <TableHead className="h-9 px-3 text-right">
+                  {t('walletAnalysisPanel.colScore')}
+                </TableHead>
+                <TableHead className="h-9 px-3 min-w-[280px]">
+                  {t('walletAnalysisPanel.colDescription')}
+                </TableHead>
+                <TableHead className="h-9 px-3 min-w-[200px]">
+                  {t('walletAnalysisPanel.colEvidence')}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -820,8 +983,12 @@ function RiskPanel({
                   <TableCell className="px-3 py-2.5 text-foreground/90">
                     {anomaly.type.replace(/_/g, ' ')}
                   </TableCell>
-                  <TableCell className="px-3 py-2.5 text-right font-mono text-foreground">{anomaly.score.toFixed(2)}</TableCell>
-                  <TableCell className="px-3 py-2.5 text-foreground/90">{anomaly.description}</TableCell>
+                  <TableCell className="px-3 py-2.5 text-right font-mono text-foreground">
+                    {anomaly.score.toFixed(2)}
+                  </TableCell>
+                  <TableCell className="px-3 py-2.5 text-foreground/90">
+                    {anomaly.description}
+                  </TableCell>
                   <TableCell className="px-3 py-2.5 text-muted-foreground">
                     <EvidencePreview evidence={anomaly.evidence} />
                   </TableCell>
@@ -841,10 +1008,10 @@ function SeverityBadge({ severity }: { severity: string }) {
     normalized === 'critical'
       ? 'border-red-500/35 bg-red-500/15 text-red-300'
       : normalized === 'high'
-      ? 'border-orange-500/35 bg-orange-500/15 text-orange-300'
-      : normalized === 'medium'
-      ? 'border-amber-500/35 bg-amber-500/15 text-amber-300'
-      : 'border-cyan-500/35 bg-cyan-500/15 text-cyan-700 dark:text-cyan-300'
+        ? 'border-orange-500/35 bg-orange-500/15 text-orange-300'
+        : normalized === 'medium'
+          ? 'border-amber-500/35 bg-amber-500/15 text-amber-300'
+          : 'border-cyan-500/35 bg-cyan-500/15 text-cyan-700 dark:text-cyan-300'
 
   return (
     <Badge variant="outline" className={cn('text-[10px] uppercase tracking-wide', tone)}>
@@ -870,12 +1037,18 @@ function EvidencePreview({ evidence }: { evidence: Record<string, unknown> }) {
           </span>
         </div>
       ))}
-      {entries.length > 2 && <p className="text-[10px] text-muted-foreground">+{entries.length - 2} more</p>}
+      {entries.length > 2 && (
+        <p className="text-[10px] text-muted-foreground">+{entries.length - 2} more</p>
+      )}
     </div>
   )
 }
 
-export default function WalletAnalysisPanel({ initialWallet, initialUsername, onWalletAnalyzed }: WalletAnalysisPanelProps) {
+export default function WalletAnalysisPanel({
+  initialWallet,
+  initialUsername,
+  onWalletAnalyzed,
+}: WalletAnalysisPanelProps) {
   const { t } = useTranslation()
   const [searchAddress, setSearchAddress] = useState('')
   const [activeWallet, setActiveWallet] = useState<string | null>(null)
@@ -951,9 +1124,15 @@ export default function WalletAnalysisPanel({ initialWallet, initialUsername, on
 
   const username = passedUsername || profileQuery.data?.username || null
 
-  const trades = tradesQuery.data?.trades ?? []
-  const positions = positionsQuery.data?.positions ?? []
-  const anomalies = anomalyQuery.data?.anomalies ?? []
+  const trades = useMemo(() => tradesQuery.data?.trades ?? [], [tradesQuery.data?.trades])
+  const positions = useMemo(
+    () => positionsQuery.data?.positions ?? [],
+    [positionsQuery.data?.positions],
+  )
+  const anomalies = useMemo(
+    () => anomalyQuery.data?.anomalies ?? [],
+    [anomalyQuery.data?.anomalies],
+  )
 
   useEffect(() => {
     setTradesPage(1)
@@ -962,15 +1141,21 @@ export default function WalletAnalysisPanel({ initialWallet, initialUsername, on
   }, [activeWallet, timePeriod])
 
   useEffect(() => {
-    setTradesPage((current) => Math.min(current, Math.max(1, Math.ceil(trades.length / tradesPageSize))))
+    setTradesPage((current) =>
+      Math.min(current, Math.max(1, Math.ceil(trades.length / tradesPageSize))),
+    )
   }, [trades.length, tradesPageSize])
 
   useEffect(() => {
-    setPositionsPage((current) => Math.min(current, Math.max(1, Math.ceil(positions.length / positionsPageSize))))
+    setPositionsPage((current) =>
+      Math.min(current, Math.max(1, Math.ceil(positions.length / positionsPageSize))),
+    )
   }, [positions.length, positionsPageSize])
 
   useEffect(() => {
-    setAnomaliesPage((current) => Math.min(current, Math.max(1, Math.ceil(anomalies.length / anomaliesPageSize))))
+    setAnomaliesPage((current) =>
+      Math.min(current, Math.max(1, Math.ceil(anomalies.length / anomaliesPageSize))),
+    )
   }, [anomalies.length, anomaliesPageSize])
 
   const handleAnalyze = async () => {
@@ -980,7 +1165,9 @@ export default function WalletAnalysisPanel({ initialWallet, initialUsername, on
     setIsResolvingInput(true)
     try {
       const profile = await getWalletProfile(value)
-      const resolvedAddress = String(profile.address || '').trim().toLowerCase()
+      const resolvedAddress = String(profile.address || '')
+        .trim()
+        .toLowerCase()
       if (!resolvedAddress) {
         throw new Error(t('walletAnalysisPanel.unableToResolveWallet'))
       }
@@ -1018,7 +1205,9 @@ export default function WalletAnalysisPanel({ initialWallet, initialUsername, on
   const sparklineValues = useMemo(() => {
     if (trades.length < 2) return []
 
-    const ordered = [...trades].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+    const ordered = [...trades].sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+    )
     let cumulative = 0
 
     return ordered.map((trade) => {
@@ -1044,8 +1233,12 @@ export default function WalletAnalysisPanel({ initialWallet, initialUsername, on
         <CardContent className="p-4">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
             <div>
-              <p className="text-[11px] uppercase tracking-wide text-cyan-700 dark:text-cyan-200/90">{t('walletAnalysisPanel.headerEyebrow')}</p>
-              <h2 className="mt-1 text-lg font-semibold text-foreground">{t('walletAnalysisPanel.headerTitle')}</h2>
+              <p className="text-[11px] uppercase tracking-wide text-cyan-700 dark:text-cyan-200/90">
+                {t('walletAnalysisPanel.headerEyebrow')}
+              </p>
+              <h2 className="mt-1 text-lg font-semibold text-foreground">
+                {t('walletAnalysisPanel.headerTitle')}
+              </h2>
               <p className="mt-0.5 text-xs text-muted-foreground">
                 {t('walletAnalysisPanel.headerSubtitle')}
               </p>
@@ -1085,7 +1278,12 @@ export default function WalletAnalysisPanel({ initialWallet, initialUsername, on
                 onClick={handleRefresh}
                 disabled={!activeWallet}
               >
-                <RefreshCw className={cn('mr-1.5 h-3.5 w-3.5', (pnlQuery.isFetching || summaryQuery.isFetching) && 'animate-spin')} />
+                <RefreshCw
+                  className={cn(
+                    'mr-1.5 h-3.5 w-3.5',
+                    (pnlQuery.isFetching || summaryQuery.isFetching) && 'animate-spin',
+                  )}
+                />
                 {t('walletAnalysisPanel.refresh')}
               </Button>
 
@@ -1110,7 +1308,10 @@ export default function WalletAnalysisPanel({ initialWallet, initialUsername, on
 
           {activeWallet && (
             <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-              <Badge variant="outline" className="border-cyan-500/30 bg-cyan-500/10 text-cyan-700 dark:text-cyan-200">
+              <Badge
+                variant="outline"
+                className="border-cyan-500/30 bg-cyan-500/10 text-cyan-700 dark:text-cyan-200"
+              >
                 {t('walletAnalysisPanel.activeBadge', { address: shortAddress(activeWallet) })}
               </Badge>
               <Badge variant="outline" className={risk.badgeClass}>

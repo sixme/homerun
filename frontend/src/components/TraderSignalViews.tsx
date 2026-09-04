@@ -146,12 +146,7 @@ function extractOutcomeLabels(raw: unknown): string[] {
     if (!item || typeof item !== 'object') continue
     const row = item as Record<string, unknown>
     const label = String(
-      row.outcome
-      ?? row.label
-      ?? row.name
-      ?? row.title
-      ?? row.value
-      ?? '',
+      row.outcome ?? row.label ?? row.name ?? row.title ?? row.value ?? '',
     ).trim()
     if (label && !labels.includes(label)) labels.push(label)
   }
@@ -171,13 +166,12 @@ function inferBinaryOutcomeLabelsFromQuestion(question: string): string[] {
   const text = String(question || '').trim()
   if (!text) return []
   const lowered = text.toLowerCase()
-  const splitter = lowered.includes(' vs. ')
-    ? ' vs. '
-    : lowered.includes(' vs ')
-      ? ' vs '
-      : ''
+  const splitter = lowered.includes(' vs. ') ? ' vs. ' : lowered.includes(' vs ') ? ' vs ' : ''
   if (!splitter) return []
-  const chunks = text.split(splitter).map((chunk) => chunk.trim()).filter(Boolean)
+  const chunks = text
+    .split(splitter)
+    .map((chunk) => chunk.trim())
+    .filter(Boolean)
   if (chunks.length < 2) return []
   const left = chunks[0].includes(':')
     ? chunks[0].split(':').slice(-1)[0].trim() || chunks[0]
@@ -185,10 +179,7 @@ function inferBinaryOutcomeLabelsFromQuestion(question: string): string[] {
   return [left, chunks[1]]
 }
 
-function resolveBinaryOutcomeLabels(
-  sources: unknown[],
-  question: string,
-): string[] {
+function resolveBinaryOutcomeLabels(sources: unknown[], question: string): string[] {
   let genericBinaryLabels: string[] = []
   for (const source of sources) {
     const labels = extractOutcomeLabels(source)
@@ -204,7 +195,9 @@ function resolveBinaryOutcomeLabels(
 }
 
 function normalizeOutcomeSide(value: unknown): 'YES' | 'NO' | null {
-  const normalized = String(value || '').trim().toUpperCase()
+  const normalized = String(value || '')
+    .trim()
+    .toUpperCase()
   if (normalized === 'YES') return 'YES'
   if (normalized === 'NO') return 'NO'
   return null
@@ -228,14 +221,12 @@ function toTier(value: string | null | undefined): 'WATCH' | 'HIGH' | 'EXTREME' 
   return 'WATCH'
 }
 
-function normalizeSourceCoverageScore(
-  sourceFlags: UnifiedTraderSignal['source_flags'],
-): number {
+function normalizeSourceCoverageScore(sourceFlags: UnifiedTraderSignal['source_flags']): number {
   if (!sourceFlags) return 0
   return (
-    (sourceFlags.from_pool ? 1 : 0)
-    + (sourceFlags.from_tracked_traders ? 1 : 0)
-    + (sourceFlags.from_trader_groups ? 1 : 0)
+    (sourceFlags.from_pool ? 1 : 0) +
+    (sourceFlags.from_tracked_traders ? 1 : 0) +
+    (sourceFlags.from_trader_groups ? 1 : 0)
   )
 }
 
@@ -258,31 +249,21 @@ function normalizeSignalQualityFlags(signal: {
   const sourceFlags = signal.source_flags ?? null
   const validation = signal.validation ?? null
   const isValid = Boolean(
-    signal.is_valid
-    ?? validation?.is_valid
-    ?? (
-      validation?.checks?.has_market_id
-      && validation?.checks?.has_wallets
-      && validation?.checks?.has_direction
-      && validation?.checks?.has_price_reference
-      && validation?.checks?.price_in_bounds
-    ),
+    signal.is_valid ??
+    validation?.is_valid ??
+    (validation?.checks?.has_market_id &&
+      validation?.checks?.has_wallets &&
+      validation?.checks?.has_direction &&
+      validation?.checks?.has_price_reference &&
+      validation?.checks?.price_in_bounds),
   )
   const isActionable = Boolean(
-    signal.is_actionable
-    ?? validation?.is_actionable
-    ?? (isValid && sourceFlags?.qualified),
+    signal.is_actionable ?? validation?.is_actionable ?? (isValid && sourceFlags?.qualified),
   )
-  const isTradeable = Boolean(
-    signal.is_tradeable
-    ?? validation?.is_tradeable
-    ?? isActionable,
+  const isTradeable = Boolean(signal.is_tradeable ?? validation?.is_tradeable ?? isActionable)
+  const reasons = (signal.validation_reasons || validation?.reasons || []).map((reason) =>
+    String(reason),
   )
-  const reasons = (
-    signal.validation_reasons
-    || validation?.reasons
-    || []
-  ).map((reason) => String(reason))
   const sourceCoverageScore = normalizeSourceCoverageScore(sourceFlags)
 
   return {
@@ -298,7 +279,9 @@ function normalizeSignalQualityFlags(signal: {
 
 function resolveTraderStrategySdk(candidates: unknown[], fallback = 'traders_confluence'): string {
   for (const candidate of candidates) {
-    const value = String(candidate || '').trim().toLowerCase()
+    const value = String(candidate || '')
+      .trim()
+      .toLowerCase()
     if (value) return value
   }
   return fallback
@@ -309,10 +292,7 @@ export function normalizeConfluenceSignal(signal: TrackedTraderOpportunity): Uni
   const quality = normalizeSignalQualityFlags(signal)
   const raw = signal as unknown as Record<string, unknown>
   const outcomeLabels = resolveBinaryOutcomeLabels(
-    [
-      signal.outcome_labels,
-      [signal.yes_label, signal.no_label],
-    ],
+    [signal.outcome_labels, [signal.yes_label, signal.no_label]],
     signal.market_question || signal.market_id,
   )
   const strategySdk = resolveTraderStrategySdk([
@@ -349,11 +329,12 @@ export function normalizeConfluenceSignal(signal: TrackedTraderOpportunity): Uni
     net_notional: signal.net_notional ?? undefined,
     top_wallets: signal.top_wallets,
     outcome: signal.outcome,
-    selected_outcome_label: direction === 'BUY'
-      ? outcomeLabels[0] ?? null
-      : direction === 'SELL'
-        ? outcomeLabels[1] ?? null
-        : null,
+    selected_outcome_label:
+      direction === 'BUY'
+        ? (outcomeLabels[0] ?? null)
+        : direction === 'SELL'
+          ? (outcomeLabels[1] ?? null)
+          : null,
     detected_at: signal.detected_at,
     last_seen_at: signal.last_seen_at ?? undefined,
     first_seen_at: signal.first_seen_at ?? undefined,
@@ -370,7 +351,8 @@ export function normalizeConfluenceSignal(signal: TrackedTraderOpportunity): Uni
 }
 
 function asObject(value: unknown): Record<string, unknown> {
-  if (value && typeof value === 'object' && !Array.isArray(value)) return value as Record<string, unknown>
+  if (value && typeof value === 'object' && !Array.isArray(value))
+    return value as Record<string, unknown>
   return {}
 }
 
@@ -388,24 +370,27 @@ export function normalizeTraderOpportunity(opportunity: Opportunity): UnifiedTra
   const sourceFlags = asObject(strategyContext.source_flags)
   const validation = asObject(strategyContext.validation)
 
-  const side = String(strategyContext.side || firehose.side || '').trim().toLowerCase()
+  const side = String(strategyContext.side || firehose.side || '')
+    .trim()
+    .toLowerCase()
   const selectedOutcomeSide = normalizeOutcomeSide(
-    strategyContext.outcome
-    ?? firehose.outcome
-    ?? opportunity.positions_to_take?.[0]?.outcome,
+    strategyContext.outcome ?? firehose.outcome ?? opportunity.positions_to_take?.[0]?.outcome,
   )
-  const direction: 'BUY' | 'SELL' | null = selectedOutcomeSide === 'YES'
-    ? 'BUY'
-    : selectedOutcomeSide === 'NO'
-      ? 'SELL'
-      : side === 'buy'
-        ? 'BUY'
-        : side === 'sell'
-          ? 'SELL'
-          : null
+  const direction: 'BUY' | 'SELL' | null =
+    selectedOutcomeSide === 'YES'
+      ? 'BUY'
+      : selectedOutcomeSide === 'NO'
+        ? 'SELL'
+        : side === 'buy'
+          ? 'BUY'
+          : side === 'sell'
+            ? 'SELL'
+            : null
 
   const confidenceRatio = Number(strategyContext.confidence ?? opportunity.confidence ?? 0)
-  const confidence = Number.isFinite(confidenceRatio) ? Math.max(0, Math.min(100, Math.round(confidenceRatio * 100))) : 0
+  const confidence = Number.isFinite(confidenceRatio)
+    ? Math.max(0, Math.min(100, Math.round(confidenceRatio * 100)))
+    : 0
   const tier = toTier(String(strategyContext.tier || firehose.tier || 'HIGH'))
   const marketSlug = String(market.event_slug || opportunity.event_slug || market.slug || '')
   const validationReasons = Array.isArray(validation.reasons)
@@ -427,7 +412,8 @@ export function normalizeTraderOpportunity(opportunity: Opportunity): UnifiedTra
 
   const normalizedValidation: UnifiedTraderSignal['validation'] = {
     is_valid: validation.is_valid === undefined ? true : Boolean(validation.is_valid),
-    is_actionable: validation.is_actionable === undefined ? true : Boolean(validation.is_actionable),
+    is_actionable:
+      validation.is_actionable === undefined ? true : Boolean(validation.is_actionable),
     is_tradeable: validation.is_tradeable === undefined ? true : Boolean(validation.is_tradeable),
     checks: asObject(validation.checks) as Record<string, boolean>,
     reasons: validationReasons,
@@ -440,13 +426,16 @@ export function normalizeTraderOpportunity(opportunity: Opportunity): UnifiedTra
   if (isMultiMarket) {
     outcomeLabels = markets.map((mkt, i) => {
       const raw = String((mkt as any).group_item_title || mkt.question || '')
-      const label = raw.replace(/^(Will |What will |Which |Who will )/i, '').split('?')[0].trim()
+      const label = raw
+        .replace(/^(Will |What will |Which |Who will )/i, '')
+        .split('?')[0]
+        .trim()
       return label || `Market ${i + 1}`
     })
     outcomePrices = markets.map((mkt) => resolveYesPrice(mkt as unknown as Record<string, unknown>))
     // Merge price histories from all sub-markets
     const maxLen = Math.max(
-      ...markets.map((m) => Array.isArray(m.price_history) ? m.price_history.length : 0),
+      ...markets.map((m) => (Array.isArray(m.price_history) ? m.price_history.length : 0)),
       0,
     )
     if (maxLen >= 2) {
@@ -480,7 +469,9 @@ export function normalizeTraderOpportunity(opportunity: Opportunity): UnifiedTra
       ],
       String(market.question || opportunity.title || ''),
     )
-    outcomePrices = Array.isArray(market.outcome_prices) ? market.outcome_prices as number[] : undefined
+    outcomePrices = Array.isArray(market.outcome_prices)
+      ? (market.outcome_prices as number[])
+      : undefined
   }
 
   return {
@@ -492,13 +483,25 @@ export function normalizeTraderOpportunity(opportunity: Opportunity): UnifiedTra
     market_slug: String(market.slug || '') || null,
     yes_price: typeof market.yes_price === 'number' ? market.yes_price : null,
     no_price: typeof market.no_price === 'number' ? market.no_price : null,
-    current_yes_price: typeof market.current_yes_price === 'number' ? market.current_yes_price : (typeof market.yes_price === 'number' ? market.yes_price : null),
-    current_no_price: typeof market.current_no_price === 'number' ? market.current_no_price : (typeof market.no_price === 'number' ? market.no_price : null),
+    current_yes_price:
+      typeof market.current_yes_price === 'number'
+        ? market.current_yes_price
+        : typeof market.yes_price === 'number'
+          ? market.yes_price
+          : null,
+    current_no_price:
+      typeof market.current_no_price === 'number'
+        ? market.current_no_price
+        : typeof market.no_price === 'number'
+          ? market.no_price
+          : null,
     outcome_labels: outcomeLabels,
     outcome_prices: outcomePrices,
     yes_label: outcomeLabels?.[0] ?? null,
     no_label: outcomeLabels?.[1] ?? null,
-    price_history: mergedPriceHistory ?? (Array.isArray(market.price_history) ? market.price_history : undefined),
+    price_history:
+      mergedPriceHistory ??
+      (Array.isArray(market.price_history) ? market.price_history : undefined),
     direction,
     confidence,
     wallet_count: Number(strategyContext.wallet_count ?? firehose.wallet_count ?? 0) || 0,
@@ -506,29 +509,38 @@ export function normalizeTraderOpportunity(opportunity: Opportunity): UnifiedTra
     signal_type: String(firehose.signal_type || ''),
     conviction_score: confidence,
     window_minutes: Number(firehose.window_minutes || 60),
-    cluster_adjusted_wallet_count: Number(firehose.cluster_adjusted_wallet_count || firehose.wallet_count || 0),
+    cluster_adjusted_wallet_count: Number(
+      firehose.cluster_adjusted_wallet_count || firehose.wallet_count || 0,
+    ),
     unique_core_wallets: Number(firehose.unique_core_wallets || 0),
     net_notional: typeof firehose.net_notional === 'number' ? firehose.net_notional : undefined,
-    top_wallets: Array.isArray(firehose.top_wallets) ? (firehose.top_wallets as UnifiedTraderSignal['top_wallets']) : undefined,
+    top_wallets: Array.isArray(firehose.top_wallets)
+      ? (firehose.top_wallets as UnifiedTraderSignal['top_wallets'])
+      : undefined,
     outcome: String(strategyContext.outcome || firehose.outcome || '') || null,
-    selected_outcome_label: direction === 'BUY'
-      ? outcomeLabels?.[0] ?? null
-      : direction === 'SELL'
-        ? outcomeLabels?.[1] ?? null
-        : null,
+    selected_outcome_label:
+      direction === 'BUY'
+        ? (outcomeLabels?.[0] ?? null)
+        : direction === 'SELL'
+          ? (outcomeLabels?.[1] ?? null)
+          : null,
     detected_at: opportunity.detected_at,
     last_seen_at: opportunity.last_seen_at ?? null,
     first_seen_at: firehose.first_seen_at ? String(firehose.first_seen_at) : null,
     market_url: buildPolymarketMarketUrl({ eventSlug: marketSlug }) || '',
     source_flags: normalizedSourceFlags,
-    source_breakdown: asObject(strategyContext.source_breakdown) as UnifiedTraderSignal['source_breakdown'],
+    source_breakdown: asObject(
+      strategyContext.source_breakdown,
+    ) as UnifiedTraderSignal['source_breakdown'],
     validation: normalizedValidation,
     is_valid: normalizedValidation.is_valid ?? true,
     is_actionable: normalizedValidation.is_actionable ?? true,
     is_tradeable: normalizedValidation.is_tradeable ?? true,
     validation_reasons: validationReasons,
     source_coverage_score: normalizeSourceCoverageScore(normalizedSourceFlags),
-    wallets: Array.isArray(firehose.wallets) ? (firehose.wallets as UnifiedTraderSignal['wallets']) : undefined,
+    wallets: Array.isArray(firehose.wallets)
+      ? (firehose.wallets as UnifiedTraderSignal['wallets'])
+      : undefined,
   }
 }
 
@@ -628,7 +640,9 @@ function shortAddress(address: string): string {
 }
 
 function humanizeSlug(slug: string | null | undefined): string {
-  const raw = String(slug || '').trim().replace(/_/g, '-')
+  const raw = String(slug || '')
+    .trim()
+    .replace(/_/g, '-')
   if (!raw) return ''
   return raw
     .split('-')
@@ -640,11 +654,9 @@ function humanizeSlug(slug: string | null | undefined): string {
 function normalizeMarketLabel(signal: UnifiedTraderSignal): string {
   const question = String(signal.market_question || '').trim()
   const placeholderTail = question.replace(/^market\s+/i, '').trim()
-  const looksLikePlaceholder = /^market\s+/i.test(question)
-    && (
-      /^0x[0-9a-f.]+$/i.test(placeholderTail)
-      || /^\d{12,}$/.test(placeholderTail)
-    )
+  const looksLikePlaceholder =
+    /^market\s+/i.test(question) &&
+    (/^0x[0-9a-f.]+$/i.test(placeholderTail) || /^\d{12,}$/.test(placeholderTail))
   if (question && !looksLikePlaceholder) return question
   const fromSlug = humanizeSlug(signal.market_slug || null)
   if (fromSlug) return fromSlug
@@ -690,7 +702,9 @@ function isSelectedOutcomeRow(
   if (row.key === 'yes' || row.key === 'idx_0') return selectedIndex === 0
   if (row.key === 'no' || row.key === 'idx_1') return selectedIndex === 1
   const selectedLabel = selectedIndex === 0 ? yesOutcomeLabel(signal) : noOutcomeLabel(signal)
-  return row.label.trim().toLowerCase() === selectedLabel.trim().toLowerCase() || index === selectedIndex
+  return (
+    row.label.trim().toLowerCase() === selectedLabel.trim().toLowerCase() || index === selectedIndex
+  )
 }
 
 function compactOutcomeLabel(label: string, maxChars = 14): string {
@@ -717,9 +731,7 @@ function buildSignalOutcomeFallbacks(
 }
 
 function formatSignalReason(reason: string): string {
-  return reason
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (char) => char.toUpperCase())
+  return reason.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())
 }
 
 function formatPriceCents(value: number | null | undefined): string {
@@ -753,30 +765,44 @@ export function TraderSignalCards({ signals, onNavigateToWallet, onOpenCopilot }
 }
 
 function getSourceLabel(t: (k: string) => string, source: string): string {
-  return source === 'insider' ? t('traderSignalViews.sourceInsider') : t('traderSignalViews.sourceConfluence')
+  return source === 'insider'
+    ? t('traderSignalViews.sourceInsider')
+    : t('traderSignalViews.sourceConfluence')
 }
 
 function getSourceTagShort(t: (k: string) => string, source: string): string {
-  return source === 'insider' ? t('traderSignalViews.sourceInsiderShort') : t('traderSignalViews.sourceConfluenceShort')
+  return source === 'insider'
+    ? t('traderSignalViews.sourceInsiderShort')
+    : t('traderSignalViews.sourceConfluenceShort')
 }
 
 function getTierLabel(t: (k: string) => string, tier: string): string {
   switch (tier) {
-    case 'WATCH': return t('traderSignalViews.tierWatch')
-    case 'HIGH': return t('traderSignalViews.tierHigh')
-    case 'EXTREME': return t('traderSignalViews.tierExtreme')
-    case 'INSIDER': return t('traderSignalViews.tierInsider')
-    default: return tier
+    case 'WATCH':
+      return t('traderSignalViews.tierWatch')
+    case 'HIGH':
+      return t('traderSignalViews.tierHigh')
+    case 'EXTREME':
+      return t('traderSignalViews.tierExtreme')
+    case 'INSIDER':
+      return t('traderSignalViews.tierInsider')
+    default:
+      return tier
   }
 }
 
 function getTierTagShort(t: (k: string) => string, tier: string): string {
   switch (tier) {
-    case 'WATCH': return t('traderSignalViews.tierWatchShort')
-    case 'HIGH': return t('traderSignalViews.tierHighShort')
-    case 'EXTREME': return t('traderSignalViews.tierExtremeShort')
-    case 'INSIDER': return t('traderSignalViews.tierInsiderShort')
-    default: return tier.slice(0, 3)
+    case 'WATCH':
+      return t('traderSignalViews.tierWatchShort')
+    case 'HIGH':
+      return t('traderSignalViews.tierHighShort')
+    case 'EXTREME':
+      return t('traderSignalViews.tierExtremeShort')
+    case 'INSIDER':
+      return t('traderSignalViews.tierInsiderShort')
+    default:
+      return tier.slice(0, 3)
   }
 }
 
@@ -807,29 +833,30 @@ function TraderSignalCard({
   const currentYes = signal.current_yes_price ?? signal.yes_price
   const currentNo = signal.current_no_price ?? signal.no_price
   const sparkSeries = useMemo(
-    () => buildOutcomeSparklineSeries(
-      signal.price_history,
-      buildSignalOutcomeFallbacks(signal, currentYes, currentNo),
-    ),
+    () =>
+      buildOutcomeSparklineSeries(
+        signal.price_history,
+        buildSignalOutcomeFallbacks(signal, currentYes, currentNo),
+      ),
     [signal, currentYes, currentNo],
   )
   const hasSparkline = sparkSeries.length > 0
-  const nowSec = useMemo(() => Math.floor(Date.now() / 1000), [sparkSeries])
-  const livelineSeries = useMemo<LivelineSeries[]>(
-    () => sparkSeries.map((row, index) => ({
+  const livelineSeries = useMemo<LivelineSeries[]>(() => {
+    const nowSec = Math.floor(Date.now() / 1000)
+    return sparkSeries.map((row, index) => ({
       id: row.key,
       data: toTimeValueSeries(row.data, nowSec),
       value: row.latest ?? row.data[row.data.length - 1] ?? 0,
       color: SPARKLINE_COLORS[index % SPARKLINE_COLORS.length],
       label: row.label,
-    })),
-    [sparkSeries, nowSec],
-  )
+    }))
+  }, [sparkSeries])
   const primaryLivelineData = livelineSeries[0]?.data ?? []
   const primaryLivelineValue = livelineSeries[0]?.value ?? 0
-  const livelineWindow = primaryLivelineData.length >= 2
-    ? primaryLivelineData[primaryLivelineData.length - 1].time - primaryLivelineData[0].time
-    : 60
+  const livelineWindow =
+    primaryLivelineData.length >= 2
+      ? primaryLivelineData[primaryLivelineData.length - 1].time - primaryLivelineData[0].time
+      : 60
   const accentBar = ACCENT_BAR_COLORS[signal.tier] || 'bg-yellow-500'
 
   const poolWallets = signal.source_breakdown?.pool_wallets || 0
@@ -840,9 +867,11 @@ function TraderSignalCard({
     ? currentYes
     : signal.direction === 'SELL'
       ? currentNo
-      : currentYes ?? currentNo
+      : (currentYes ?? currentNo)
   const sourceCoverageLabel = `${signal.source_coverage_score}/3`
-  const strategySdk = String(signal.strategy_sdk || 'traders_confluence').trim().toLowerCase()
+  const strategySdk = String(signal.strategy_sdk || 'traders_confluence')
+    .trim()
+    .toLowerCase()
 
   const qualityPillClass = signal.is_tradeable
     ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
@@ -855,13 +884,14 @@ function TraderSignalCard({
       ? t('traderSignalViews.qualitySourceCheck')
       : t('traderSignalViews.qualityInvalid')
 
-  const bgGradient = signal.source === 'insider'
-    ? 'from-purple-500/[0.04] via-transparent to-transparent'
-    : signal.tier === 'EXTREME'
-      ? 'from-red-500/[0.04] via-transparent to-transparent'
-      : signal.tier === 'HIGH'
-        ? 'from-orange-500/[0.04] via-transparent to-transparent'
-        : 'from-yellow-500/[0.03] via-transparent to-transparent'
+  const bgGradient =
+    signal.source === 'insider'
+      ? 'from-purple-500/[0.04] via-transparent to-transparent'
+      : signal.tier === 'EXTREME'
+        ? 'from-red-500/[0.04] via-transparent to-transparent'
+        : signal.tier === 'HIGH'
+          ? 'from-orange-500/[0.04] via-transparent to-transparent'
+          : 'from-yellow-500/[0.03] via-transparent to-transparent'
   const closeModal = () => setModalOpen(false)
 
   useEffect(() => {
@@ -886,576 +916,702 @@ function TraderSignalCard({
 
   return (
     <>
-    <div
-      className={cn(
-        'relative rounded-lg border bg-card/80 overflow-hidden transition-all cursor-pointer',
-        !isModalView && 'hover:shadow-md',
-        isModalView && 'w-[min(1100px,calc(100vw-2rem))] max-h-[90vh] overflow-hidden rounded-2xl border-border/70 bg-background shadow-[0_40px_120px_rgba(0,0,0,0.55)]',
-        TIER_BORDER_COLORS[signal.tier],
-      )}
-      onClick={!isModalView ? () => setModalOpen(true) : undefined}
-    >
-      {/* Accent bar */}
-      <div className={cn('absolute left-0 top-0 bottom-0 w-1', accentBar)} />
+      <div
+        className={cn(
+          'relative rounded-lg border bg-card/80 overflow-hidden transition-all cursor-pointer',
+          !isModalView && 'hover:shadow-md',
+          isModalView &&
+            'w-[min(1100px,calc(100vw-2rem))] max-h-[90vh] overflow-hidden rounded-2xl border-border/70 bg-background shadow-[0_40px_120px_rgba(0,0,0,0.55)]',
+          TIER_BORDER_COLORS[signal.tier],
+        )}
+        onClick={!isModalView ? () => setModalOpen(true) : undefined}
+      >
+        {/* Accent bar */}
+        <div className={cn('absolute left-0 top-0 bottom-0 w-1', accentBar)} />
 
-      {/* ── Modal Header Bar ── */}
-      {isModalView && (
-        <div className="border-b border-border/60 px-4 py-3 flex-shrink-0">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <h3 className="text-sm font-semibold truncate max-w-[620px]" title={marketLabel}>
-                  {marketLabel}
-                </h3>
-                <Badge variant="outline" className={cn('h-5 px-1.5 text-[10px] font-medium border', SOURCE_COLORS[signal.source])}>
-                  {getSourceLabel(t, signal.source)}
-                </Badge>
-                <Badge variant="outline" className={cn('h-5 px-1.5 text-[10px] font-bold', TIER_COLORS[signal.tier])}>
-                  {getTierLabel(t, signal.tier)}
-                </Badge>
+        {/* ── Modal Header Bar ── */}
+        {isModalView && (
+          <div className="border-b border-border/60 px-4 py-3 flex-shrink-0">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <h3 className="text-sm font-semibold truncate max-w-[620px]" title={marketLabel}>
+                    {marketLabel}
+                  </h3>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      'h-5 px-1.5 text-[10px] font-medium border',
+                      SOURCE_COLORS[signal.source],
+                    )}
+                  >
+                    {getSourceLabel(t, signal.source)}
+                  </Badge>
+                  <Badge
+                    variant="outline"
+                    className={cn('h-5 px-1.5 text-[10px] font-bold', TIER_COLORS[signal.tier])}
+                  >
+                    {getTierLabel(t, signal.tier)}
+                  </Badge>
+                </div>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  {t('traderSignalViews.buySummary', {
+                    outcome: selectedOutcomeLabel,
+                    count: signal.wallet_count,
+                    confidence: signal.confidence,
+                  })}
+                </p>
               </div>
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                {t('traderSignalViews.buySummary', { outcome: selectedOutcomeLabel, count: signal.wallet_count, confidence: signal.confidence })}
-              </p>
-            </div>
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <BuyButton traderSignal={signal} variant="compact" />
-              <button
-                onClick={(e) => { e.stopPropagation(); onCloseModal?.() }}
-                className="inline-flex items-center gap-1 h-7 px-2 text-[11px] rounded-md border border-border/60 bg-background text-foreground hover:bg-muted/60 transition-colors font-medium"
-              >
-                <Minimize2 className="w-3 h-3" />
-                {t('traderSignalViews.close')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Card Body (scrollable in modal) ── */}
-      <div className={cn(isModalView && 'max-h-[calc(90vh-72px)] overflow-y-auto')}>
-
-      <div className={cn('bg-gradient-to-r p-4 pl-4', bgGradient)}>
-        {/* Row 1: Header badges */}
-        <div className="flex items-center gap-1.5 flex-wrap mb-2">
-          <Badge
-            variant="outline"
-            className={cn('text-[10px] font-medium border', SOURCE_COLORS[signal.source])}
-          >
-            {getSourceLabel(t, signal.source)}
-          </Badge>
-          <Badge
-            variant="outline"
-            className={cn('text-[10px] font-medium border', TIER_COLORS[signal.tier])}
-          >
-            {getTierLabel(t, signal.tier)}
-          </Badge>
-          <Badge
-            variant="outline"
-            className={cn(
-              'text-[10px] font-medium',
-              isBuy
-                ? 'bg-green-500/10 text-green-400 border-green-500/20'
-                : signal.direction === 'SELL'
-                  ? 'bg-red-500/10 text-red-400 border-red-500/20'
-                  : 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-            )}
-          >
-            {signal.direction === 'BUY' || signal.direction === 'SELL'
-              ? t('traderSignalViews.buyAction', { outcome: directionLabelCompact })
-              : signal.outcome || signal.signal_type?.replace(/_/g, ' ') || t('traderSignalViews.signal')}
-          </Badge>
-          <Badge
-            variant="outline"
-            className={cn('text-[10px] font-medium border inline-flex items-center gap-1', qualityPillClass)}
-          >
-            {signal.is_tradeable ? <CheckCircle2 className="w-3 h-3" /> : <ShieldAlert className="w-3 h-3" />}
-            {qualityLabel}
-          </Badge>
-          <Badge
-            variant="outline"
-            className="max-w-[170px] truncate text-[9px] px-1.5 py-0 font-mono border-border/50 bg-muted/25 text-muted-foreground"
-            title={t('traderSignalViews.strategySdkTitle', { sdk: strategySdk })}
-          >
-            {t('traderSignalViews.sdkLabel', { sdk: strategySdk })}
-          </Badge>
-
-          <div className="ml-auto flex items-center gap-1 text-xs text-muted-foreground/70">
-            <Clock className="w-3 h-3" />
-            {timeAgo(signal.last_seen_at || signal.detected_at)}
-          </div>
-        </div>
-
-        {/* Row 2: Market title */}
-        <h3 className="font-medium text-sm text-foreground line-clamp-2 mb-3">
-          {marketLabel}
-        </h3>
-
-        {/* Row 3: source coverage */}
-        <div className="mb-3 flex flex-wrap items-center gap-1.5">
-          {poolWallets > 0 && (
-            <Badge variant="outline" className="text-[10px] h-5 px-1.5 border-emerald-500/30 bg-emerald-500/10 text-emerald-300">
-              {t('traderSignalViews.poolBadge', { count: poolWallets })}
-            </Badge>
-          )}
-          {trackedWallets > 0 && (
-            <Badge variant="outline" className="text-[10px] h-5 px-1.5 border-blue-500/30 bg-blue-500/10 text-blue-300">
-              {t('traderSignalViews.trackedBadge', { count: trackedWallets })}
-            </Badge>
-          )}
-          {groupWallets > 0 && (
-            <Badge variant="outline" className="text-[10px] h-5 px-1.5 border-amber-500/30 bg-amber-500/10 text-amber-300">
-              {t('traderSignalViews.groupsBadge', { count: groupWallets })}
-            </Badge>
-          )}
-          {signal.source_coverage_score === 0 && (
-            <Badge variant="outline" className="text-[10px] h-5 px-1.5 border-red-500/30 bg-red-500/10 text-red-300">
-              {t('traderSignalViews.noQualifiedSource')}
-            </Badge>
-          )}
-        </div>
-
-        {/* Row 4: Liveline chart */}
-        {hasSparkline && primaryLivelineData.length >= 2 && (
-          <div className="mb-3 w-full">
-            <Liveline
-              data={primaryLivelineData}
-              value={primaryLivelineValue}
-              series={livelineSeries.length > 1 ? livelineSeries : undefined}
-              color={SPARKLINE_COLORS[0]}
-              theme={themeMode}
-              window={livelineWindow}
-              paused={livelineSeries.length <= 1}
-              grid={expanded || isModalView}
-              badge={false}
-              fill={livelineSeries.length <= 1}
-              pulse={false}
-              momentum={expanded || isModalView}
-              scrub={expanded || isModalView}
-              seriesToggleCompact
-              lerpSpeed={0.15}
-              padding={expanded || isModalView
-                ? { top: 6, right: 6, bottom: 6, left: 6 }
-                : { top: 4, right: 4, bottom: 4, left: 4 }}
-              formatValue={(v) => `${(v * 100).toFixed(0)}¢`}
-              style={{ height: expanded || isModalView ? 120 : 56 }}
-            />
-            <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 px-0.5 text-[11px] font-data font-bold">
-              {sparkSeries.map((row, index) => (
-                <span
-                  key={`${signal.id}-spark-${row.key}`}
-                  className={cn(
-                    'whitespace-nowrap',
-                    SPARKLINE_TEXT_CLASSES[index % SPARKLINE_TEXT_CLASSES.length],
-                    isSelectedOutcomeRow(signal, row, index) && 'underline decoration-current underline-offset-2',
-                  )}
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <BuyButton traderSignal={signal} variant="compact" />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onCloseModal?.()
+                  }}
+                  className="inline-flex items-center gap-1 h-7 px-2 text-[11px] rounded-md border border-border/60 bg-background text-foreground hover:bg-muted/60 transition-colors font-medium"
                 >
-                  {compactOutcomeLabel(row.label, 14)} {row.latest != null && Number.isFinite(row.latest) ? `${(row.latest * 100).toFixed(0)}¢` : '—'}
-                </span>
-              ))}
+                  <Minimize2 className="w-3 h-3" />
+                  {t('traderSignalViews.close')}
+                </button>
+              </div>
             </div>
           </div>
         )}
 
-        {sparkSeries.length > 0 ? (
-          <div className={cn('grid gap-2 mb-3', sparkSeries.length <= 2 ? 'grid-cols-2' : sparkSeries.length <= 4 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3 sm:grid-cols-4')}>
-            {sparkSeries.slice(0, 8).map((row, index) => (
-              <div
-                key={`${signal.id}-outcome-${row.key}`}
+        {/* ── Card Body (scrollable in modal) ── */}
+        <div className={cn(isModalView && 'max-h-[calc(90vh-72px)] overflow-y-auto')}>
+          <div className={cn('bg-gradient-to-r p-4 pl-4', bgGradient)}>
+            {/* Row 1: Header badges */}
+            <div className="flex items-center gap-1.5 flex-wrap mb-2">
+              <Badge
+                variant="outline"
+                className={cn('text-[10px] font-medium border', SOURCE_COLORS[signal.source])}
+              >
+                {getSourceLabel(t, signal.source)}
+              </Badge>
+              <Badge
+                variant="outline"
+                className={cn('text-[10px] font-medium border', TIER_COLORS[signal.tier])}
+              >
+                {getTierLabel(t, signal.tier)}
+              </Badge>
+              <Badge
+                variant="outline"
                 className={cn(
-                  'rounded-md border px-2 py-1.5',
-                  OUTCOME_BOX_CLASSES[index % OUTCOME_BOX_CLASSES.length],
-                  isSelectedOutcomeRow(signal, row, index) && 'ring-1 ring-white/40 shadow-[0_0_0_1px_rgba(255,255,255,0.08)]',
+                  'text-[10px] font-medium',
+                  isBuy
+                    ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                    : signal.direction === 'SELL'
+                      ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                      : 'bg-blue-500/10 text-blue-400 border-blue-500/20',
                 )}
               >
-                {isSelectedOutcomeRow(signal, row, index) && (
-                  <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-foreground/75">{t('traderSignalViews.selected')}</p>
+                {signal.direction === 'BUY' || signal.direction === 'SELL'
+                  ? t('traderSignalViews.buyAction', { outcome: directionLabelCompact })
+                  : signal.outcome ||
+                    signal.signal_type?.replace(/_/g, ' ') ||
+                    t('traderSignalViews.signal')}
+              </Badge>
+              <Badge
+                variant="outline"
+                className={cn(
+                  'text-[10px] font-medium border inline-flex items-center gap-1',
+                  qualityPillClass,
                 )}
-                <p className="text-sm font-bold truncate">{compactOutcomeLabel(row.label, 14)}</p>
-                <p className="text-xs font-semibold font-data">
-                  {row.latest != null && Number.isFinite(row.latest) ? formatPriceCents(row.latest) : '\u2014'}
-                </p>
-              </div>
-            ))}
-            {sparkSeries.length > 8 && (
-              <div className="flex items-center justify-center text-xs text-muted-foreground/60">
-                +{sparkSeries.length - 8}
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-2 mb-3">
-            <div className={cn(
-              'rounded-md border border-green-500/20 bg-green-500/10 px-2 py-1.5',
-              isBuy && 'ring-1 ring-white/40 shadow-[0_0_0_1px_rgba(255,255,255,0.08)]',
-            )}>
-              {isBuy && (
-                <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-green-200/80">{t('traderSignalViews.selected')}</p>
-              )}
-              <p className="text-sm font-bold text-green-300 truncate">{yesLabel}</p>
-              <p className="text-xs font-semibold text-green-300 font-data">{formatPriceCents(currentYes)}</p>
-            </div>
-            <div className={cn(
-              'rounded-md border border-red-500/20 bg-red-500/10 px-2 py-1.5',
-              signal.direction === 'SELL' && 'ring-1 ring-white/40 shadow-[0_0_0_1px_rgba(255,255,255,0.08)]',
-            )}>
-              {signal.direction === 'SELL' && (
-                <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-red-200/80">{t('traderSignalViews.selected')}</p>
-              )}
-              <p className="text-sm font-bold text-red-300 truncate">{noLabel}</p>
-              <p className="text-xs font-semibold text-red-300 font-data">{formatPriceCents(currentNo)}</p>
-            </div>
-          </div>
-        )}
-
-        {/* Row 5: Metrics grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs mb-3">
-          <div>
-            <p className="text-muted-foreground/70">{t('traderSignalViews.selectedSide')}</p>
-            <p className="font-semibold text-foreground truncate" title={selectedOutcomeLabel}>
-              {selectedOutcomeLabel}
-            </p>
-          </div>
-          <div>
-            <p className="text-muted-foreground/70">{t('traderSignalViews.entry')}</p>
-            <p className="font-semibold text-foreground font-data">
-              {formatPriceCents(actionPrice)}
-            </p>
-          </div>
-          <div>
-            <p className="text-muted-foreground/70">{t('traderSignalViews.confidence')}</p>
-            <p className="font-semibold text-foreground font-data">{signal.confidence}</p>
-          </div>
-          <div>
-            <p className="text-muted-foreground/70">{t('traderSignalViews.wallets')}</p>
-            <p className="font-semibold text-foreground font-data flex items-center gap-1">
-              <Users className="w-3 h-3 text-muted-foreground/70" />
-              {signal.source === 'confluence'
-                ? signal.cluster_adjusted_wallet_count || signal.wallet_count
-                : signal.wallet_count}
-            </p>
-          </div>
-        </div>
-
-        {/* Row 6: Secondary metrics */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs mb-3">
-          {signal.source === 'confluence' ? (
-            <>
-              <div>
-                <p className="text-muted-foreground/70">{t('traderSignalViews.netNotional')}</p>
-                <p className="font-semibold text-foreground font-data">
-                  {formatCompact(signal.net_notional)}
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground/70">{t('traderSignalViews.window')}</p>
-                <p className="font-semibold text-foreground font-data">
-                  {signal.window_minutes || 60}m
-                </p>
-              </div>
-            </>
-          ) : (
-            <>
-              <div>
-                <p className="text-muted-foreground/70">{t('traderSignalViews.edge')}</p>
-                <p className="font-semibold text-foreground font-data">
-                  {signal.edge_percent != null ? `${signal.edge_percent.toFixed(1)}%` : '\u2014'}
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground/70">{t('traderSignalViews.preNewsLead')}</p>
-                <p className="font-semibold text-foreground font-data">
-                  {signal.pre_news_lead_minutes != null ? `${signal.pre_news_lead_minutes.toFixed(0)}m` : '\u2014'}
-                </p>
-              </div>
-            </>
-          )}
-          <div>
-            <p className="text-muted-foreground/70">{t('traderSignalViews.sourceFit')}</p>
-            <p className="font-semibold text-foreground font-data">{sourceCoverageLabel}</p>
-          </div>
-          <div>
-            <p className="text-muted-foreground/70">{t('traderSignalViews.qualified')}</p>
-            <p className={cn('font-semibold font-data', signal.is_tradeable ? 'text-emerald-300' : 'text-red-300')}>
-              {signal.is_tradeable ? t('traderSignalViews.yes') : t('traderSignalViews.no')}
-            </p>
-          </div>
-          {isModalView && (
-            <div>
-              <p className="text-muted-foreground/70">{t('traderSignalViews.walletBase')}</p>
-              <p className="font-semibold text-foreground font-data">{walletsConsidered}</p>
-            </div>
-          )}
-        </div>
-
-        {/* Row 7: Confidence bar */}
-        <div>
-          <div className="flex items-center justify-between text-[11px] mb-1">
-            <span className="text-muted-foreground/70">
-              {signal.source === 'insider' ? t('traderSignalViews.confidence') : t('traderSignalViews.conviction')}
-            </span>
-            <span className="text-foreground/90 font-medium font-data">{signal.confidence}/100</span>
-          </div>
-          <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-            <div
-              className={cn('h-full rounded-full', convictionColor(signal.confidence))}
-              style={{ width: `${Math.max(0, Math.min(100, signal.confidence))}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Row 8: Validation reasons */}
-        {!signal.is_tradeable && signal.validation_reasons.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {signal.validation_reasons.slice(0, 3).map((reason) => (
-              <span
-                key={`${signal.id}-${reason}`}
-                className="inline-flex items-center rounded-md border border-red-500/20 bg-red-500/10 px-1.5 py-0.5 text-[10px] text-red-200/90"
               >
-                {formatSignalReason(reason)}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Row 9: Insider-specific metrics */}
-        {signal.source === 'insider' && (
-          <div className="flex items-center gap-3 mt-2 text-[11px] text-muted-foreground/70">
-            {signal.insider_score != null && (
-              <span>{t('traderSignalViews.insiderScore')}: <span className="text-purple-400 font-data">{signal.insider_score.toFixed(2)}</span></span>
-            )}
-            {signal.freshness_minutes != null && (
-              <span>{t('traderSignalViews.freshness')}: <span className="text-foreground/80 font-data">{signal.freshness_minutes.toFixed(0)}m</span></span>
-            )}
-            {signal.cluster_count != null && (
-              <span>{t('traderSignalViews.clusters')}: <span className="text-foreground/80 font-data">{signal.cluster_count}</span></span>
-            )}
-          </div>
-        )}
-
-        {/* Row 10: Wallets */}
-        {signal.source === 'confluence' && signal.top_wallets && signal.top_wallets.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {signal.top_wallets.slice(0, 4).map((wallet) => (
-              <button
-                key={`${signal.id}-${wallet.address}`}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onNavigateToWallet?.(wallet.address)
-                }}
-                className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-muted/70 hover:bg-muted transition-colors text-[11px] text-foreground/85"
-              >
-                <Wallet className="w-3 h-3 text-muted-foreground/70" />
-                <span>{wallet.username || shortAddress(wallet.address)}</span>
-                <span className="text-muted-foreground/70">
-                  {(wallet.composite_score * 100).toFixed(0)}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {signal.source === 'insider' && signal.top_wallet?.address && (
-          <div className="mt-3">
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onNavigateToWallet?.(signal.top_wallet!.address)
-              }}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-purple-500/10 hover:bg-purple-500/20 transition-colors text-[11px] text-purple-300"
-            >
-              <Wallet className="w-3 h-3" />
-              {signal.top_wallet.username || shortAddress(signal.top_wallet.address)}
-              {signal.top_wallet.insider_score != null && (
-                <span className="text-purple-400/70 ml-1">IS:{signal.top_wallet.insider_score.toFixed(2)}</span>
-              )}
-            </button>
-          </div>
-        )}
-
-        {/* Row 11: Actions */}
-        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/50">
-          {signal.market_url && (
-            <a
-              href={signal.market_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
-            >
-              <ExternalLink className="w-3 h-3" />
-              {t('traderSignalViews.market')}
-            </a>
-          )}
-          {onOpenCopilot && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onOpenCopilot(signal)
-              }}
-              className="inline-flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300"
-            >
-              <MessageCircle className="w-3 h-3" />
-              {t('traderSignalViews.copilot')}
-            </button>
-          )}
-          <BuyButton traderSignal={signal} variant="inline" />
-        </div>
-
-        {/* Expanded details */}
-        {expanded && (
-          <div className="mt-3 pt-3 border-t border-border/50 space-y-2 text-xs">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <div>
-                <p className="text-muted-foreground/70">{t('traderSignalViews.poolWallets')}</p>
-                <p className="font-semibold text-foreground">{poolWallets}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground/70">{t('traderSignalViews.trackedWallets')}</p>
-                <p className="font-semibold text-foreground">{trackedWallets}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground/70">{t('traderSignalViews.groupWallets')}</p>
-                <p className="font-semibold text-foreground">{groupWallets}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground/70">{t('traderSignalViews.coverage')}</p>
-                <p className="font-semibold text-foreground">{sourceCoverageLabel}</p>
-              </div>
-            </div>
-
-            {signal.source === 'confluence' && (
-              <>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <p className="text-muted-foreground/70">{t('traderSignalViews.coreWallets')}</p>
-                    <p className="font-semibold text-foreground">{signal.unique_core_wallets || 0}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground/70">{t('traderSignalViews.signalType')}</p>
-                    <p className="font-semibold text-foreground">{signal.signal_type?.replace(/_/g, ' ') || '\u2014'}</p>
-                  </div>
-                </div>
-              </>
-            )}
-            {signal.source === 'insider' && (
-              <>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <p className="text-muted-foreground/70">{t('traderSignalViews.suggestedSize')}</p>
-                    <p className="font-semibold text-foreground">
-                      {signal.suggested_size_usd != null ? formatCompact(signal.suggested_size_usd) : '\u2014'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground/70">{t('traderSignalViews.marketLiquidity')}</p>
-                    <p className="font-semibold text-foreground">
-                      {signal.market_liquidity != null ? formatCompact(signal.market_liquidity) : '\u2014'}
-                    </p>
-                  </div>
-                </div>
-                {signal.wallets && signal.wallets.length > 1 && (
-                  <div>
-                    <p className="text-muted-foreground/70 mb-1">{t('traderSignalViews.involvedWallets')}</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {signal.wallets.slice(0, 6).map((w) => (
-                        <button
-                          key={w.address}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            onNavigateToWallet?.(w.address)
-                          }}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted/70 hover:bg-muted text-[11px] text-foreground/80"
-                        >
-                          <Wallet className="w-3 h-3 text-muted-foreground/70" />
-                          {w.username || shortAddress(w.address)}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                {signal.is_tradeable ? (
+                  <CheckCircle2 className="w-3 h-3" />
+                ) : (
+                  <ShieldAlert className="w-3 h-3" />
                 )}
-              </>
-            )}
+                {qualityLabel}
+              </Badge>
+              <Badge
+                variant="outline"
+                className="max-w-[170px] truncate text-[9px] px-1.5 py-0 font-mono border-border/50 bg-muted/25 text-muted-foreground"
+                title={t('traderSignalViews.strategySdkTitle', { sdk: strategySdk })}
+              >
+                {t('traderSignalViews.sdkLabel', { sdk: strategySdk })}
+              </Badge>
 
-            {signal.validation_reasons.length > 0 && (
-              <div>
-                <p className="text-muted-foreground/70 mb-1">{t('traderSignalViews.validation')}</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {signal.validation_reasons.map((reason) => (
+              <div className="ml-auto flex items-center gap-1 text-xs text-muted-foreground/70">
+                <Clock className="w-3 h-3" />
+                {timeAgo(signal.last_seen_at || signal.detected_at)}
+              </div>
+            </div>
+
+            {/* Row 2: Market title */}
+            <h3 className="font-medium text-sm text-foreground line-clamp-2 mb-3">{marketLabel}</h3>
+
+            {/* Row 3: source coverage */}
+            <div className="mb-3 flex flex-wrap items-center gap-1.5">
+              {poolWallets > 0 && (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] h-5 px-1.5 border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                >
+                  {t('traderSignalViews.poolBadge', { count: poolWallets })}
+                </Badge>
+              )}
+              {trackedWallets > 0 && (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] h-5 px-1.5 border-blue-500/30 bg-blue-500/10 text-blue-300"
+                >
+                  {t('traderSignalViews.trackedBadge', { count: trackedWallets })}
+                </Badge>
+              )}
+              {groupWallets > 0 && (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] h-5 px-1.5 border-amber-500/30 bg-amber-500/10 text-amber-300"
+                >
+                  {t('traderSignalViews.groupsBadge', { count: groupWallets })}
+                </Badge>
+              )}
+              {signal.source_coverage_score === 0 && (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] h-5 px-1.5 border-red-500/30 bg-red-500/10 text-red-300"
+                >
+                  {t('traderSignalViews.noQualifiedSource')}
+                </Badge>
+              )}
+            </div>
+
+            {/* Row 4: Liveline chart */}
+            {hasSparkline && primaryLivelineData.length >= 2 && (
+              <div className="mb-3 w-full">
+                <Liveline
+                  data={primaryLivelineData}
+                  value={primaryLivelineValue}
+                  series={livelineSeries.length > 1 ? livelineSeries : undefined}
+                  color={SPARKLINE_COLORS[0]}
+                  theme={themeMode}
+                  window={livelineWindow}
+                  paused={livelineSeries.length <= 1}
+                  grid={expanded || isModalView}
+                  badge={false}
+                  fill={livelineSeries.length <= 1}
+                  pulse={false}
+                  momentum={expanded || isModalView}
+                  scrub={expanded || isModalView}
+                  seriesToggleCompact
+                  lerpSpeed={0.15}
+                  padding={
+                    expanded || isModalView
+                      ? { top: 6, right: 6, bottom: 6, left: 6 }
+                      : { top: 4, right: 4, bottom: 4, left: 4 }
+                  }
+                  formatValue={(v) => `${(v * 100).toFixed(0)}¢`}
+                  style={{ height: expanded || isModalView ? 120 : 56 }}
+                />
+                <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 px-0.5 text-[11px] font-data font-bold">
+                  {sparkSeries.map((row, index) => (
                     <span
-                      key={`${signal.id}-validation-${reason}`}
-                      className="inline-flex items-center rounded-md border border-border/60 bg-muted/50 px-1.5 py-0.5 text-[10px] text-foreground/80"
+                      key={`${signal.id}-spark-${row.key}`}
+                      className={cn(
+                        'whitespace-nowrap',
+                        SPARKLINE_TEXT_CLASSES[index % SPARKLINE_TEXT_CLASSES.length],
+                        isSelectedOutcomeRow(signal, row, index) &&
+                          'underline decoration-current underline-offset-2',
+                      )}
                     >
-                      {formatSignalReason(reason)}
+                      {compactOutcomeLabel(row.label, 14)}{' '}
+                      {row.latest != null && Number.isFinite(row.latest)
+                        ? `${(row.latest * 100).toFixed(0)}¢`
+                        : '—'}
                     </span>
                   ))}
                 </div>
               </div>
             )}
 
-            <div className="flex flex-wrap gap-4 text-[11px] text-muted-foreground/70 pt-1">
-              <span className="inline-flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                {t('traderSignalViews.first')}: {timeAgo(signal.first_seen_at || signal.detected_at)}
-              </span>
-              <span className="inline-flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                {t('traderSignalViews.last')}: {timeAgo(signal.last_seen_at || signal.detected_at)}
-              </span>
-              <span className="inline-flex items-center gap-1">
-                <Users className="w-3 h-3" />
-                {t('traderSignalViews.walletsCount', { count: signal.wallet_count })}
-              </span>
+            {sparkSeries.length > 0 ? (
+              <div
+                className={cn(
+                  'grid gap-2 mb-3',
+                  sparkSeries.length <= 2
+                    ? 'grid-cols-2'
+                    : sparkSeries.length <= 4
+                      ? 'grid-cols-2 sm:grid-cols-4'
+                      : 'grid-cols-3 sm:grid-cols-4',
+                )}
+              >
+                {sparkSeries.slice(0, 8).map((row, index) => (
+                  <div
+                    key={`${signal.id}-outcome-${row.key}`}
+                    className={cn(
+                      'rounded-md border px-2 py-1.5',
+                      OUTCOME_BOX_CLASSES[index % OUTCOME_BOX_CLASSES.length],
+                      isSelectedOutcomeRow(signal, row, index) &&
+                        'ring-1 ring-white/40 shadow-[0_0_0_1px_rgba(255,255,255,0.08)]',
+                    )}
+                  >
+                    {isSelectedOutcomeRow(signal, row, index) && (
+                      <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-foreground/75">
+                        {t('traderSignalViews.selected')}
+                      </p>
+                    )}
+                    <p className="text-sm font-bold truncate">
+                      {compactOutcomeLabel(row.label, 14)}
+                    </p>
+                    <p className="text-xs font-semibold font-data">
+                      {row.latest != null && Number.isFinite(row.latest)
+                        ? formatPriceCents(row.latest)
+                        : '\u2014'}
+                    </p>
+                  </div>
+                ))}
+                {sparkSeries.length > 8 && (
+                  <div className="flex items-center justify-center text-xs text-muted-foreground/60">
+                    +{sparkSeries.length - 8}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                <div
+                  className={cn(
+                    'rounded-md border border-green-500/20 bg-green-500/10 px-2 py-1.5',
+                    isBuy && 'ring-1 ring-white/40 shadow-[0_0_0_1px_rgba(255,255,255,0.08)]',
+                  )}
+                >
+                  {isBuy && (
+                    <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-green-200/80">
+                      {t('traderSignalViews.selected')}
+                    </p>
+                  )}
+                  <p className="text-sm font-bold text-green-300 truncate">{yesLabel}</p>
+                  <p className="text-xs font-semibold text-green-300 font-data">
+                    {formatPriceCents(currentYes)}
+                  </p>
+                </div>
+                <div
+                  className={cn(
+                    'rounded-md border border-red-500/20 bg-red-500/10 px-2 py-1.5',
+                    signal.direction === 'SELL' &&
+                      'ring-1 ring-white/40 shadow-[0_0_0_1px_rgba(255,255,255,0.08)]',
+                  )}
+                >
+                  {signal.direction === 'SELL' && (
+                    <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-red-200/80">
+                      {t('traderSignalViews.selected')}
+                    </p>
+                  )}
+                  <p className="text-sm font-bold text-red-300 truncate">{noLabel}</p>
+                  <p className="text-xs font-semibold text-red-300 font-data">
+                    {formatPriceCents(currentNo)}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Row 5: Metrics grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs mb-3">
+              <div>
+                <p className="text-muted-foreground/70">{t('traderSignalViews.selectedSide')}</p>
+                <p className="font-semibold text-foreground truncate" title={selectedOutcomeLabel}>
+                  {selectedOutcomeLabel}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground/70">{t('traderSignalViews.entry')}</p>
+                <p className="font-semibold text-foreground font-data">
+                  {formatPriceCents(actionPrice)}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground/70">{t('traderSignalViews.confidence')}</p>
+                <p className="font-semibold text-foreground font-data">{signal.confidence}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground/70">{t('traderSignalViews.wallets')}</p>
+                <p className="font-semibold text-foreground font-data flex items-center gap-1">
+                  <Users className="w-3 h-3 text-muted-foreground/70" />
+                  {signal.source === 'confluence'
+                    ? signal.cluster_adjusted_wallet_count || signal.wallet_count
+                    : signal.wallet_count}
+                </p>
+              </div>
             </div>
 
-          </div>
-        )}
-      </div>
+            {/* Row 6: Secondary metrics */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs mb-3">
+              {signal.source === 'confluence' ? (
+                <>
+                  <div>
+                    <p className="text-muted-foreground/70">{t('traderSignalViews.netNotional')}</p>
+                    <p className="font-semibold text-foreground font-data">
+                      {formatCompact(signal.net_notional)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground/70">{t('traderSignalViews.window')}</p>
+                    <p className="font-semibold text-foreground font-data">
+                      {signal.window_minutes || 60}m
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <p className="text-muted-foreground/70">{t('traderSignalViews.edge')}</p>
+                    <p className="font-semibold text-foreground font-data">
+                      {signal.edge_percent != null
+                        ? `${signal.edge_percent.toFixed(1)}%`
+                        : '\u2014'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground/70">{t('traderSignalViews.preNewsLead')}</p>
+                    <p className="font-semibold text-foreground font-data">
+                      {signal.pre_news_lead_minutes != null
+                        ? `${signal.pre_news_lead_minutes.toFixed(0)}m`
+                        : '\u2014'}
+                    </p>
+                  </div>
+                </>
+              )}
+              <div>
+                <p className="text-muted-foreground/70">{t('traderSignalViews.sourceFit')}</p>
+                <p className="font-semibold text-foreground font-data">{sourceCoverageLabel}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground/70">{t('traderSignalViews.qualified')}</p>
+                <p
+                  className={cn(
+                    'font-semibold font-data',
+                    signal.is_tradeable ? 'text-emerald-300' : 'text-red-300',
+                  )}
+                >
+                  {signal.is_tradeable ? t('traderSignalViews.yes') : t('traderSignalViews.no')}
+                </p>
+              </div>
+              {isModalView && (
+                <div>
+                  <p className="text-muted-foreground/70">{t('traderSignalViews.walletBase')}</p>
+                  <p className="font-semibold text-foreground font-data">{walletsConsidered}</p>
+                </div>
+              )}
+            </div>
 
+            {/* Row 7: Confidence bar */}
+            <div>
+              <div className="flex items-center justify-between text-[11px] mb-1">
+                <span className="text-muted-foreground/70">
+                  {signal.source === 'insider'
+                    ? t('traderSignalViews.confidence')
+                    : t('traderSignalViews.conviction')}
+                </span>
+                <span className="text-foreground/90 font-medium font-data">
+                  {signal.confidence}/100
+                </span>
+              </div>
+              <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className={cn('h-full rounded-full', convictionColor(signal.confidence))}
+                  style={{ width: `${Math.max(0, Math.min(100, signal.confidence))}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Row 8: Validation reasons */}
+            {!signal.is_tradeable && signal.validation_reasons.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {signal.validation_reasons.slice(0, 3).map((reason) => (
+                  <span
+                    key={`${signal.id}-${reason}`}
+                    className="inline-flex items-center rounded-md border border-red-500/20 bg-red-500/10 px-1.5 py-0.5 text-[10px] text-red-200/90"
+                  >
+                    {formatSignalReason(reason)}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Row 9: Insider-specific metrics */}
+            {signal.source === 'insider' && (
+              <div className="flex items-center gap-3 mt-2 text-[11px] text-muted-foreground/70">
+                {signal.insider_score != null && (
+                  <span>
+                    {t('traderSignalViews.insiderScore')}:{' '}
+                    <span className="text-purple-400 font-data">
+                      {signal.insider_score.toFixed(2)}
+                    </span>
+                  </span>
+                )}
+                {signal.freshness_minutes != null && (
+                  <span>
+                    {t('traderSignalViews.freshness')}:{' '}
+                    <span className="text-foreground/80 font-data">
+                      {signal.freshness_minutes.toFixed(0)}m
+                    </span>
+                  </span>
+                )}
+                {signal.cluster_count != null && (
+                  <span>
+                    {t('traderSignalViews.clusters')}:{' '}
+                    <span className="text-foreground/80 font-data">{signal.cluster_count}</span>
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Row 10: Wallets */}
+            {signal.source === 'confluence' &&
+              signal.top_wallets &&
+              signal.top_wallets.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {signal.top_wallets.slice(0, 4).map((wallet) => (
+                    <button
+                      key={`${signal.id}-${wallet.address}`}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onNavigateToWallet?.(wallet.address)
+                      }}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-muted/70 hover:bg-muted transition-colors text-[11px] text-foreground/85"
+                    >
+                      <Wallet className="w-3 h-3 text-muted-foreground/70" />
+                      <span>{wallet.username || shortAddress(wallet.address)}</span>
+                      <span className="text-muted-foreground/70">
+                        {(wallet.composite_score * 100).toFixed(0)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+            {signal.source === 'insider' && signal.top_wallet?.address && (
+              <div className="mt-3">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onNavigateToWallet?.(signal.top_wallet!.address)
+                  }}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-purple-500/10 hover:bg-purple-500/20 transition-colors text-[11px] text-purple-300"
+                >
+                  <Wallet className="w-3 h-3" />
+                  {signal.top_wallet.username || shortAddress(signal.top_wallet.address)}
+                  {signal.top_wallet.insider_score != null && (
+                    <span className="text-purple-400/70 ml-1">
+                      IS:{signal.top_wallet.insider_score.toFixed(2)}
+                    </span>
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* Row 11: Actions */}
+            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/50">
+              {signal.market_url && (
+                <a
+                  href={signal.market_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  {t('traderSignalViews.market')}
+                </a>
+              )}
+              {onOpenCopilot && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onOpenCopilot(signal)
+                  }}
+                  className="inline-flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300"
+                >
+                  <MessageCircle className="w-3 h-3" />
+                  {t('traderSignalViews.copilot')}
+                </button>
+              )}
+              <BuyButton traderSignal={signal} variant="inline" />
+            </div>
+
+            {/* Expanded details */}
+            {expanded && (
+              <div className="mt-3 pt-3 border-t border-border/50 space-y-2 text-xs">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div>
+                    <p className="text-muted-foreground/70">{t('traderSignalViews.poolWallets')}</p>
+                    <p className="font-semibold text-foreground">{poolWallets}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground/70">
+                      {t('traderSignalViews.trackedWallets')}
+                    </p>
+                    <p className="font-semibold text-foreground">{trackedWallets}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground/70">
+                      {t('traderSignalViews.groupWallets')}
+                    </p>
+                    <p className="font-semibold text-foreground">{groupWallets}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground/70">{t('traderSignalViews.coverage')}</p>
+                    <p className="font-semibold text-foreground">{sourceCoverageLabel}</p>
+                  </div>
+                </div>
+
+                {signal.source === 'confluence' && (
+                  <>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <p className="text-muted-foreground/70">
+                          {t('traderSignalViews.coreWallets')}
+                        </p>
+                        <p className="font-semibold text-foreground">
+                          {signal.unique_core_wallets || 0}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground/70">
+                          {t('traderSignalViews.signalType')}
+                        </p>
+                        <p className="font-semibold text-foreground">
+                          {signal.signal_type?.replace(/_/g, ' ') || '\u2014'}
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                )}
+                {signal.source === 'insider' && (
+                  <>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <p className="text-muted-foreground/70">
+                          {t('traderSignalViews.suggestedSize')}
+                        </p>
+                        <p className="font-semibold text-foreground">
+                          {signal.suggested_size_usd != null
+                            ? formatCompact(signal.suggested_size_usd)
+                            : '\u2014'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground/70">
+                          {t('traderSignalViews.marketLiquidity')}
+                        </p>
+                        <p className="font-semibold text-foreground">
+                          {signal.market_liquidity != null
+                            ? formatCompact(signal.market_liquidity)
+                            : '\u2014'}
+                        </p>
+                      </div>
+                    </div>
+                    {signal.wallets && signal.wallets.length > 1 && (
+                      <div>
+                        <p className="text-muted-foreground/70 mb-1">
+                          {t('traderSignalViews.involvedWallets')}
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {signal.wallets.slice(0, 6).map((w) => (
+                            <button
+                              key={w.address}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onNavigateToWallet?.(w.address)
+                              }}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted/70 hover:bg-muted text-[11px] text-foreground/80"
+                            >
+                              <Wallet className="w-3 h-3 text-muted-foreground/70" />
+                              {w.username || shortAddress(w.address)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {signal.validation_reasons.length > 0 && (
+                  <div>
+                    <p className="text-muted-foreground/70 mb-1">
+                      {t('traderSignalViews.validation')}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {signal.validation_reasons.map((reason) => (
+                        <span
+                          key={`${signal.id}-validation-${reason}`}
+                          className="inline-flex items-center rounded-md border border-border/60 bg-muted/50 px-1.5 py-0.5 text-[10px] text-foreground/80"
+                        >
+                          {formatSignalReason(reason)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-4 text-[11px] text-muted-foreground/70 pt-1">
+                  <span className="inline-flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {t('traderSignalViews.first')}:{' '}
+                    {timeAgo(signal.first_seen_at || signal.detected_at)}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {t('traderSignalViews.last')}:{' '}
+                    {timeAgo(signal.last_seen_at || signal.detected_at)}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <Users className="w-3 h-3" />
+                    {t('traderSignalViews.walletsCount', { count: signal.wallet_count })}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
-    </div>
-      {!isModalView && typeof document !== 'undefined' && createPortal(
-        <AnimatePresence>
-          {modalOpen && (
-            <motion.div
-              key={`trader-signal-modal-${signal.id}`}
-              className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
+      {!isModalView &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <AnimatePresence>
+            {modalOpen && (
               <motion.div
-                className="absolute inset-0 bg-black/70 backdrop-blur-[2px]"
+                key={`trader-signal-modal-${signal.id}`}
+                className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                onClick={closeModal}
-                aria-hidden
-              />
-              <motion.div
-                className="relative z-10"
-                role="dialog"
-                aria-modal="true"
-                aria-label={t('traderSignalViews.expandedSignalAria', { market: marketLabel })}
-                initial={{ scale: 0.94, opacity: 0, y: 22 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.97, opacity: 0, y: 14 }}
-                transition={{ type: 'spring', stiffness: 260, damping: 28, mass: 0.9 }}
               >
-                <TraderSignalCard
-                  signal={signal}
-                  onNavigateToWallet={onNavigateToWallet}
-                  onOpenCopilot={onOpenCopilot}
-                  isModalView
-                  onCloseModal={closeModal}
+                <motion.div
+                  className="absolute inset-0 bg-black/70 backdrop-blur-[2px]"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={closeModal}
+                  aria-hidden
                 />
+                <motion.div
+                  className="relative z-10"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label={t('traderSignalViews.expandedSignalAria', { market: marketLabel })}
+                  initial={{ scale: 0.94, opacity: 0, y: 22 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  exit={{ scale: 0.97, opacity: 0, y: 14 }}
+                  transition={{ type: 'spring', stiffness: 260, damping: 28, mass: 0.9 }}
+                >
+                  <TraderSignalCard
+                    signal={signal}
+                    onNavigateToWallet={onNavigateToWallet}
+                    onOpenCopilot={onOpenCopilot}
+                    isModalView
+                    onCloseModal={closeModal}
+                  />
+                </motion.div>
               </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>,
-        document.body
-      )}
+            )}
+          </AnimatePresence>,
+          document.body,
+        )}
     </>
   )
 }
@@ -1496,85 +1652,91 @@ export function TraderSignalTable({ signals, onNavigateToWallet, onOpenCopilot }
     if (!modalMarket) return
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closeModal() }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeModal()
+    }
     window.addEventListener('keydown', onKey)
-    return () => { document.body.style.overflow = prev; window.removeEventListener('keydown', onKey) }
+    return () => {
+      document.body.style.overflow = prev
+      window.removeEventListener('keydown', onKey)
+    }
   }, [modalMarket])
 
   return (
     <>
-    <div className="border border-border/50 rounded-lg overflow-hidden">
-      {/* Header */}
-      <div className="grid grid-cols-[44px_36px_minmax(0,1fr)_108px_60px_56px_64px_72px_52px_28px] gap-0 bg-muted/50 border-b border-border/50 text-[9px] text-muted-foreground uppercase tracking-wider font-medium">
-        <div className="px-2 py-2">{t('traderSignalViews.colType')}</div>
-        <div className="px-2 py-2">{t('traderSignalViews.colTier')}</div>
-        <div className="px-2 py-2">{t('traderSignalViews.colMarket')}</div>
-        <div className="px-2 py-2 text-center">{t('traderSignalViews.colSide')}</div>
-        <div className="px-2 py-2 text-right">{t('traderSignalViews.colConf')}</div>
-        <div className="px-2 py-2 text-right">{t('traderSignalViews.colWallets')}</div>
-        <div className="px-2 py-2 text-right">{t('traderSignalViews.colEdgeNet')}</div>
-        <div className="px-2 py-2 text-center">{t('traderSignalViews.colScore')}</div>
-        <div className="px-2 py-2 text-right">{t('traderSignalViews.colAge')}</div>
-        <div className="px-1 py-2" />
-      </div>
+      <div className="border border-border/50 rounded-lg overflow-hidden">
+        {/* Header */}
+        <div className="grid grid-cols-[44px_36px_minmax(0,1fr)_108px_60px_56px_64px_72px_52px_28px] gap-0 bg-muted/50 border-b border-border/50 text-[9px] text-muted-foreground uppercase tracking-wider font-medium">
+          <div className="px-2 py-2">{t('traderSignalViews.colType')}</div>
+          <div className="px-2 py-2">{t('traderSignalViews.colTier')}</div>
+          <div className="px-2 py-2">{t('traderSignalViews.colMarket')}</div>
+          <div className="px-2 py-2 text-center">{t('traderSignalViews.colSide')}</div>
+          <div className="px-2 py-2 text-right">{t('traderSignalViews.colConf')}</div>
+          <div className="px-2 py-2 text-right">{t('traderSignalViews.colWallets')}</div>
+          <div className="px-2 py-2 text-right">{t('traderSignalViews.colEdgeNet')}</div>
+          <div className="px-2 py-2 text-center">{t('traderSignalViews.colScore')}</div>
+          <div className="px-2 py-2 text-right">{t('traderSignalViews.colAge')}</div>
+          <div className="px-1 py-2" />
+        </div>
 
-      {/* Body */}
-      <div className="divide-y divide-border/30">
-        {signals.map((signal) => (
-          <TraderSignalTableRow
-            key={signal.id}
-            signal={signal}
-            onNavigateToWallet={onNavigateToWallet}
-            onOpenCopilot={onOpenCopilot}
-            cryptoMarket={cryptoMarketsMap.get(signal.market_id)}
-            onOpenMarketModal={setModalMarket}
-          />
-        ))}
-      </div>
-    </div>
-
-    {/* Market modal portal */}
-    {typeof document !== 'undefined' && createPortal(
-      <AnimatePresence>
-        {modalMarket && (
-          <motion.div
-            key={`signal-market-modal-${modalMarket.id}`}
-            className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div
-              className="absolute inset-0 bg-black/70 backdrop-blur-[2px]"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={closeModal}
-              aria-hidden
+        {/* Body */}
+        <div className="divide-y divide-border/30">
+          {signals.map((signal) => (
+            <TraderSignalTableRow
+              key={signal.id}
+              signal={signal}
+              onNavigateToWallet={onNavigateToWallet}
+              onOpenCopilot={onOpenCopilot}
+              cryptoMarket={cryptoMarketsMap.get(signal.market_id)}
+              onOpenMarketModal={setModalMarket}
             />
-            <motion.div
-              className="relative z-10"
-              role="dialog"
-              aria-modal="true"
-              initial={{ scale: 0.94, opacity: 0, y: 22 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.97, opacity: 0, y: 14 }}
-              transition={{ type: 'spring', stiffness: 260, damping: 28, mass: 0.9 }}
-            >
-              <CryptoMarketCard
-                market={modalMarket}
-                themeMode={themeMode}
-                nowMs={Date.now()}
-                isModalView
-                onCloseModal={closeModal}
-              />
-            </motion.div>
-          </motion.div>
+          ))}
+        </div>
+      </div>
+
+      {/* Market modal portal */}
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <AnimatePresence>
+            {modalMarket && (
+              <motion.div
+                key={`signal-market-modal-${modalMarket.id}`}
+                className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <motion.div
+                  className="absolute inset-0 bg-black/70 backdrop-blur-[2px]"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={closeModal}
+                  aria-hidden
+                />
+                <motion.div
+                  className="relative z-10"
+                  role="dialog"
+                  aria-modal="true"
+                  initial={{ scale: 0.94, opacity: 0, y: 22 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  exit={{ scale: 0.97, opacity: 0, y: 14 }}
+                  transition={{ type: 'spring', stiffness: 260, damping: 28, mass: 0.9 }}
+                >
+                  <CryptoMarketCard
+                    market={modalMarket}
+                    themeMode={themeMode}
+                    nowMs={Date.now()}
+                    isModalView
+                    onCloseModal={closeModal}
+                  />
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body,
         )}
-      </AnimatePresence>,
-      document.body
-    )}
     </>
   )
 }
@@ -1598,19 +1760,21 @@ function TraderSignalTableRow({
   const marketLabel = normalizeMarketLabel(signal)
   const directionLabel = compactOutcomeLabel(directionOutcomeLabel(signal), 14)
 
-  const confidenceColor = signal.confidence >= 80
-    ? 'text-green-400'
-    : signal.confidence >= 60
-      ? 'text-yellow-400'
-      : 'text-red-400'
+  const confidenceColor =
+    signal.confidence >= 80
+      ? 'text-green-400'
+      : signal.confidence >= 60
+        ? 'text-yellow-400'
+        : 'text-red-400'
 
-  const edgeOrNet = signal.source === 'insider'
-    ? (signal.edge_percent != null ? `${signal.edge_percent.toFixed(1)}%` : '\u2014')
-    : formatCompact(signal.net_notional)
+  const edgeOrNet =
+    signal.source === 'insider'
+      ? signal.edge_percent != null
+        ? `${signal.edge_percent.toFixed(1)}%`
+        : '\u2014'
+      : formatCompact(signal.net_notional)
 
-  const scoreValue = signal.source === 'insider'
-    ? signal.insider_score
-    : null
+  const scoreValue = signal.source === 'insider' ? signal.insider_score : null
   const scoreDisplay = scoreValue != null ? scoreValue.toFixed(2) : '\u2014'
 
   return (
@@ -1664,10 +1828,12 @@ function TraderSignalTableRow({
                   : 'bg-blue-500/10 text-blue-400',
             )}
           >
-            {isBuy ? <TrendingUp className="w-2.5 h-2.5" /> : signal.direction === 'SELL' ? <TrendingDown className="w-2.5 h-2.5" /> : null}
-            {signal.direction === 'BUY' || signal.direction === 'SELL'
-              ? directionLabel
-              : '\u2014'}
+            {isBuy ? (
+              <TrendingUp className="w-2.5 h-2.5" />
+            ) : signal.direction === 'SELL' ? (
+              <TrendingDown className="w-2.5 h-2.5" />
+            ) : null}
+            {signal.direction === 'BUY' || signal.direction === 'SELL' ? directionLabel : '\u2014'}
           </span>
         </div>
 
@@ -1686,9 +1852,7 @@ function TraderSignalTableRow({
         </div>
 
         {/* Edge / Net Notional */}
-        <div className="px-2 py-2.5 text-right text-xs text-foreground font-data">
-          {edgeOrNet}
-        </div>
+        <div className="px-2 py-2.5 text-right text-xs text-foreground font-data">{edgeOrNet}</div>
 
         {/* Score */}
         <div className="px-2 py-2.5 text-center">
@@ -1726,7 +1890,10 @@ function TraderSignalTableRow({
         <div className="px-1 py-2.5 flex items-center justify-center">
           {cryptoMarket && (
             <button
-              onClick={(e) => { e.stopPropagation(); onOpenMarketModal?.(cryptoMarket) }}
+              onClick={(e) => {
+                e.stopPropagation()
+                onOpenMarketModal?.(cryptoMarket)
+              }}
               className="inline-flex h-5 w-5 items-center justify-center rounded border border-border/40 text-muted-foreground/60 hover:text-foreground hover:border-border transition-colors"
               title={t('traderSignalViews.viewLiveMarket')}
             >
@@ -1752,15 +1919,21 @@ function TraderSignalTableRow({
                   </div>
                   <div>
                     <p className="text-muted-foreground/70">{t('traderSignalViews.signalType')}</p>
-                    <p className="font-semibold">{signal.signal_type?.replace(/_/g, ' ') || '\u2014'}</p>
+                    <p className="font-semibold">
+                      {signal.signal_type?.replace(/_/g, ' ') || '\u2014'}
+                    </p>
                   </div>
                   <div>
                     <p className="text-muted-foreground/70">{t('traderSignalViews.window')}</p>
                     <p className="font-semibold">{signal.window_minutes || 60}m</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground/70">{t('traderSignalViews.lastReinforced')}</p>
-                    <p className="font-semibold">{timeAgo(signal.last_seen_at || signal.detected_at)}</p>
+                    <p className="text-muted-foreground/70">
+                      {t('traderSignalViews.lastReinforced')}
+                    </p>
+                    <p className="font-semibold">
+                      {timeAgo(signal.last_seen_at || signal.detected_at)}
+                    </p>
                   </div>
                 </div>
               )}
@@ -1768,12 +1941,18 @@ function TraderSignalTableRow({
               {signal.source === 'insider' && (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                   <div>
-                    <p className="text-muted-foreground/70">{t('traderSignalViews.insiderScore')}</p>
-                    <p className="font-semibold text-purple-400">{signal.insider_score?.toFixed(2) || '\u2014'}</p>
+                    <p className="text-muted-foreground/70">
+                      {t('traderSignalViews.insiderScore')}
+                    </p>
+                    <p className="font-semibold text-purple-400">
+                      {signal.insider_score?.toFixed(2) || '\u2014'}
+                    </p>
                   </div>
                   <div>
                     <p className="text-muted-foreground/70">{t('traderSignalViews.preNewsLead')}</p>
-                    <p className="font-semibold">{signal.pre_news_lead_minutes?.toFixed(0) || '\u2014'}m</p>
+                    <p className="font-semibold">
+                      {signal.pre_news_lead_minutes?.toFixed(0) || '\u2014'}m
+                    </p>
                   </div>
                   <div>
                     <p className="text-muted-foreground/70">{t('traderSignalViews.clusters')}</p>
@@ -1781,30 +1960,36 @@ function TraderSignalTableRow({
                   </div>
                   <div>
                     <p className="text-muted-foreground/70">{t('traderSignalViews.freshness')}</p>
-                    <p className="font-semibold">{signal.freshness_minutes?.toFixed(0) || '\u2014'}m</p>
+                    <p className="font-semibold">
+                      {signal.freshness_minutes?.toFixed(0) || '\u2014'}m
+                    </p>
                   </div>
                 </div>
               )}
 
               {/* Wallets */}
-              {signal.source === 'confluence' && signal.top_wallets && signal.top_wallets.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {signal.top_wallets.slice(0, 6).map((w) => (
-                    <button
-                      key={w.address}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onNavigateToWallet?.(w.address)
-                      }}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted/70 hover:bg-muted text-[11px] text-foreground/80"
-                    >
-                      <Wallet className="w-3 h-3 text-muted-foreground/70" />
-                      {w.username || shortAddress(w.address)}
-                      <span className="text-muted-foreground/60">{(w.composite_score * 100).toFixed(0)}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
+              {signal.source === 'confluence' &&
+                signal.top_wallets &&
+                signal.top_wallets.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {signal.top_wallets.slice(0, 6).map((w) => (
+                      <button
+                        key={w.address}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onNavigateToWallet?.(w.address)
+                        }}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted/70 hover:bg-muted text-[11px] text-foreground/80"
+                      >
+                        <Wallet className="w-3 h-3 text-muted-foreground/70" />
+                        {w.username || shortAddress(w.address)}
+                        <span className="text-muted-foreground/60">
+                          {(w.composite_score * 100).toFixed(0)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
 
               {signal.source === 'insider' && signal.top_wallet?.address && (
                 <button
@@ -1889,7 +2074,9 @@ export function TraderSignalTerminal({
       <div className="terminal-header flex items-center justify-between px-3 py-1.5">
         <div className="flex items-center gap-2">
           <Terminal className="w-3.5 h-3.5 text-green-400" />
-          <span className="text-green-400 font-bold text-xs">{t('traderSignalViews.terminalTitle')}</span>
+          <span className="text-green-400 font-bold text-xs">
+            {t('traderSignalViews.terminalTitle')}
+          </span>
           <span className="text-green-400/40">v2.0</span>
         </div>
         <div className="flex items-center gap-3">
@@ -1904,10 +2091,7 @@ export function TraderSignalTerminal({
               )}
             />
             <span
-              className={cn(
-                'text-[10px]',
-                isConnected ? 'text-green-400/70' : 'text-red-400/70',
-              )}
+              className={cn('text-[10px]', isConnected ? 'text-green-400/70' : 'text-red-400/70')}
             >
               {isConnected ? t('traderSignalViews.live') : t('traderSignalViews.disconnected')}
             </span>
@@ -1919,9 +2103,15 @@ export function TraderSignalTerminal({
       <div ref={scrollRef} className="max-h-[calc(100vh-280px)] overflow-y-auto p-3 space-y-0">
         {/* Boot sequence */}
         <div className="text-green-500/30 mb-3 space-y-0.5">
-          <p>{'>'} {t('traderSignalViews.bootInitializing')}</p>
-          <p>{'>'} {t('traderSignalViews.bootConnected')}</p>
-          <p>{'>'} {t('traderSignalViews.bootLoaded', { count: signals.length })}</p>
+          <p>
+            {'>'} {t('traderSignalViews.bootInitializing')}
+          </p>
+          <p>
+            {'>'} {t('traderSignalViews.bootConnected')}
+          </p>
+          <p>
+            {'>'} {t('traderSignalViews.bootLoaded', { count: signals.length })}
+          </p>
           <p className="text-green-500/15">{'\u2500'.repeat(72)}</p>
         </div>
 
@@ -1975,13 +2165,14 @@ function TerminalSignalEntry({
     .toUpperCase()
     .replace(/\s+/g, '_')
 
-  const tierColor = signal.tier === 'EXTREME'
-    ? 'text-red-400'
-    : signal.tier === 'HIGH'
-      ? 'text-orange-400'
-      : signal.tier === 'INSIDER'
-        ? 'text-purple-400'
-        : 'text-yellow-400'
+  const tierColor =
+    signal.tier === 'EXTREME'
+      ? 'text-red-400'
+      : signal.tier === 'HIGH'
+        ? 'text-orange-400'
+        : signal.tier === 'INSIDER'
+          ? 'text-purple-400'
+          : 'text-yellow-400'
 
   const dirColor = isBuy
     ? 'text-green-400'
@@ -1989,11 +2180,12 @@ function TerminalSignalEntry({
       ? 'text-red-400'
       : 'text-blue-400'
 
-  const confColor = signal.confidence >= 80
-    ? 'text-green-400'
-    : signal.confidence >= 60
-      ? 'text-yellow-400'
-      : 'text-red-400'
+  const confColor =
+    signal.confidence >= 80
+      ? 'text-green-400'
+      : signal.confidence >= 60
+        ? 'text-yellow-400'
+        : 'text-red-400'
 
   return (
     <div
@@ -2006,17 +2198,18 @@ function TerminalSignalEntry({
       {/* Main line */}
       <div className="flex items-center gap-0">
         <span className="text-green-500/30 mr-1">{'>'}</span>
-        <span className={cn('mr-2', signal.source === 'insider' ? 'text-purple-400' : 'text-cyan-400')}>
+        <span
+          className={cn('mr-2', signal.source === 'insider' ? 'text-purple-400' : 'text-cyan-400')}
+        >
           [{sourceTag}]
         </span>
-        <span className={cn('mr-2', tierColor)}>
-          [{tierTag}]
-        </span>
-        <span className={cn('font-bold mr-2', confColor)}>
-          CONF:{signal.confidence}
-        </span>
+        <span className={cn('mr-2', tierColor)}>[{tierTag}]</span>
+        <span className={cn('font-bold mr-2', confColor)}>CONF:{signal.confidence}</span>
         <span className="text-green-300/80 mr-2">
-          WLTS:{signal.source === 'confluence' ? signal.cluster_adjusted_wallet_count || signal.wallet_count : signal.wallet_count}
+          WLTS:
+          {signal.source === 'confluence'
+            ? signal.cluster_adjusted_wallet_count || signal.wallet_count
+            : signal.wallet_count}
         </span>
         <span className={cn('font-bold mr-2', dirColor)}>
           {signal.direction === 'BUY' || signal.direction === 'SELL'
@@ -2033,9 +2226,7 @@ function TerminalSignalEntry({
       </div>
 
       {/* Title */}
-      <div className="text-green-100/70 pl-4 truncate">
-        &quot;{marketLabel}&quot;
-      </div>
+      <div className="text-green-100/70 pl-4 truncate">&quot;{marketLabel}&quot;</div>
 
       {/* Metrics line */}
       <div className="text-green-400/40 pl-4">
@@ -2043,16 +2234,32 @@ function TerminalSignalEntry({
           <>
             CORE:{signal.unique_core_wallets || 0}
             {' | '}WIN:{signal.window_minutes || 60}m
-            {signal.net_notional != null && <>{' | '}NET:{formatCompact(signal.net_notional)}</>}
-            {signal.signal_type && <>{' | '}SIG:{signal.signal_type.replace(/_/g, ' ').toUpperCase()}</>}
+            {signal.net_notional != null && (
+              <>
+                {' | '}NET:{formatCompact(signal.net_notional)}
+              </>
+            )}
+            {signal.signal_type && (
+              <>
+                {' | '}SIG:{signal.signal_type.replace(/_/g, ' ').toUpperCase()}
+              </>
+            )}
           </>
         ) : (
           <>
             IS:{signal.insider_score?.toFixed(2) || '\u2014'}
-            {' | '}EDGE:{signal.edge_percent?.toFixed(1) || '\u2014'}%
-            {' | '}CLUST:{signal.cluster_count || '\u2014'}
-            {signal.pre_news_lead_minutes != null && <>{' | '}PRE_NEWS:{signal.pre_news_lead_minutes.toFixed(0)}m</>}
-            {signal.freshness_minutes != null && <>{' | '}FRESH:{signal.freshness_minutes.toFixed(0)}m</>}
+            {' | '}EDGE:{signal.edge_percent?.toFixed(1) || '\u2014'}%{' | '}CLUST:
+            {signal.cluster_count || '\u2014'}
+            {signal.pre_news_lead_minutes != null && (
+              <>
+                {' | '}PRE_NEWS:{signal.pre_news_lead_minutes.toFixed(0)}m
+              </>
+            )}
+            {signal.freshness_minutes != null && (
+              <>
+                {' | '}FRESH:{signal.freshness_minutes.toFixed(0)}m
+              </>
+            )}
           </>
         )}
       </div>
@@ -2060,26 +2267,30 @@ function TerminalSignalEntry({
       {/* Expanded */}
       {isSelected && (
         <div className="pl-4 mt-1 space-y-1 border-l-2 border-green-500/20 ml-1">
-          {signal.source === 'confluence' && signal.top_wallets && signal.top_wallets.length > 0 && (
-            <div className="text-green-400/50">
-              WALLETS:{' '}
-              {signal.top_wallets.slice(0, 6).map((w, i) => (
-                <span key={w.address}>
-                  {i > 0 && ' | '}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onNavigateToWallet?.(w.address)
-                    }}
-                    className="text-orange-400/70 hover:text-orange-400 underline underline-offset-2"
-                  >
-                    {w.username || shortAddress(w.address)}
-                  </button>
-                  <span className="text-green-400/30">({(w.composite_score * 100).toFixed(0)})</span>
-                </span>
-              ))}
-            </div>
-          )}
+          {signal.source === 'confluence' &&
+            signal.top_wallets &&
+            signal.top_wallets.length > 0 && (
+              <div className="text-green-400/50">
+                WALLETS:{' '}
+                {signal.top_wallets.slice(0, 6).map((w, i) => (
+                  <span key={w.address}>
+                    {i > 0 && ' | '}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onNavigateToWallet?.(w.address)
+                      }}
+                      className="text-orange-400/70 hover:text-orange-400 underline underline-offset-2"
+                    >
+                      {w.username || shortAddress(w.address)}
+                    </button>
+                    <span className="text-green-400/30">
+                      ({(w.composite_score * 100).toFixed(0)})
+                    </span>
+                  </span>
+                ))}
+              </div>
+            )}
 
           {signal.source === 'insider' && signal.top_wallet?.address && (
             <div className="text-purple-400/50">
@@ -2094,25 +2305,33 @@ function TerminalSignalEntry({
                 {signal.top_wallet.username || shortAddress(signal.top_wallet.address)}
               </button>
               {signal.top_wallet.insider_score != null && (
-                <span className="text-purple-400/30"> IS:{signal.top_wallet.insider_score.toFixed(2)}</span>
+                <span className="text-purple-400/30">
+                  {' '}
+                  IS:{signal.top_wallet.insider_score.toFixed(2)}
+                </span>
               )}
             </div>
           )}
 
           {signal.source === 'insider' && (
             <div className="text-purple-300/40 text-[10px]">
-              DETAIL: confidence={signal.confidence}% edge={signal.edge_percent?.toFixed(1) || '\u2014'}%
-              {' '}wallets={signal.wallet_count} clusters={signal.cluster_count || '\u2014'}
-              {signal.suggested_size_usd != null && <> size={formatCompact(signal.suggested_size_usd)}</>}
-              {signal.market_liquidity != null && <> liq={formatCompact(signal.market_liquidity)}</>}
+              DETAIL: confidence={signal.confidence}% edge=
+              {signal.edge_percent?.toFixed(1) || '\u2014'}% wallets={signal.wallet_count} clusters=
+              {signal.cluster_count || '\u2014'}
+              {signal.suggested_size_usd != null && (
+                <> size={formatCompact(signal.suggested_size_usd)}</>
+              )}
+              {signal.market_liquidity != null && (
+                <> liq={formatCompact(signal.market_liquidity)}</>
+              )}
             </div>
           )}
 
           {signal.source === 'confluence' && (
             <div className="text-green-300/40 text-[10px]">
-              DETAIL: conviction={signal.confidence} tier={signal.tier}
-              {' '}adj_wallets={signal.cluster_adjusted_wallet_count || signal.wallet_count}
-              {' '}core={signal.unique_core_wallets || 0}
+              DETAIL: conviction={signal.confidence} tier={signal.tier} adj_wallets=
+              {signal.cluster_adjusted_wallet_count || signal.wallet_count} core=
+              {signal.unique_core_wallets || 0}
               {signal.net_notional != null && <> net={formatCompact(signal.net_notional)}</>}
             </div>
           )}

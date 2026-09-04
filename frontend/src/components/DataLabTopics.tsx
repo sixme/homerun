@@ -61,7 +61,7 @@ export default function DataLabTopics() {
     refetchInterval: 30_000,
   })
 
-  const topics: TopicSpec[] = query.data ?? []
+  const topics: TopicSpec[] = useMemo(() => query.data ?? [], [query.data])
   const stats = useMemo(() => {
     const total = topics.length
     const totalEvents = topics.reduce((s: number, t: TopicSpec) => s + t.event_count, 0)

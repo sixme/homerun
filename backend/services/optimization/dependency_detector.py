@@ -20,6 +20,7 @@ Research findings:
 import json
 import asyncio
 import re
+import time
 from typing import Optional, List, Tuple
 from dataclasses import dataclass
 
@@ -160,6 +161,7 @@ Return valid JSON only:
         self.model = model
         self.timeout = timeout
         self.api_key = api_key
+        self._backend_unreachable_until: float = 0.0
 
         if api_url:
             self.api_url = api_url
@@ -188,8 +190,8 @@ Return valid JSON only:
         if heuristic_result.is_independent and heuristic_result.confidence > 0.9:
             return heuristic_result
 
-        # Fall back to LLM if heuristics uncertain
-        if not HTTPX_AVAILABLE:
+        # Fall back to LLM if heuristics uncertain and backend is available
+        if not HTTPX_AVAILABLE or time.monotonic() < self._backend_unreachable_until:
             return heuristic_result
 
         prompt = self.DEPENDENCY_PROMPT.format(
@@ -231,7 +233,7 @@ Return valid JSON only:
                 valid_combinations=len(market_a.outcomes) * len(market_b.outcomes),
                 total_combinations=len(market_a.outcomes) * len(market_b.outcomes),
                 is_independent=True,
-                confidence=0.8,
+                confidence=0.95,
             )
 
         # Check for implies relationships
@@ -370,59 +372,64 @@ Return valid JSON only:
     async def _call_llm(self, prompt: str) -> str:
         """Call LLM API."""
         client = _get_shared_http_client(timeout=self.timeout)
-        if self.backend == "ollama":
-            response = await client.post(
-                self.api_url,
-                json={
-                    "model": self.model,
-                    "prompt": prompt,
-                    "stream": False,
-                    "format": "json",
-                },
-            )
-            if response.status_code == 200:
-                return response.json().get("response", "{}")
+        try:
+            if self.backend == "ollama":
+                response = await client.post(
+                    self.api_url,
+                    json={
+                        "model": self.model,
+                        "prompt": prompt,
+                        "stream": False,
+                        "format": "json",
+                    },
+                )
+                if response.status_code == 200:
+                    return response.json().get("response", "{}")
 
-        elif self.backend == "openai":
-            response = await client.post(
-                self.api_url,
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": self.model,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "response_format": {"type": "json_object"},
-                },
-            )
-            if response.status_code == 200:
-                content = _openai_response_content(response.json())
-                if content is not None:
-                    return content
-                logger.warning("Dependency detector received malformed OpenAI response payload")
-                return "{}"
+            elif self.backend == "openai":
+                response = await client.post(
+                    self.api_url,
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": self.model,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "response_format": {"type": "json_object"},
+                    },
+                )
+                if response.status_code == 200:
+                    content = _openai_response_content(response.json())
+                    if content is not None:
+                        return content
+                    logger.warning("Dependency detector received malformed OpenAI response payload")
+                    return "{}"
 
-        elif self.backend == "anthropic":
-            response = await client.post(
-                self.api_url,
-                headers={
-                    "x-api-key": self.api_key,
-                    "anthropic-version": "2023-06-01",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": self.model,
-                    "max_tokens": 1024,
-                    "messages": [{"role": "user", "content": prompt}],
-                },
-            )
-            if response.status_code == 200:
-                content = _anthropic_response_content(response.json())
-                if content is not None:
-                    return content
-                logger.warning("Dependency detector received malformed Anthropic response payload")
-                return "{}"
+            elif self.backend == "anthropic":
+                response = await client.post(
+                    self.api_url,
+                    headers={
+                        "x-api-key": self.api_key,
+                        "anthropic-version": "2023-06-01",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": self.model,
+                        "max_tokens": 1024,
+                        "messages": [{"role": "user", "content": prompt}],
+                    },
+                )
+                if response.status_code == 200:
+                    content = _anthropic_response_content(response.json())
+                    if content is not None:
+                        return content
+                    logger.warning("Dependency detector received malformed Anthropic response payload")
+                    return "{}"
+        except (httpx.RequestError, httpx.TimeoutException) as exc:
+            self._backend_unreachable_until = time.monotonic() + 60.0
+            logger.warning("LLM backend unreachable; cooling down for 60s", backend=self.backend, error=str(exc))
+            return "{}"
 
         return "{}"
 

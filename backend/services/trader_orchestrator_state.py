@@ -6372,6 +6372,9 @@ async def ensure_shadow_simulation_ledger(
     }:
         return None
 
+    if not hasattr(session, "execute"):
+        return None
+
     payload = dict(getattr(order, "payload_json", None) or {})
     existing = payload.get("simulation_ledger")
     if isinstance(existing, dict):
@@ -6379,8 +6382,8 @@ async def ensure_shadow_simulation_ledger(
         position_id = str(existing.get("position_id") or "").strip()
         account_id_existing = str(existing.get("account_id") or "").strip()
         if trade_id and position_id and account_id_existing:
-            trade_row = await session.get(SimulationTrade, trade_id)
-            position_row = await session.get(SimulationPosition, position_id)
+            trade_row = await session.get(SimulationTrade, trade_id) if hasattr(session, "get") else None
+            position_row = await session.get(SimulationPosition, position_id) if hasattr(session, "get") else None
             if trade_row is not None and position_row is not None:
                 return existing
             # Stale stamp (trade/position deleted or never committed). Rebuild.
@@ -7455,9 +7458,14 @@ async def record_signal_consumption(
     GREATEST(now, signal.updated_at) at INSERT time — no extra round-trip,
     but the DB still guarantees consumed_at >= signal_sort_ts.
     """
-    now = _now()
+    now = _now().astimezone(timezone.utc).replace(tzinfo=None)
     if signal_updated_at is not None:
-        consumed_at: Any = signal_updated_at if signal_updated_at > now else now
+        sig_ts = (
+            signal_updated_at.astimezone(timezone.utc).replace(tzinfo=None)
+            if signal_updated_at.tzinfo is not None
+            else signal_updated_at
+        )
+        consumed_at: Any = sig_ts if sig_ts > now else now
     else:
         # Resolve consumed_at in SQL so it is always >= signal_sort_ts
         # (coalesce(updated_at, created_at)) without a Python round-trip.

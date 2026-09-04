@@ -17,6 +17,7 @@ Usage:
     python scripts/ci/check_no_hardcoded_fill_constants.py
 Exit code 0 = pass; non-zero = forbidden literal found.
 """
+
 from __future__ import annotations
 
 import ast
@@ -36,17 +37,17 @@ GUARDED_FILES = (
 
 # Float literals we explicitly allow.  Each entry is (value, reason).
 # The first match by exact equality wins.  Edit this list rather than
-# sprinkling ``# noqa: fill-const`` comments through the code.
+# sprinkling noqa comments through the code.
 ALLOWED = {
-    0.0,    # zero
-    1.0,    # one / multiplicative identity
-    -1.0,   # negative identity
-    0.5,    # midpoint / half — frequently a unit fraction
-    2.0,    # squaring / doubling
+    0.0,  # zero
+    1.0,  # one / multiplicative identity
+    -1.0,  # negative identity
+    0.5,  # midpoint / half — frequently a unit fraction
+    2.0,  # squaring / doubling
     100.0,  # percent denom
     10000.0,  # bps denom
     10_000.0,
-    60.0,   # seconds-per-minute
+    60.0,  # seconds-per-minute
     1000.0,  # ms-per-second / unit conversion
     0.0001,  # min price floor (Polymarket tick)
     0.9999,  # max price ceiling
@@ -57,13 +58,13 @@ ALLOWED = {
     # values are forbidden; these are grandfathered so the guard
     # ratchets new additions without forcing a full sweep on day one.
     # If you add to this list, document why in the commit message.
-    0.20,   # fill_models.py participation cap (legacy)
-    0.35,   # fill_models.py no-volume default fill ratio (legacy)
-    0.88,   # fill_models.py displayed_depth_factor (legacy default; learned at runtime)
-    0.65,   # execution_estimator.py maker_queue_ahead_fraction (legacy default)
-    1.35,   # execution_estimator.py adjustment factor (legacy)
-    10.0,   # execution_estimator.py constant
-    20.0,   # execution_estimator.py constant
+    0.20,  # fill_models.py participation cap (legacy)
+    0.35,  # fill_models.py no-volume default fill ratio (legacy)
+    0.88,  # fill_models.py displayed_depth_factor (legacy default; learned at runtime)
+    0.65,  # execution_estimator.py maker_queue_ahead_fraction (legacy default)
+    1.35,  # execution_estimator.py adjustment factor (legacy)
+    10.0,  # execution_estimator.py constant
+    20.0,  # execution_estimator.py constant
 }
 
 # Names whose RHS we ALWAYS ignore — these are the documented places

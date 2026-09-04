@@ -501,6 +501,7 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
     tradingBalance?.balance,
     tradingBalance?.available,
     tradingPositions,
+    t,
   ])
 
   const kalshiSnapshot = useMemo<LiveVenueSnapshot>(() => {
@@ -535,7 +536,7 @@ export default function AccountsPanel({ onOpenSettings }: AccountsPanelProps) {
       openPositions: visibleKalshiPositions.length,
       unrealizedPnl,
     }
-  }, [kalshiStatus, kalshiBalance?.balance, kalshiBalance?.available, kalshiPositions])
+  }, [kalshiStatus, kalshiBalance?.balance, kalshiBalance?.available, kalshiPositions, t])
 
   const venueSnapshots = useMemo(
     () => [polymarketSnapshot, kalshiSnapshot],

@@ -95,13 +95,7 @@ function TraderOpportunitiesSettingsFlyout({
       }
       return initial
     })
-  }, [
-    initial.confluence_limit,
-    initial.individual_trade_limit,
-    initial.individual_trade_max_age_minutes,
-    initial.individual_trade_min_confidence,
-    isOpen,
-  ])
+  }, [initial, isOpen])
 
   const handleSave = useCallback(() => {
     onSave({
@@ -135,7 +129,9 @@ function TraderOpportunitiesSettingsFlyout({
         <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-2.5 bg-background/95 backdrop-blur-sm border-b border-border/40">
           <div className="flex items-center gap-2">
             <Settings className="w-4 h-4 text-orange-400" />
-            <h3 className="text-sm font-semibold">{t('traderOpportunitiesSettingsFlyout.title')}</h3>
+            <h3 className="text-sm font-semibold">
+              {t('traderOpportunitiesSettingsFlyout.title')}
+            </h3>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -145,7 +141,9 @@ function TraderOpportunitiesSettingsFlyout({
               className="gap-1 text-[10px] h-auto px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white"
             >
               <Save className="w-3 h-3" />
-              {savePending ? t('traderOpportunitiesSettingsFlyout.saving') : t('traderOpportunitiesSettingsFlyout.save')}
+              {savePending
+                ? t('traderOpportunitiesSettingsFlyout.saving')
+                : t('traderOpportunitiesSettingsFlyout.save')}
             </Button>
             <Button
               variant="ghost"
@@ -184,7 +182,9 @@ function TraderOpportunitiesSettingsFlyout({
           <Card className="bg-card/40 border-border/40 rounded-xl shadow-none p-3 space-y-3">
             <div className="flex items-center gap-1.5">
               <Filter className="w-3.5 h-3.5 text-orange-400" />
-              <h4 className="text-[10px] uppercase tracking-widest font-semibold">{t('traderOpportunitiesSettingsFlyout.displayLimits')}</h4>
+              <h4 className="text-[10px] uppercase tracking-widest font-semibold">
+                {t('traderOpportunitiesSettingsFlyout.displayLimits')}
+              </h4>
             </div>
             <div className="grid grid-cols-2 gap-2.5">
               <NumericField
@@ -207,7 +207,11 @@ function TraderOpportunitiesSettingsFlyout({
               </h4>
             </div>
             <p className="text-[11px] text-muted-foreground/80 leading-relaxed">
-              <Trans i18nKey="traderOpportunitiesSettingsFlyout.firehoseDescription" t={t} components={{ strategy: <span className="text-foreground" /> }} />
+              <Trans
+                i18nKey="traderOpportunitiesSettingsFlyout.firehoseDescription"
+                t={t}
+                components={{ strategy: <span className="text-foreground" /> }}
+              />
             </p>
           </Card>
 
@@ -216,7 +220,9 @@ function TraderOpportunitiesSettingsFlyout({
           <Card className="bg-card/40 border-border/40 rounded-xl shadow-none p-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium">{t('traderOpportunitiesSettingsFlyout.strategyCode')}</p>
+                <p className="text-xs font-medium">
+                  {t('traderOpportunitiesSettingsFlyout.strategyCode')}
+                </p>
                 <p className="text-[10px] text-muted-foreground">
                   {t('traderOpportunitiesSettingsFlyout.strategyCodeDescription')}
                 </p>

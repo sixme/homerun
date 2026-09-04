@@ -367,8 +367,8 @@ function haversineDistanceKm(latA: number, lonA: number, latB: number, lonB: num
   const dLat = toRadians(latB - latA)
   const dLon = toRadians(lonB - lonA)
   const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2)
-    + Math.cos(toRadians(latA)) * Math.cos(toRadians(latB)) * Math.sin(dLon / 2) * Math.sin(dLon / 2)
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRadians(latA)) * Math.cos(toRadians(latB)) * Math.sin(dLon / 2) * Math.sin(dLon / 2)
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
   return earthRadiusKm * c
 }
@@ -406,7 +406,7 @@ function geodesicMidpoint(a: CountryCentroid, b: CountryCentroid): LngLatTuple {
   const by = Math.cos(lat2) * Math.sin(dLon)
   const lat3 = Math.atan2(
     Math.sin(lat1) + Math.sin(lat2),
-    Math.sqrt((Math.cos(lat1) + bx) ** 2 + by ** 2)
+    Math.sqrt((Math.cos(lat1) + bx) ** 2 + by ** 2),
   )
   const lon3 = lon1 + Math.atan2(by, Math.cos(lat1) + bx)
 
@@ -419,7 +419,7 @@ function geodesicMidpoint(a: CountryCentroid, b: CountryCentroid): LngLatTuple {
 function interpolateGreatCircleArc(
   a: CountryCentroid,
   b: CountryCentroid,
-  steps = 72
+  steps = 72,
 ): LngLatTuple[] {
   const lat1 = toRadians(a.latitude)
   const lon1 = toRadians(a.longitude)
@@ -464,10 +464,7 @@ function interpolateGreatCircleArc(
       while (lon - previousLon < -180) lon += 360
     }
     previousLon = lon
-    out.push([
-      Number(lon.toFixed(6)),
-      Number(lat.toFixed(6)),
-    ])
+    out.push([Number(lon.toFixed(6)), Number(lat.toFixed(6))])
   }
 
   return out
@@ -476,7 +473,7 @@ function interpolateGreatCircleArc(
 function pairCentroids(
   isoA: string | null | undefined,
   isoB: string | null | undefined,
-  centroids: Record<string, CountryCentroid>
+  centroids: Record<string, CountryCentroid>,
 ): [CountryCentroid, CountryCentroid] | null {
   const left = normalizeCountryCode(isoA)
   const right = normalizeCountryCode(isoB)
@@ -492,8 +489,12 @@ function midpoint(a: CountryCentroid, b: CountryCentroid): LngLatTuple {
 }
 
 function pairFromTension(pair: TensionPair): [string, string] | null {
-  const normalizedA = normalizeCountryCode(pair.country_a_iso3 || pair.country_a_name || pair.country_a)
-  const normalizedB = normalizeCountryCode(pair.country_b_iso3 || pair.country_b_name || pair.country_b)
+  const normalizedA = normalizeCountryCode(
+    pair.country_a_iso3 || pair.country_a_name || pair.country_a,
+  )
+  const normalizedB = normalizeCountryCode(
+    pair.country_b_iso3 || pair.country_b_name || pair.country_b,
+  )
   if (!normalizedA || !normalizedB || normalizedA === normalizedB) return null
   return [normalizedA, normalizedB]
 }
@@ -508,15 +509,15 @@ function toCountryBoundaryGeoJSON(value: unknown): CountryBoundaryFeatureCollect
     const id = row.id as string | number | undefined
     const iso3 = normalizeCountryCode(
       String(
-        id
-        || properties.id
-        || properties.iso3
-        || properties.ISO_A3
-        || properties.iso_a3
-        || properties.ADM0_A3
-        || properties['ISO3166-1-Alpha-3']
-        || ''
-      )
+        id ||
+          properties.id ||
+          properties.iso3 ||
+          properties.ISO_A3 ||
+          properties.iso_a3 ||
+          properties.ADM0_A3 ||
+          properties['ISO3166-1-Alpha-3'] ||
+          '',
+      ),
     )
     const geometry = row.geometry as { type?: string; coordinates?: unknown } | undefined
     if (!iso3 || !geometry || !geometry.type || !geometry.coordinates) continue
@@ -540,7 +541,7 @@ function toCountryBoundaryGeoJSON(value: unknown): CountryBoundaryFeatureCollect
 
 function withCountryMetrics(
   geojson: CountryBoundaryFeatureCollection | null | undefined,
-  metricsByIso3: Record<string, CountryMetric>
+  metricsByIso3: Record<string, CountryMetric>,
 ): CountryBoundaryFeatureCollection {
   if (!geojson || !Array.isArray(geojson.features)) {
     return { type: 'FeatureCollection', features: [] }
@@ -591,11 +592,17 @@ function signalsToGeoJSON(
     type: 'FeatureCollection',
     features: signals
       .map((signal) => {
-        if (String(signal.signal_type || '').trim().toLowerCase() === 'convergence') {
+        if (
+          String(signal.signal_type || '')
+            .trim()
+            .toLowerCase() === 'convergence'
+        ) {
           return null
         }
         const metadata = (signal.metadata || {}) as Record<string, unknown>
-        const activityType = String(metadata.activity_type || '').trim().toLowerCase()
+        const activityType = String(metadata.activity_type || '')
+          .trim()
+          .toLowerCase()
         let coords: LngLatTuple | null = null
         let geocodeMode = 'native'
         let countryText = signal.country || ''
@@ -672,7 +679,9 @@ function signalsToGeoJSON(
             map_blur: pres.map_blur,
             map_stroke_width: pres.map_stroke_width,
             map_glow: pres.map_glow ? 1 : 0,
-            related_market_count: Array.isArray(signal.related_market_ids) ? signal.related_market_ids.length : 0,
+            related_market_count: Array.isArray(signal.related_market_ids)
+              ? signal.related_market_ids.length
+              : 0,
             related_market_ids: Array.isArray(signal.related_market_ids)
               ? signal.related_market_ids.slice(0, 5).join(', ')
               : '',
@@ -747,7 +756,7 @@ function chokepointsToGeoJSON(chokepoints: WorldRegionChokepoint[]): GeoFeatureC
 
 function tensionsToGeoJSON(
   tensions: TensionPair[],
-  centroids: Record<string, CountryCentroid>
+  centroids: Record<string, CountryCentroid>,
 ): GeoFeatureCollection {
   return {
     type: 'FeatureCollection',
@@ -786,7 +795,7 @@ function tensionsToGeoJSON(
 
 function conflictSignalsToGeoJSON(
   signals: WorldSignal[],
-  centroids: Record<string, CountryCentroid>
+  centroids: Record<string, CountryCentroid>,
 ): GeoFeatureCollection {
   const features: PointFeature[] = []
 
@@ -801,7 +810,8 @@ function conflictSignalsToGeoJSON(
         coordinates = [centroids[iso3].longitude, centroids[iso3].latitude]
       }
     }
-    if (!coordinates || !Number.isFinite(coordinates[0]) || !Number.isFinite(coordinates[1])) continue
+    if (!coordinates || !Number.isFinite(coordinates[0]) || !Number.isFinite(coordinates[1]))
+      continue
 
     features.push({
       type: 'Feature',
@@ -924,20 +934,29 @@ function addDataLayers(map: any, theme: 'dark' | 'light') {
         'interpolate',
         ['linear'],
         ['coalesce', ['get', 'display_intensity'], 0],
-        0, theme === 'light' ? '#f8fafc' : '#0f172a',
-        0.2, theme === 'light' ? '#fde68a' : '#854d0e',
-        0.45, theme === 'light' ? '#fb923c' : '#c2410c',
-        0.7, theme === 'light' ? '#ef4444' : '#dc2626',
-        1, theme === 'light' ? '#b91c1c' : '#7f1d1d',
+        0,
+        theme === 'light' ? '#f8fafc' : '#0f172a',
+        0.2,
+        theme === 'light' ? '#fde68a' : '#854d0e',
+        0.45,
+        theme === 'light' ? '#fb923c' : '#c2410c',
+        0.7,
+        theme === 'light' ? '#ef4444' : '#dc2626',
+        1,
+        theme === 'light' ? '#b91c1c' : '#7f1d1d',
       ],
       'fill-opacity': [
         'interpolate',
         ['linear'],
         ['coalesce', ['get', 'display_intensity'], 0],
-        0, 0.045,
-        0.2, 0.135,
-        0.5, 0.215,
-        1, 0.325,
+        0,
+        0.045,
+        0.2,
+        0.135,
+        0.5,
+        0.215,
+        1,
+        0.325,
       ],
     },
   })
@@ -960,29 +979,42 @@ function addDataLayers(map: any, theme: 'dark' | 'light') {
         'interpolate',
         ['linear'],
         ['coalesce', ['get', 'tension_intensity'], 0],
-        0, theme === 'light' ? '#f1f5f9' : '#1e293b',
-        0.25, '#facc15',
-        0.5, '#fb923c',
-        0.75, '#ef4444',
-        1, '#991b1b',
+        0,
+        theme === 'light' ? '#f1f5f9' : '#1e293b',
+        0.25,
+        '#facc15',
+        0.5,
+        '#fb923c',
+        0.75,
+        '#ef4444',
+        1,
+        '#991b1b',
       ],
       'line-width': [
         'interpolate',
         ['linear'],
         ['coalesce', ['get', 'tension_intensity'], 0],
-        0, 0.45,
-        0.25, 1,
-        0.5, 1.8,
-        1, 3,
+        0,
+        0.45,
+        0.25,
+        1,
+        0.5,
+        1.8,
+        1,
+        3,
       ],
       'line-opacity': [
         'interpolate',
         ['linear'],
         ['coalesce', ['get', 'tension_intensity'], 0],
-        0, 0.18,
-        0.1, 0.45,
-        0.6, 0.8,
-        1, 1,
+        0,
+        0.18,
+        0.1,
+        0.45,
+        0.6,
+        0.8,
+        1,
+        1,
       ],
     },
   })
@@ -995,10 +1027,14 @@ function addDataLayers(map: any, theme: 'dark' | 'light') {
         'interpolate',
         ['linear'],
         ['coalesce', ['get', 'combined_intensity'], 0],
-        0.2, theme === 'light' ? '#fef3c7' : '#78350f',
-        0.45, theme === 'light' ? '#fb923c' : '#c2410c',
-        0.7, theme === 'light' ? '#ef4444' : '#dc2626',
-        1, theme === 'light' ? '#991b1b' : '#7f1d1d',
+        0.2,
+        theme === 'light' ? '#fef3c7' : '#78350f',
+        0.45,
+        theme === 'light' ? '#fb923c' : '#c2410c',
+        0.7,
+        theme === 'light' ? '#ef4444' : '#dc2626',
+        1,
+        theme === 'light' ? '#991b1b' : '#7f1d1d',
       ],
       'fill-opacity': [
         'case',
@@ -1011,9 +1047,12 @@ function addDataLayers(map: any, theme: 'dark' | 'light') {
           'interpolate',
           ['linear'],
           ['coalesce', ['get', 'combined_intensity'], 0],
-          0.2, 0.06,
-          0.6, 0.16,
-          1, 0.24,
+          0.2,
+          0.06,
+          0.6,
+          0.16,
+          1,
+          0.24,
         ],
         0,
       ],
@@ -1028,9 +1067,12 @@ function addDataLayers(map: any, theme: 'dark' | 'light') {
         'interpolate',
         ['linear'],
         ['coalesce', ['get', 'combined_intensity'], 0],
-        0.2, theme === 'light' ? '#f59e0b' : '#f59e0b',
-        0.6, '#ef4444',
-        1, '#7f1d1d',
+        0.2,
+        theme === 'light' ? '#f59e0b' : '#f59e0b',
+        0.6,
+        '#ef4444',
+        1,
+        '#7f1d1d',
       ],
       'line-width': [
         'case',
@@ -1043,9 +1085,12 @@ function addDataLayers(map: any, theme: 'dark' | 'light') {
           'interpolate',
           ['linear'],
           ['coalesce', ['get', 'combined_intensity'], 0],
-          0.2, 1.1,
-          0.6, 2.2,
-          1, 3.2,
+          0.2,
+          1.1,
+          0.6,
+          2.2,
+          1,
+          3.2,
         ],
         0,
       ],
@@ -1077,19 +1122,27 @@ function addDataLayers(map: any, theme: 'dark' | 'light') {
         'interpolate',
         ['linear'],
         ['coalesce', ['get', 'tension_score'], 0],
-        0, theme === 'light' ? '#fde68a' : '#854d0e',
-        40, '#f59e0b',
-        70, '#ef4444',
-        100, '#991b1b',
+        0,
+        theme === 'light' ? '#fde68a' : '#854d0e',
+        40,
+        '#f59e0b',
+        70,
+        '#ef4444',
+        100,
+        '#991b1b',
       ],
       'line-width': [
         'interpolate',
         ['linear'],
         ['coalesce', ['get', 'tension_score'], 0],
-        0, 1.5,
-        40, 3,
-        70, 5.5,
-        100, 8,
+        0,
+        1.5,
+        40,
+        3,
+        70,
+        5.5,
+        100,
+        8,
       ],
       'line-opacity': 0.22,
       'line-blur': 1.2,
@@ -1101,28 +1154,39 @@ function addDataLayers(map: any, theme: 'dark' | 'light') {
     source: 'tension-arcs',
     paint: {
       'line-color': [
-        'match', ['coalesce', ['get', 'trend'], 'stable'],
-        'rising', theme === 'light' ? '#ef4444' : '#f87171',
-        'falling', theme === 'light' ? '#2563eb' : '#60a5fa',
+        'match',
+        ['coalesce', ['get', 'trend'], 'stable'],
+        'rising',
+        theme === 'light' ? '#ef4444' : '#f87171',
+        'falling',
+        theme === 'light' ? '#2563eb' : '#60a5fa',
         /* stable default */ theme === 'light' ? '#ca8a04' : '#facc15',
       ],
       'line-width': [
         'interpolate',
         ['linear'],
         ['coalesce', ['get', 'tension_score'], 0],
-        0, 0.8,
-        40, 1.6,
-        70, 2.4,
-        100, 3.2,
+        0,
+        0.8,
+        40,
+        1.6,
+        70,
+        2.4,
+        100,
+        3.2,
       ],
       'line-opacity': [
         'interpolate',
         ['linear'],
         ['coalesce', ['get', 'tension_score'], 0],
-        0, 0.35,
-        40, 0.55,
-        70, 0.78,
-        100, 0.95,
+        0,
+        0.35,
+        40,
+        0.55,
+        70,
+        0.78,
+        100,
+        0.95,
       ],
     },
   })
@@ -1141,43 +1205,31 @@ function addDataLayers(map: any, theme: 'dark' | 'light') {
         'interpolate',
         ['linear'],
         ['coalesce', ['get', 'severity'], 0],
-        0, 0.1,
-        0.5, 0.65,
-        1, 1,
+        0,
+        0.1,
+        0.5,
+        0.65,
+        1,
+        1,
       ],
-      'heatmap-intensity': [
-        'interpolate',
-        ['linear'],
-        ['zoom'],
-        1.5, 0.4,
-        5, 0.9,
-        8, 1.3,
-      ],
+      'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 1.5, 0.4, 5, 0.9, 8, 1.3],
       'heatmap-color': [
         'interpolate',
         ['linear'],
         ['heatmap-density'],
-        0, 'rgba(15,23,42,0)',
-        0.2, theme === 'light' ? 'rgba(254,240,138,0.35)' : 'rgba(234,179,8,0.28)',
-        0.5, theme === 'light' ? 'rgba(251,146,60,0.62)' : 'rgba(249,115,22,0.58)',
-        0.8, 'rgba(239,68,68,0.78)',
-        1, 'rgba(127,29,29,0.9)',
+        0,
+        'rgba(15,23,42,0)',
+        0.2,
+        theme === 'light' ? 'rgba(254,240,138,0.35)' : 'rgba(234,179,8,0.28)',
+        0.5,
+        theme === 'light' ? 'rgba(251,146,60,0.62)' : 'rgba(249,115,22,0.58)',
+        0.8,
+        'rgba(239,68,68,0.78)',
+        1,
+        'rgba(127,29,29,0.9)',
       ],
-      'heatmap-radius': [
-        'interpolate',
-        ['linear'],
-        ['zoom'],
-        1.5, 18,
-        5, 24,
-        8, 30,
-      ],
-      'heatmap-opacity': [
-        'interpolate',
-        ['linear'],
-        ['zoom'],
-        1.5, 0.55,
-        8, 0.75,
-      ],
+      'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 1.5, 18, 5, 24, 8, 30],
+      'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 1.5, 0.55, 8, 0.75],
     },
   })
   map.addLayer({
@@ -1190,19 +1242,27 @@ function addDataLayers(map: any, theme: 'dark' | 'light') {
         'interpolate',
         ['linear'],
         ['coalesce', ['get', 'severity'], 0],
-        0, theme === 'light' ? '#fde68a' : '#f59e0b',
-        0.4, '#f97316',
-        0.7, '#ef4444',
-        1, '#7f1d1d',
+        0,
+        theme === 'light' ? '#fde68a' : '#f59e0b',
+        0.4,
+        '#f97316',
+        0.7,
+        '#ef4444',
+        1,
+        '#7f1d1d',
       ],
       'circle-radius': [
         'interpolate',
         ['linear'],
         ['coalesce', ['get', 'severity'], 0],
-        0, 3,
-        0.4, 4.8,
-        0.7, 6.2,
-        1, 7.8,
+        0,
+        3,
+        0.4,
+        4.8,
+        0.7,
+        6.2,
+        1,
+        7.8,
       ],
       'circle-opacity': 0.86,
       'circle-stroke-color': theme === 'light' ? '#ffffff' : '#020617',
@@ -1248,19 +1308,27 @@ function addDataLayers(map: any, theme: 'dark' | 'light') {
         'interpolate',
         ['linear'],
         ['coalesce', ['get', 'risk_score'], 0],
-        0, 5,
-        30, 6.5,
-        60, 8,
-        100, 10,
+        0,
+        5,
+        30,
+        6.5,
+        60,
+        8,
+        100,
+        10,
       ],
       'circle-color': [
         'interpolate',
         ['linear'],
         ['coalesce', ['get', 'risk_score'], 0],
-        0, theme === 'light' ? '#10b981' : '#34d399',
-        40, theme === 'light' ? '#f59e0b' : '#f59e0b',
-        70, '#ef4444',
-        100, '#7f1d1d',
+        0,
+        theme === 'light' ? '#10b981' : '#34d399',
+        40,
+        theme === 'light' ? '#f59e0b' : '#f59e0b',
+        70,
+        '#ef4444',
+        100,
+        '#7f1d1d',
       ],
       'circle-stroke-color': theme === 'light' ? '#064e3b' : '#022c22',
       'circle-stroke-width': 1.5,
@@ -1268,8 +1336,10 @@ function addDataLayers(map: any, theme: 'dark' | 'light') {
         'interpolate',
         ['linear'],
         ['coalesce', ['get', 'risk_score'], 0],
-        0, 0.85,
-        100, 0.95,
+        0,
+        0.85,
+        100,
+        0.95,
       ],
     },
   })
@@ -1291,16 +1361,25 @@ function addDataLayers(map: any, theme: 'dark' | 'light') {
     ],
     paint: {
       'circle-radius': [
-        'interpolate', ['linear'], ['coalesce', ['get', 'severity'], 0],
-        0, ['*', ['coalesce', ['get', 'map_radius_min'], 4], 2.5],
-        1, ['*', ['coalesce', ['get', 'map_radius_max'], 9], 2.5],
+        'interpolate',
+        ['linear'],
+        ['coalesce', ['get', 'severity'], 0],
+        0,
+        ['*', ['coalesce', ['get', 'map_radius_min'], 4], 2.5],
+        1,
+        ['*', ['coalesce', ['get', 'map_radius_max'], 9], 2.5],
       ],
       'circle-color': ['get', 'color'],
       'circle-opacity': [
-        'interpolate', ['linear'], ['coalesce', ['get', 'age_hours'], 24],
-        0, 0.28,
-        6, 0.22,
-        24, 0.12,
+        'interpolate',
+        ['linear'],
+        ['coalesce', ['get', 'age_hours'], 24],
+        0,
+        0.28,
+        6,
+        0.22,
+        24,
+        0.12,
       ],
       'circle-blur': 1,
     },
@@ -1317,16 +1396,25 @@ function addDataLayers(map: any, theme: 'dark' | 'light') {
     ],
     paint: {
       'circle-radius': [
-        'interpolate', ['linear'], ['coalesce', ['get', 'severity'], 0],
-        0, ['coalesce', ['get', 'map_radius_min'], 4],
-        1, ['coalesce', ['get', 'map_radius_max'], 9],
+        'interpolate',
+        ['linear'],
+        ['coalesce', ['get', 'severity'], 0],
+        0,
+        ['coalesce', ['get', 'map_radius_min'], 4],
+        1,
+        ['coalesce', ['get', 'map_radius_max'], 9],
       ],
       'circle-color': ['get', 'color'],
       'circle-opacity': [
-        'interpolate', ['linear'], ['coalesce', ['get', 'age_hours'], 24],
-        0, ['coalesce', ['get', 'map_opacity'], 0.92],
-        6, ['*', ['coalesce', ['get', 'map_opacity'], 0.92], 0.92],
-        24, ['*', ['coalesce', ['get', 'map_opacity'], 0.92], 0.65],
+        'interpolate',
+        ['linear'],
+        ['coalesce', ['get', 'age_hours'], 24],
+        0,
+        ['coalesce', ['get', 'map_opacity'], 0.92],
+        6,
+        ['*', ['coalesce', ['get', 'map_opacity'], 0.92], 0.92],
+        24,
+        ['*', ['coalesce', ['get', 'map_opacity'], 0.92], 0.65],
       ],
       'circle-stroke-color': theme === 'light' ? '#ffffff' : '#020617',
       'circle-stroke-width': ['coalesce', ['get', 'map_stroke_width'], 1],
@@ -1344,7 +1432,15 @@ function addDataLayers(map: any, theme: 'dark' | 'light') {
     ],
     layout: {
       'icon-image': 'wi-military-plane',
-      'icon-size': ['interpolate', ['linear'], ['coalesce', ['get', 'severity'], 0], 0, 0.42, 1, 0.66],
+      'icon-size': [
+        'interpolate',
+        ['linear'],
+        ['coalesce', ['get', 'severity'], 0],
+        0,
+        0.42,
+        1,
+        0.66,
+      ],
       'icon-allow-overlap': true,
       'icon-ignore-placement': true,
     },
@@ -1363,7 +1459,15 @@ function addDataLayers(map: any, theme: 'dark' | 'light') {
     ],
     layout: {
       'icon-image': 'wi-military-vessel',
-      'icon-size': ['interpolate', ['linear'], ['coalesce', ['get', 'severity'], 0], 0, 0.38, 1, 0.62],
+      'icon-size': [
+        'interpolate',
+        ['linear'],
+        ['coalesce', ['get', 'severity'], 0],
+        0,
+        0.38,
+        1,
+        0.62,
+      ],
       'icon-allow-overlap': true,
       'icon-ignore-placement': true,
     },
@@ -1423,7 +1527,7 @@ function formatSignalTypeLabel(value: string, t?: (k: string) => string): string
 function summarizeTopCounts(
   counts: Record<string, number>,
   limit = 3,
-  labelFormatter?: (value: string) => string
+  labelFormatter?: (value: string) => string,
 ): string {
   return Object.entries(counts)
     .sort((a, b) => b[1] - a[1])
@@ -1432,26 +1536,32 @@ function summarizeTopCounts(
     .join(', ')
 }
 
-function formatAgeLabel(timestamp: string | null | undefined, t?: (k: string, opts?: Record<string, unknown>) => string): string {
+function formatAgeLabel(
+  timestamp: string | null | undefined,
+  t?: (k: string, opts?: Record<string, unknown>) => string,
+): string {
   const unknownTime = t ? t('worldMap.unknownTime') : 'Unknown time'
   if (!timestamp) return unknownTime
   const value = Date.parse(timestamp)
   if (!Number.isFinite(value)) return unknownTime
   const deltaHours = Math.max(0, (Date.now() - value) / 3_600_000)
   if (deltaHours < 1) return t ? t('worldMap.ageLessThanHour') : '<1h ago'
-  if (deltaHours < 24) return t ? t('worldMap.ageHours', { count: Math.round(deltaHours) }) : `${Math.round(deltaHours)}h ago`
+  if (deltaHours < 24)
+    return t
+      ? t('worldMap.ageHours', { count: Math.round(deltaHours) })
+      : `${Math.round(deltaHours)}h ago`
   const deltaDays = deltaHours / 24
-  if (deltaDays < 7) return t ? t('worldMap.ageDays', { count: Math.round(deltaDays) }) : `${Math.round(deltaDays)}d ago`
-  return t ? t('worldMap.ageWeeks', { count: Math.round(deltaDays / 7) }) : `${Math.round(deltaDays / 7)}w ago`
+  if (deltaDays < 7)
+    return t
+      ? t('worldMap.ageDays', { count: Math.round(deltaDays) })
+      : `${Math.round(deltaDays)}d ago`
+  return t
+    ? t('worldMap.ageWeeks', { count: Math.round(deltaDays / 7) })
+    : `${Math.round(deltaDays / 7)}w ago`
 }
 
 function resolveStoryUrl(metadata: Record<string, unknown>): string | undefined {
-  const candidates = [
-    metadata.url,
-    metadata.article_url,
-    metadata.story_url,
-    metadata.link,
-  ]
+  const candidates = [metadata.url, metadata.article_url, metadata.story_url, metadata.link]
   for (const candidate of candidates) {
     const raw = String(candidate || '').trim()
     if (!raw) continue
@@ -1582,11 +1692,11 @@ function classifySourceHealthTone(enabled: boolean, details: any): SourceHealthT
   if (details?.ok === false) {
     const rawError = String(details?.error || details?.last_error || '').toLowerCase()
     if (
-      rawError.includes('missing_api_key')
-      || rawError.includes('disabled')
-      || rawError.includes('429')
-      || rawError.includes('403')
-      || rawError.includes('rate limited')
+      rawError.includes('missing_api_key') ||
+      rawError.includes('disabled') ||
+      rawError.includes('429') ||
+      rawError.includes('403') ||
+      rawError.includes('rate limited')
     ) {
       return 'degraded'
     }
@@ -1603,7 +1713,11 @@ function sourceToneClass(tone: SourceHealthTone): string {
   return 'text-slate-400'
 }
 
-function sourceToneLabel(tone: SourceHealthTone, count: number, t: (k: string, opts?: Record<string, unknown>) => string): string {
+function sourceToneLabel(
+  tone: SourceHealthTone,
+  count: number,
+  t: (k: string, opts?: Record<string, unknown>) => string,
+): string {
   if (tone === 'ok') return t('worldMap.sourceTone.ok', { count })
   if (tone === 'degraded') return t('worldMap.sourceTone.degraded', { count })
   if (tone === 'error') return t('worldMap.sourceTone.error')
@@ -1612,7 +1726,9 @@ function sourceToneLabel(tone: SourceHealthTone, count: number, t: (k: string, o
 }
 
 function resolveEventSourceHealthKey(source: UnifiedDataSource): string | null {
-  const slug = String(source.slug || '').trim().toLowerCase()
+  const slug = String(source.slug || '')
+    .trim()
+    .toLowerCase()
   if (!slug) return null
   const mapped = EVENT_SOURCE_HEALTH_KEY_BY_SLUG[slug]
   if (mapped) return mapped
@@ -1622,7 +1738,9 @@ function resolveEventSourceHealthKey(source: UnifiedDataSource): string | null {
     return suffix || null
   }
   // Story and custom sources: the API now returns health keyed by full slug
-  const sourceKey = String(source.source_key || '').trim().toLowerCase()
+  const sourceKey = String(source.source_key || '')
+    .trim()
+    .toLowerCase()
   if (sourceKey === 'stories' || sourceKey === 'custom') return slug
   return slug
 }
@@ -1738,7 +1856,9 @@ function MapRightDock({
             title={t('worldMap.selectedContext')}
           >
             {t('worldMap.tabShort.ctx')}
-            {selection ? <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-emerald-400" /> : null}
+            {selection ? (
+              <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-emerald-400" />
+            ) : null}
           </button>
 
           <button
@@ -1760,8 +1880,12 @@ function MapRightDock({
           </button>
 
           <div className="rounded-lg border border-border/70 bg-background/80 px-1 py-1.5 text-center">
-            <div className="text-[8px] leading-none text-muted-foreground uppercase">{t('worldMap.sigShort')}</div>
-            <div className="mt-1 text-[10px] leading-none font-semibold text-foreground">{signalLabel}</div>
+            <div className="text-[8px] leading-none text-muted-foreground uppercase">
+              {t('worldMap.sigShort')}
+            </div>
+            <div className="mt-1 text-[10px] leading-none font-semibold text-foreground">
+              {signalLabel}
+            </div>
           </div>
         </div>
 
@@ -1769,12 +1893,18 @@ function MapRightDock({
           <div className="flex-1 min-w-0 h-full flex flex-col">
             <div className="shrink-0 border-b border-border/70 px-4 py-3 bg-gradient-to-r from-card/90 via-card/90 to-muted/55">
               <div className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                {tab === 'context' ? t('worldMap.selectedContextHeader') : tab === 'layers' ? t('worldMap.layerControlHeader') : t('worldMap.dataSourceControlHeader')}
+                {tab === 'context'
+                  ? t('worldMap.selectedContextHeader')
+                  : tab === 'layers'
+                    ? t('worldMap.layerControlHeader')
+                    : t('worldMap.dataSourceControlHeader')}
               </div>
               <div className="mt-1 flex items-center justify-between gap-2">
                 <div className="text-sm font-semibold text-foreground">
                   {tab === 'context'
-                    ? (selection ? t('worldMap.categoryIntelligence', { category: selection.category }) : t('worldMap.nothingSelected'))
+                    ? selection
+                      ? t('worldMap.categoryIntelligence', { category: selection.category })
+                      : t('worldMap.nothingSelected')
                     : tab === 'layers'
                       ? t('worldMap.layersAndLegend')
                       : t('worldMap.configuredDataSources')}
@@ -1801,12 +1931,18 @@ function MapRightDock({
                           <div className="space-y-2 rounded-xl border border-border/70 bg-gradient-to-br from-card via-card to-muted/30 p-3">
                             <div className="flex items-start justify-between gap-2">
                               <div className="space-y-1 min-w-0">
-                                <div className="text-[15px] font-semibold text-foreground leading-tight">{selection.title}</div>
+                                <div className="text-[15px] font-semibold text-foreground leading-tight">
+                                  {selection.title}
+                                </div>
                                 {selection.subtitle ? (
-                                  <div className="text-[10px] text-muted-foreground">{selection.subtitle}</div>
+                                  <div className="text-[10px] text-muted-foreground">
+                                    {selection.subtitle}
+                                  </div>
                                 ) : null}
                               </div>
-                              <span className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${countryRiskToneClasses}`}>
+                              <span
+                                className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${countryRiskToneClasses}`}
+                              >
                                 {countryDetails.riskLabel}
                               </span>
                             </div>
@@ -1814,9 +1950,18 @@ function MapRightDock({
                             {countryDetails.metricChips.length > 0 ? (
                               <div className="grid grid-cols-2 gap-1.5">
                                 {countryDetails.metricChips.map((chip, index) => (
-                                  <div key={`country-metric-chip-${chip.label}-${index}`} className="rounded-md border border-border/65 bg-background/70 px-2 py-1">
-                                    <div className="text-[9px] uppercase tracking-wide text-muted-foreground">{chip.label}</div>
-                                    <div className={`text-[12px] font-semibold ${metricToneClass(chip.tone)}`}>{chip.value}</div>
+                                  <div
+                                    key={`country-metric-chip-${chip.label}-${index}`}
+                                    className="rounded-md border border-border/65 bg-background/70 px-2 py-1"
+                                  >
+                                    <div className="text-[9px] uppercase tracking-wide text-muted-foreground">
+                                      {chip.label}
+                                    </div>
+                                    <div
+                                      className={`text-[12px] font-semibold ${metricToneClass(chip.tone)}`}
+                                    >
+                                      {chip.value}
+                                    </div>
                                   </div>
                                 ))}
                               </div>
@@ -1824,17 +1969,26 @@ function MapRightDock({
 
                             {countryDetails.topSignalMix ? (
                               <div className="text-[10px] text-muted-foreground">
-                                <span className="text-foreground/90">{t('worldMap.signalMix')}:</span> {countryDetails.topSignalMix}
+                                <span className="text-foreground/90">
+                                  {t('worldMap.signalMix')}:
+                                </span>{' '}
+                                {countryDetails.topSignalMix}
                               </div>
                             ) : null}
                             {countryDetails.topSources ? (
                               <div className="text-[10px] text-muted-foreground">
-                                <span className="text-foreground/90">{t('worldMap.topSources')}:</span> {countryDetails.topSources}
+                                <span className="text-foreground/90">
+                                  {t('worldMap.topSources')}:
+                                </span>{' '}
+                                {countryDetails.topSources}
                               </div>
                             ) : null}
                             {countryDetails.arcContext ? (
                               <div className="text-[10px] text-muted-foreground">
-                                <span className="text-foreground/90">{t('worldMap.bilateralContext')}:</span> {countryDetails.arcContext}
+                                <span className="text-foreground/90">
+                                  {t('worldMap.bilateralContext')}:
+                                </span>{' '}
+                                {countryDetails.arcContext}
                               </div>
                             ) : null}
                             {countryDetails.coordinates || countryDetails.lastSignalUpdate ? (
@@ -1855,71 +2009,107 @@ function MapRightDock({
 
                           <div className="rounded-xl border border-border/70 bg-card/70 p-2.5 space-y-1.5">
                             <div className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                              {t('worldMap.signalsHeader', { count: countryDetails.signalRows.length })}
+                              {t('worldMap.signalsHeader', {
+                                count: countryDetails.signalRows.length,
+                              })}
                             </div>
-                            {countryDetails.signalRows.length > 0 ? countryDetails.signalRows.slice(0, 8).map((row) => (
-                              <div key={row.id} className="rounded-md border border-border/55 bg-background/70 px-2 py-1.5 space-y-0.5">
-                                <div className="text-[11px] text-foreground leading-4">{row.title}</div>
-                                <div className="text-[10px] text-muted-foreground leading-4">{row.subheader}</div>
-                                <div className="text-[10px] text-orange-300 font-semibold">{row.severityLabel}</div>
-                                {row.description ? (
-                                  <div className="text-[10px] text-muted-foreground leading-4">{row.description}</div>
-                                ) : null}
-                              </div>
-                            )) : (
+                            {countryDetails.signalRows.length > 0 ? (
+                              countryDetails.signalRows.slice(0, 8).map((row) => (
+                                <div
+                                  key={row.id}
+                                  className="rounded-md border border-border/55 bg-background/70 px-2 py-1.5 space-y-0.5"
+                                >
+                                  <div className="text-[11px] text-foreground leading-4">
+                                    {row.title}
+                                  </div>
+                                  <div className="text-[10px] text-muted-foreground leading-4">
+                                    {row.subheader}
+                                  </div>
+                                  <div className="text-[10px] text-orange-300 font-semibold">
+                                    {row.severityLabel}
+                                  </div>
+                                  {row.description ? (
+                                    <div className="text-[10px] text-muted-foreground leading-4">
+                                      {row.description}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              ))
+                            ) : (
                               <div className="rounded-md border border-dashed border-border/60 bg-background/65 px-2 py-2 text-[11px] text-muted-foreground">
                                 {t('worldMap.noSignalsForCountry')}
                               </div>
                             )}
                             {countryDetails.signalRows.length > 8 ? (
                               <div className="text-[10px] text-muted-foreground">
-                                +{t('worldMap.moreSignals', { count: countryDetails.signalRows.length - 8 })}
+                                +
+                                {t('worldMap.moreSignals', {
+                                  count: countryDetails.signalRows.length - 8,
+                                })}
                               </div>
                             ) : null}
                           </div>
 
                           <div className="rounded-xl border border-border/70 bg-card/70 p-2.5 space-y-1.5">
                             <div className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                              {t('worldMap.storiesHeader', { count: countryDetails.storyRows.length })}
+                              {t('worldMap.storiesHeader', {
+                                count: countryDetails.storyRows.length,
+                              })}
                             </div>
-                            {countryDetails.storyRows.length > 0 ? countryDetails.storyRows.slice(0, 8).map((story) => (
-                              <div key={story.id} className="rounded-md border border-border/55 bg-background/70 px-2 py-1.5 space-y-0.5">
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="text-[11px] text-foreground leading-4">{story.title}</div>
-                                  {story.url ? (
-                                    <a
-                                      href={story.url}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="shrink-0 text-[10px] text-blue-300 hover:text-blue-200 underline"
-                                    >
-                                      {t('worldMap.openLink')}
-                                    </a>
+                            {countryDetails.storyRows.length > 0 ? (
+                              countryDetails.storyRows.slice(0, 8).map((story) => (
+                                <div
+                                  key={story.id}
+                                  className="rounded-md border border-border/55 bg-background/70 px-2 py-1.5 space-y-0.5"
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="text-[11px] text-foreground leading-4">
+                                      {story.title}
+                                    </div>
+                                    {story.url ? (
+                                      <a
+                                        href={story.url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="shrink-0 text-[10px] text-blue-300 hover:text-blue-200 underline"
+                                      >
+                                        {t('worldMap.openLink')}
+                                      </a>
+                                    ) : null}
+                                  </div>
+                                  <div className="text-[10px] text-muted-foreground leading-4">
+                                    {story.subheader}
+                                  </div>
+                                  {story.domain ? (
+                                    <div className="text-[10px] text-cyan-300">{story.domain}</div>
+                                  ) : null}
+                                  {story.summary ? (
+                                    <div className="text-[10px] text-muted-foreground leading-4">
+                                      {story.summary}
+                                    </div>
                                   ) : null}
                                 </div>
-                                <div className="text-[10px] text-muted-foreground leading-4">{story.subheader}</div>
-                                {story.domain ? (
-                                  <div className="text-[10px] text-cyan-300">{story.domain}</div>
-                                ) : null}
-                                {story.summary ? (
-                                  <div className="text-[10px] text-muted-foreground leading-4">{story.summary}</div>
-                                ) : null}
-                              </div>
-                            )) : (
+                              ))
+                            ) : (
                               <div className="rounded-md border border-dashed border-border/60 bg-background/65 px-2 py-2 text-[11px] text-muted-foreground">
                                 {t('worldMap.noStoriesForCountry')}
                               </div>
                             )}
                             {countryDetails.storyRows.length > 8 ? (
                               <div className="text-[10px] text-muted-foreground">
-                                +{t('worldMap.moreStories', { count: countryDetails.storyRows.length - 8 })}
+                                +
+                                {t('worldMap.moreStories', {
+                                  count: countryDetails.storyRows.length - 8,
+                                })}
                               </div>
                             ) : null}
                           </div>
                         </>
                       ) : (
                         <div className="space-y-2 rounded-xl border border-border/70 bg-gradient-to-br from-card via-card to-muted/30 p-3">
-                          <div className="text-[14px] font-semibold text-foreground leading-tight">{selection.title}</div>
+                          <div className="text-[14px] font-semibold text-foreground leading-tight">
+                            {selection.title}
+                          </div>
                           {selection.subtitle ? (
                             <div className="flex flex-wrap gap-1.5">
                               {splitPopupSegments(selection.subtitle).map((segment, index) => (
@@ -1947,9 +2137,16 @@ function MapRightDock({
                           {detailRows.length > 0 ? (
                             <dl className="space-y-1.5 rounded-md border border-border/70 bg-background/70 p-2.5">
                               {detailRows.map((row, index) => (
-                                <div key={`selection-detail-${row.label}-${index}`} className="grid grid-cols-[100px_minmax(0,1fr)] items-start gap-2">
-                                  <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">{row.label}</dt>
-                                  <dd className="text-[11px] leading-4 text-foreground break-words">{row.value}</dd>
+                                <div
+                                  key={`selection-detail-${row.label}-${index}`}
+                                  className="grid grid-cols-[100px_minmax(0,1fr)] items-start gap-2"
+                                >
+                                  <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                                    {row.label}
+                                  </dt>
+                                  <dd className="text-[11px] leading-4 text-foreground break-words">
+                                    {row.value}
+                                  </dd>
                                 </div>
                               ))}
                             </dl>
@@ -1958,17 +2155,34 @@ function MapRightDock({
                       )}
 
                       <div className="rounded-xl border border-border/70 bg-card/70 p-2.5 space-y-1.5">
-                        <div className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{t('worldMap.nearbyAndRelated')}</div>
-                        {relatedEvents.length > 0 ? relatedEvents.map((event) => (
-                          <div key={event.id} className="rounded-md border border-border/55 bg-background/70 px-2 py-1.5 space-y-0.5">
-                            <div className="flex items-center gap-2">
-                              <span className="text-[9px] uppercase tracking-wide text-muted-foreground">{t(`worldMap.eventKind.${event.kind}`, { defaultValue: event.kind })}</span>
-                              <span className="ml-auto text-[10px] font-semibold text-foreground">{Math.round(event.score)}</span>
+                        <div className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                          {t('worldMap.nearbyAndRelated')}
+                        </div>
+                        {relatedEvents.length > 0 ? (
+                          relatedEvents.map((event) => (
+                            <div
+                              key={event.id}
+                              className="rounded-md border border-border/55 bg-background/70 px-2 py-1.5 space-y-0.5"
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="text-[9px] uppercase tracking-wide text-muted-foreground">
+                                  {t(`worldMap.eventKind.${event.kind}`, {
+                                    defaultValue: event.kind,
+                                  })}
+                                </span>
+                                <span className="ml-auto text-[10px] font-semibold text-foreground">
+                                  {Math.round(event.score)}
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-foreground leading-4">
+                                {event.title}
+                              </div>
+                              <div className="text-[10px] text-muted-foreground leading-4">
+                                {event.subtitle}
+                              </div>
                             </div>
-                            <div className="text-[11px] text-foreground leading-4">{event.title}</div>
-                            <div className="text-[10px] text-muted-foreground leading-4">{event.subtitle}</div>
-                          </div>
-                        )) : (
+                          ))
+                        ) : (
                           <div className="rounded-md border border-dashed border-border/60 bg-background/65 px-2 py-2 text-[11px] text-muted-foreground">
                             {t('worldMap.noRelatedEvents')}
                           </div>
@@ -1987,29 +2201,53 @@ function MapRightDock({
                 <>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="rounded-lg border border-border/70 bg-card/70 px-2.5 py-2">
-                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('worldMap.statSignals')}</div>
-                      <div className="mt-1 text-[14px] font-semibold text-foreground">{signalLabel}</div>
+                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                        {t('worldMap.statSignals')}
+                      </div>
+                      <div className="mt-1 text-[14px] font-semibold text-foreground">
+                        {signalLabel}
+                      </div>
                     </div>
                     <div className="rounded-lg border border-border/70 bg-card/70 px-2.5 py-2">
-                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('worldMap.statCritical')}</div>
-                      <div className={`mt-1 text-[14px] font-semibold ${criticalCount > 0 ? 'text-red-400' : 'text-foreground'}`}>{criticalCount}</div>
+                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                        {t('worldMap.statCritical')}
+                      </div>
+                      <div
+                        className={`mt-1 text-[14px] font-semibold ${criticalCount > 0 ? 'text-red-400' : 'text-foreground'}`}
+                      >
+                        {criticalCount}
+                      </div>
                     </div>
                     <div className="rounded-lg border border-border/70 bg-card/70 px-2.5 py-2">
-                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('worldMap.statGeocoded')}</div>
-                      <div className="mt-1 text-[14px] font-semibold text-emerald-400">{geocodedSignalCount}</div>
+                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                        {t('worldMap.statGeocoded')}
+                      </div>
+                      <div className="mt-1 text-[14px] font-semibold text-emerald-400">
+                        {geocodedSignalCount}
+                      </div>
                     </div>
                     <div className="rounded-lg border border-border/70 bg-card/70 px-2.5 py-2">
-                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('worldMap.statConvergences')}</div>
-                      <div className="mt-1 text-[14px] font-semibold text-purple-400">{convergenceCount}</div>
+                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                        {t('worldMap.statConvergences')}
+                      </div>
+                      <div className="mt-1 text-[14px] font-semibold text-purple-400">
+                        {convergenceCount}
+                      </div>
                     </div>
                     <div className="rounded-lg border border-border/70 bg-card/70 px-2.5 py-2 col-span-2">
-                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('worldMap.statHotspots')}</div>
-                      <div className="mt-1 text-[14px] font-semibold text-blue-400">{hotspotCount}</div>
+                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                        {t('worldMap.statHotspots')}
+                      </div>
+                      <div className="mt-1 text-[14px] font-semibold text-blue-400">
+                        {hotspotCount}
+                      </div>
                     </div>
                   </div>
 
                   <div className="rounded-xl border border-border/70 bg-card/70 p-2.5 space-y-1.5">
-                    <div className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{t('worldMap.layerMatrix')}</div>
+                    <div className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                      {t('worldMap.layerMatrix')}
+                    </div>
                     {layerItems.map((item) => {
                       const enabled = toggles[item.key]
                       return (
@@ -2020,11 +2258,22 @@ function MapRightDock({
                           className="w-full rounded-md border border-border/55 bg-background/65 px-2 py-1.5 text-left hover:bg-muted/40 transition-colors flex items-center justify-between gap-2"
                         >
                           <span className="flex items-center gap-2">
-                            <span className="inline-flex h-5 w-6 items-center justify-center rounded border border-border bg-background text-[9px] font-semibold tracking-wide text-muted-foreground">{item.short}</span>
-                            <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                            <span className="inline-flex h-5 w-6 items-center justify-center rounded border border-border bg-background text-[9px] font-semibold tracking-wide text-muted-foreground">
+                              {item.short}
+                            </span>
+                            <span
+                              className="h-2 w-2 rounded-full shrink-0"
+                              style={{ backgroundColor: item.color }}
+                            />
                             <span className="text-[11px] text-foreground">{item.label}</span>
                           </span>
-                          <span className={enabled ? 'text-[10px] font-semibold text-emerald-400' : 'text-[10px] text-muted-foreground'}>
+                          <span
+                            className={
+                              enabled
+                                ? 'text-[10px] font-semibold text-emerald-400'
+                                : 'text-[10px] text-muted-foreground'
+                            }
+                          >
                             {enabled ? t('worldMap.toggleOn') : t('worldMap.toggleOff')}
                           </span>
                         </button>
@@ -2033,42 +2282,67 @@ function MapRightDock({
                   </div>
 
                   <div className="rounded-xl border border-border/70 bg-card/70 p-2.5 space-y-1.5">
-                    <div className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{t('worldMap.sourceLayers')}</div>
-                    {sourceItems.length > 0 ? sourceItems.map((source) => {
-                      const visible = sourceVisibility[source.canonicalKey] ?? source.enabled
-                      return (
-                        <button
-                          key={`source-layer-${source.id}`}
-                          type="button"
-                          onClick={() => onToggleSource(source.canonicalKey)}
-                          className="w-full rounded-md border border-border/55 bg-background/65 px-2 py-1.5 text-left hover:bg-muted/40 transition-colors flex items-center justify-between gap-2"
-                        >
-                          <span className="min-w-0 flex items-center gap-2">
-                            <span className="inline-flex h-5 min-w-6 items-center justify-center rounded border border-border bg-background px-1 text-[9px] font-semibold tracking-wide text-muted-foreground">
-                              {source.sourceKey.slice(0, 3).toUpperCase()}
+                    <div className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                      {t('worldMap.sourceLayers')}
+                    </div>
+                    {sourceItems.length > 0 ? (
+                      sourceItems.map((source) => {
+                        const visible = sourceVisibility[source.canonicalKey] ?? source.enabled
+                        return (
+                          <button
+                            key={`source-layer-${source.id}`}
+                            type="button"
+                            onClick={() => onToggleSource(source.canonicalKey)}
+                            className="w-full rounded-md border border-border/55 bg-background/65 px-2 py-1.5 text-left hover:bg-muted/40 transition-colors flex items-center justify-between gap-2"
+                          >
+                            <span className="min-w-0 flex items-center gap-2">
+                              <span className="inline-flex h-5 min-w-6 items-center justify-center rounded border border-border bg-background px-1 text-[9px] font-semibold tracking-wide text-muted-foreground">
+                                {source.sourceKey.slice(0, 3).toUpperCase()}
+                              </span>
+                              <span className="text-[11px] text-foreground truncate">
+                                {source.name}
+                              </span>
                             </span>
-                            <span className="text-[11px] text-foreground truncate">{source.name}</span>
-                          </span>
-                          <span className={visible ? 'text-[10px] font-semibold text-emerald-400' : 'text-[10px] text-muted-foreground'}>
-                            {visible ? t('worldMap.toggleOn') : t('worldMap.toggleOff')}
-                          </span>
-                        </button>
-                      )
-                    }) : (
-                      <div className="text-[11px] text-muted-foreground">{t('worldMap.noConfiguredSources')}</div>
+                            <span
+                              className={
+                                visible
+                                  ? 'text-[10px] font-semibold text-emerald-400'
+                                  : 'text-[10px] text-muted-foreground'
+                              }
+                            >
+                              {visible ? t('worldMap.toggleOn') : t('worldMap.toggleOff')}
+                            </span>
+                          </button>
+                        )
+                      })
+                    ) : (
+                      <div className="text-[11px] text-muted-foreground">
+                        {t('worldMap.noConfiguredSources')}
+                      </div>
                     )}
                   </div>
 
                   <div className="rounded-xl border border-border/70 bg-card/70 p-2.5 space-y-1.5">
-                    <div className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{t('worldMap.signalLegend')}</div>
-                    {typeEntries.length > 0 ? typeEntries.map(([type, count]) => (
-                      <div key={type} className="flex items-center gap-2 text-[11px]">
-                        <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: colors[type] || '#64748b' }} />
-                        <span className="text-foreground capitalize">{type.replace(/_/g, ' ')}</span>
-                        <span className="ml-auto font-semibold text-foreground">{count}</span>
+                    <div className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                      {t('worldMap.signalLegend')}
+                    </div>
+                    {typeEntries.length > 0 ? (
+                      typeEntries.map(([type, count]) => (
+                        <div key={type} className="flex items-center gap-2 text-[11px]">
+                          <span
+                            className="h-2 w-2 rounded-full shrink-0"
+                            style={{ backgroundColor: colors[type] || '#64748b' }}
+                          />
+                          <span className="text-foreground capitalize">
+                            {type.replace(/_/g, ' ')}
+                          </span>
+                          <span className="ml-auto font-semibold text-foreground">{count}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-[11px] text-muted-foreground">
+                        {t('worldMap.noActiveSignals')}
                       </div>
-                    )) : (
-                      <div className="text-[11px] text-muted-foreground">{t('worldMap.noActiveSignals')}</div>
                     )}
                   </div>
                 </>
@@ -2076,37 +2350,62 @@ function MapRightDock({
 
               {tab === 'sources' ? (
                 <div className="rounded-xl border border-border/70 bg-card/70 p-2.5 space-y-1.5">
-                  <div className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{t('worldMap.dataSdkSources')}</div>
+                  <div className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                    {t('worldMap.dataSdkSources')}
+                  </div>
                   {sourceError ? (
                     <div className="rounded-md border border-red-500/30 bg-red-500/10 px-2 py-1 text-[10px] text-red-400">
                       {sourceError}
                     </div>
                   ) : null}
-                  {sourceItems.length > 0 ? sourceItems.map((source) => (
-                    <div key={source.id} className="rounded-md border border-border/55 bg-background/70 px-2 py-1.5 space-y-0.5">
-                      <div className="flex items-center justify-between gap-2 min-w-0">
-                        <div className="text-[11px] text-foreground truncate">{source.name}</div>
-                        <div className={`text-[10px] font-semibold shrink-0 ${sourceToneClass(source.tone)}`}>
-                          {sourceToneLabel(source.tone, source.count, t)}
+                  {sourceItems.length > 0 ? (
+                    sourceItems.map((source) => (
+                      <div
+                        key={source.id}
+                        className="rounded-md border border-border/55 bg-background/70 px-2 py-1.5 space-y-0.5"
+                      >
+                        <div className="flex items-center justify-between gap-2 min-w-0">
+                          <div className="text-[11px] text-foreground truncate">{source.name}</div>
+                          <div
+                            className={`text-[10px] font-semibold shrink-0 ${sourceToneClass(source.tone)}`}
+                          >
+                            {sourceToneLabel(source.tone, source.count, t)}
+                          </div>
+                        </div>
+                        <div className="text-[10px] text-muted-foreground truncate flex items-center justify-between gap-2">
+                          <span className="truncate">
+                            {source.sourceKey} / {source.slug}
+                          </span>
+                          <span className="shrink-0">
+                            {source.signalCount}{' '}
+                            {source.sourceKey === 'events'
+                              ? t('worldMap.signalsLower')
+                              : t('worldMap.recordsLower')}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-muted-foreground flex items-center justify-between gap-2">
+                          <span>
+                            {source.enabled
+                              ? t('worldMap.enabledLower')
+                              : t('worldMap.disabledLower')}{' '}
+                            / {source.status}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => onToggleSource(source.canonicalKey)}
+                            className={`rounded border px-1.5 py-0.5 transition-colors ${(sourceVisibility[source.canonicalKey] ?? source.enabled) ? 'border-emerald-500/35 text-emerald-400 bg-emerald-500/10' : 'border-border text-muted-foreground hover:text-foreground hover:bg-muted/40'}`}
+                          >
+                            {(sourceVisibility[source.canonicalKey] ?? source.enabled)
+                              ? t('worldMap.shown')
+                              : t('worldMap.hidden')}
+                          </button>
                         </div>
                       </div>
-                      <div className="text-[10px] text-muted-foreground truncate flex items-center justify-between gap-2">
-                        <span className="truncate">{source.sourceKey} / {source.slug}</span>
-                        <span className="shrink-0">{source.signalCount} {source.sourceKey === 'events' ? t('worldMap.signalsLower') : t('worldMap.recordsLower')}</span>
-                      </div>
-                      <div className="text-[10px] text-muted-foreground flex items-center justify-between gap-2">
-                        <span>{source.enabled ? t('worldMap.enabledLower') : t('worldMap.disabledLower')} / {source.status}</span>
-                        <button
-                          type="button"
-                          onClick={() => onToggleSource(source.canonicalKey)}
-                          className={`rounded border px-1.5 py-0.5 transition-colors ${((sourceVisibility[source.canonicalKey] ?? source.enabled) ? 'border-emerald-500/35 text-emerald-400 bg-emerald-500/10' : 'border-border text-muted-foreground hover:text-foreground hover:bg-muted/40')}`}
-                        >
-                          {(sourceVisibility[source.canonicalKey] ?? source.enabled) ? t('worldMap.shown') : t('worldMap.hidden')}
-                        </button>
-                      </div>
+                    ))
+                  ) : (
+                    <div className="text-[11px] text-muted-foreground">
+                      {t('worldMap.noConfiguredDataSources')}
                     </div>
-                  )) : (
-                    <div className="text-[11px] text-muted-foreground">{t('worldMap.noConfiguredDataSources')}</div>
                   )}
                 </div>
               ) : null}
@@ -2121,10 +2420,18 @@ function MapRightDock({
 function militaryEntityKey(signal: WorldSignal): string {
   if (signal.signal_type !== 'military') return ''
   const meta = (signal.metadata || {}) as Record<string, unknown>
-  const activityType = String(meta.activity_type || '').trim().toLowerCase() || 'flight'
-  const transponder = String(meta.transponder || '').trim().toLowerCase()
+  const activityType =
+    String(meta.activity_type || '')
+      .trim()
+      .toLowerCase() || 'flight'
+  const transponder = String(meta.transponder || '')
+    .trim()
+    .toLowerCase()
   if (transponder) return `${activityType}:${transponder}`
-  const callsign = String(meta.callsign || '').trim().toUpperCase().replace(/\s+/g, '')
+  const callsign = String(meta.callsign || '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, '')
   const iso3 = normalizeCountryCode(signal.country) || ''
   if (callsign) return `${activityType}:${callsign}:${iso3}`
   return ''
@@ -2145,7 +2452,9 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
   // map_color values from each data source config so users can control
   // signal colors entirely from the DataSourceSDK level.
   const colors = useMemo(() => {
-    const base: SignalPalette = { ...(theme === 'light' ? SIGNAL_COLORS_LIGHT : SIGNAL_COLORS_DARK) }
+    const base: SignalPalette = {
+      ...(theme === 'light' ? SIGNAL_COLORS_LIGHT : SIGNAL_COLORS_DARK),
+    }
     const sources = Array.isArray(unifiedDataSourcesData) ? unifiedDataSourcesData : []
     for (const source of sources) {
       const cfg = (source.config || {}) as Record<string, unknown>
@@ -2183,7 +2492,9 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
         map_radius_max: Number(cfg.map_radius_max ?? MAP_PRESENTATION_DEFAULTS.map_radius_max),
         map_opacity: Number(cfg.map_opacity ?? MAP_PRESENTATION_DEFAULTS.map_opacity),
         map_blur: Number(cfg.map_blur ?? MAP_PRESENTATION_DEFAULTS.map_blur),
-        map_stroke_width: Number(cfg.map_stroke_width ?? MAP_PRESENTATION_DEFAULTS.map_stroke_width),
+        map_stroke_width: Number(
+          cfg.map_stroke_width ?? MAP_PRESENTATION_DEFAULTS.map_stroke_width,
+        ),
         map_glow: cfg.map_glow !== false && cfg.map_glow !== 0,
         map_dedicated_toggle: Boolean(cfg.map_dedicated_toggle),
         slug: source.slug,
@@ -2263,13 +2574,11 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
         total = Number(page.total || mergedSignals.length)
 
         const nextOffset =
-          typeof page.next_offset === 'number'
-            ? page.next_offset
-            : (offset + chunk.length)
+          typeof page.next_offset === 'number' ? page.next_offset : offset + chunk.length
         const hasMore =
           typeof page.has_more === 'boolean'
             ? page.has_more
-            : (chunk.length >= pageLimit && nextOffset > offset)
+            : chunk.length >= pageLimit && nextOffset > offset
         if (!hasMore || nextOffset <= offset) {
           break
         }
@@ -2334,30 +2643,27 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
     staleTime: 24 * 60 * 60 * 1000,
   })
 
-  const [stableSignalsData] = useStickyValue(
-    signalsData,
-    { signals: [] as WorldSignal[], total: 0, last_collection: null as string | null }
-  )
-  const [stableConvergenceData] = useStickyValue(
-    convergenceData,
-    { zones: [] as ConvergenceZone[], total: 0 }
-  )
-  const [stableRegionsData] = useStickyValue(
-    regionsData,
-    {
-      version: 0,
-      updated_at: null as string | null,
-      hotspots: [] as WorldRegionHotspot[],
-      chokepoints: [] as WorldRegionChokepoint[],
-    }
-  )
-  const [stableTensionsData] = useStickyValue(
-    tensionsData,
-    { tensions: [] as TensionPair[], total: 0 }
-  )
-  const [stableInstabilityData] = useStickyValue(
-    instabilityData,
-    { scores: [] as Array<{
+  const [stableSignalsData] = useStickyValue(signalsData, {
+    signals: [] as WorldSignal[],
+    total: 0,
+    last_collection: null as string | null,
+  })
+  const [stableConvergenceData] = useStickyValue(convergenceData, {
+    zones: [] as ConvergenceZone[],
+    total: 0,
+  })
+  const [stableRegionsData] = useStickyValue(regionsData, {
+    version: 0,
+    updated_at: null as string | null,
+    hotspots: [] as WorldRegionHotspot[],
+    chokepoints: [] as WorldRegionChokepoint[],
+  })
+  const [stableTensionsData] = useStickyValue(tensionsData, {
+    tensions: [] as TensionPair[],
+    total: 0,
+  })
+  const [stableInstabilityData] = useStickyValue(instabilityData, {
+    scores: [] as Array<{
       country: string
       iso3: string
       country_name?: string | null
@@ -2368,21 +2674,31 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
       components: Record<string, number>
       contributing_signals: Array<Record<string, any>>
       last_updated: string | null
-    }>, total: 0 }
-  )
-  const [stableCountryGeoData] = useStickyValue(
-    countryGeoData,
-    EMPTY_COUNTRY_BOUNDARY_COLLECTION
-  )
+    }>,
+    total: 0,
+  })
+  const [stableCountryGeoData] = useStickyValue(countryGeoData, EMPTY_COUNTRY_BOUNDARY_COLLECTION)
 
-  const allSignals = stableSignalsData.signals || []
-  const convergences = stableConvergenceData.zones || []
-  const hotspots = stableRegionsData.hotspots || []
-  const chokepoints = stableRegionsData.chokepoints || []
-  const tensions = stableTensionsData.tensions || []
-  const instabilityScores = stableInstabilityData.scores || []
+  const allSignals = useMemo(() => stableSignalsData.signals || [], [stableSignalsData.signals])
+  const convergences = useMemo(
+    () => stableConvergenceData.zones || [],
+    [stableConvergenceData.zones],
+  )
+  const hotspots = useMemo(() => stableRegionsData.hotspots || [], [stableRegionsData.hotspots])
+  const chokepoints = useMemo(
+    () => stableRegionsData.chokepoints || [],
+    [stableRegionsData.chokepoints],
+  )
+  const tensions = useMemo(() => stableTensionsData.tensions || [], [stableTensionsData.tensions])
+  const instabilityScores = useMemo(
+    () => stableInstabilityData.scores || [],
+    [stableInstabilityData.scores],
+  )
   const [sourceVisibilityByKey, setSourceVisibilityByKey] = useState<Record<string, boolean>>({})
-  const countryCentroids = useMemo(() => buildCountryCentroids(stableCountryGeoData), [stableCountryGeoData])
+  const countryCentroids = useMemo(
+    () => buildCountryCentroids(stableCountryGeoData),
+    [stableCountryGeoData],
+  )
 
   const layerDockItems = useMemo<LayerDockItem[]>(() => {
     // Static structural items
@@ -2444,7 +2760,10 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
         if (slugToken.startsWith('events_')) aliases.add(slugToken.slice('events_'.length))
         if (sourceKeyToken && sourceKeyToken !== 'events') aliases.add(sourceKeyToken)
         if (healthToken) aliases.add(healthToken)
-        const canonicalKey = healthToken || (slugToken.startsWith('events_') ? slugToken.slice('events_'.length) : slugToken) || source.id
+        const canonicalKey =
+          healthToken ||
+          (slugToken.startsWith('events_') ? slugToken.slice('events_'.length) : slugToken) ||
+          source.id
         aliases.add(canonicalKey)
         let signalCount = 0
         for (const alias of aliases) {
@@ -2530,19 +2849,23 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
   }, [allSignals, sourceAliasToCanonical, sourceDockItems.length, sourceVisibilityByKey])
 
   const geocodedSignalsGeoJSON = useMemo(
-    () => signalsToGeoJSON(
-      signals, colors, countryCentroids,
-      mapPresentation.bySignalType,
-      mapPresentation.bySourceName,
-    ),
-    [signals, colors, countryCentroids, mapPresentation]
+    () =>
+      signalsToGeoJSON(
+        signals,
+        colors,
+        countryCentroids,
+        mapPresentation.bySignalType,
+        mapPresentation.bySourceName,
+      ),
+    [signals, colors, countryCentroids, mapPresentation],
   )
   const geocodedSignalPoints = useMemo(
-    () => geocodedSignalsGeoJSON.features.map((feature) => ({
-      lon: Number(feature.geometry.coordinates[0]),
-      lat: Number(feature.geometry.coordinates[1]),
-    })),
-    [geocodedSignalsGeoJSON]
+    () =>
+      geocodedSignalsGeoJSON.features.map((feature) => ({
+        lon: Number(feature.geometry.coordinates[0]),
+        lat: Number(feature.geometry.coordinates[1]),
+      })),
+    [geocodedSignalsGeoJSON],
   )
   const geocodedSignalCount = geocodedSignalsGeoJSON.features.length
 
@@ -2567,7 +2890,9 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
   const relatedEvents = useMemo<FlyoutRelatedEvent[]>(() => {
     if (!flyoutSelection) return []
 
-    const selectedIso = normalizeCountryCode(flyoutSelection.iso3 || flyoutSelection.countryName || '')
+    const selectedIso = normalizeCountryCode(
+      flyoutSelection.iso3 || flyoutSelection.countryName || '',
+    )
     const hasCenter = isFiniteCoordinatePair(flyoutSelection.lat, flyoutSelection.lon)
     const centerLat = hasCenter ? Number(flyoutSelection.lat) : 0
     const centerLon = hasCenter ? Number(flyoutSelection.lon) : 0
@@ -2575,10 +2900,7 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
 
     for (const signal of signals) {
       const signalIso = normalizeCountryCode(
-        signal.country_iso3
-        || signal.country_name
-        || signal.country
-        || ''
+        signal.country_iso3 || signal.country_name || signal.country || '',
       )
       const severity = Number(signal.severity || 0)
       let score = 0
@@ -2593,33 +2915,49 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
         }
       }
       if (hasCenter && isFiniteCoordinatePair(signal.latitude, signal.longitude)) {
-        const distanceKm = haversineDistanceKm(centerLat, centerLon, Number(signal.latitude), Number(signal.longitude))
+        const distanceKm = haversineDistanceKm(
+          centerLat,
+          centerLon,
+          Number(signal.latitude),
+          Number(signal.longitude),
+        )
         if (distanceKm <= 1800) {
           score = Math.max(score, 85 + severity * 100 - Math.min(60, distanceKm / 28))
         }
       }
       if (score <= 0) continue
 
-      const ageHours = signal.detected_at ? (Date.now() - new Date(signal.detected_at).getTime()) / 3_600_000 : null
-      const ageLabel = ageHours == null
-        ? ''
-        : ageHours < 1
-          ? '<1h'
-          : ageHours < 24
-            ? `${Math.round(ageHours)}h`
-            : `${Math.round(ageHours / 24)}d`
+      const ageHours = signal.detected_at
+        ? (Date.now() - new Date(signal.detected_at).getTime()) / 3_600_000
+        : null
+      const ageLabel =
+        ageHours == null
+          ? ''
+          : ageHours < 1
+            ? '<1h'
+            : ageHours < 24
+              ? `${Math.round(ageHours)}h`
+              : `${Math.round(ageHours / 24)}d`
       rows.push({
         id: `signal:${signal.signal_id}`,
         kind: 'signal',
-        title: signal.title || t('worldMap.signalTitleFallback', { type: formatSignalTypeLabel(signal.signal_type || 'signal', t) }),
+        title:
+          signal.title ||
+          t('worldMap.signalTitleFallback', {
+            type: formatSignalTypeLabel(signal.signal_type || 'signal', t),
+          }),
         subtitle: `${formatSignalTypeLabel(signal.signal_type || 'signal', t)} · ${signal.source || t('worldMap.unknownLower')}${ageLabel ? ` · ${ageLabel}` : ''}`,
         score,
       })
     }
 
     for (const pair of tensions) {
-      const isoA = normalizeCountryCode(pair.country_a_iso3 || pair.country_a_name || pair.country_a || '')
-      const isoB = normalizeCountryCode(pair.country_b_iso3 || pair.country_b_name || pair.country_b || '')
+      const isoA = normalizeCountryCode(
+        pair.country_a_iso3 || pair.country_a_name || pair.country_a || '',
+      )
+      const isoB = normalizeCountryCode(
+        pair.country_b_iso3 || pair.country_b_name || pair.country_b || '',
+      )
       if (!isoA || !isoB) continue
 
       let score = 0
@@ -2635,7 +2973,10 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
           const midLon = normalizeLongitude((a.longitude + b.longitude) / 2)
           const distanceKm = haversineDistanceKm(centerLat, centerLon, midLat, midLon)
           if (distanceKm <= 2400) {
-            score = Math.max(score, 70 + Number(pair.tension_score || 0) - Math.min(40, distanceKm / 60))
+            score = Math.max(
+              score,
+              70 + Number(pair.tension_score || 0) - Math.min(40, distanceKm / 60),
+            )
           }
         }
       }
@@ -2657,9 +2998,17 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
         score = Math.max(score, 95 + Number(convergence.urgency_score || 0))
       }
       if (hasCenter && isFiniteCoordinatePair(convergence.latitude, convergence.longitude)) {
-        const distanceKm = haversineDistanceKm(centerLat, centerLon, Number(convergence.latitude), Number(convergence.longitude))
+        const distanceKm = haversineDistanceKm(
+          centerLat,
+          centerLon,
+          Number(convergence.latitude),
+          Number(convergence.longitude),
+        )
         if (distanceKm <= 1500) {
-          score = Math.max(score, 75 + Number(convergence.urgency_score || 0) - Math.min(35, distanceKm / 40))
+          score = Math.max(
+            score,
+            75 + Number(convergence.urgency_score || 0) - Math.min(35, distanceKm / 40),
+          )
         }
       }
       if (score <= 0) continue
@@ -2667,8 +3016,13 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
       rows.push({
         id: `convergence:${convergence.grid_key}`,
         kind: 'convergence',
-        title: t('worldMap.convergenceTitle', { country: formatCountry(convergence.country || convergenceIso || 'Unknown') }),
-        subtitle: t('worldMap.convergenceSubtitle', { signals: Number(convergence.signal_count || 0), urgency: Math.round(Number(convergence.urgency_score || 0)) }),
+        title: t('worldMap.convergenceTitle', {
+          country: formatCountry(convergence.country || convergenceIso || 'Unknown'),
+        }),
+        subtitle: t('worldMap.convergenceSubtitle', {
+          signals: Number(convergence.signal_count || 0),
+          urgency: Math.round(Number(convergence.urgency_score || 0)),
+        }),
         score,
       })
     }
@@ -2697,8 +3051,12 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
   const tensionScoreByIso3 = useMemo(() => {
     const out: Record<string, number> = {}
     for (const pair of tensions) {
-      const isoA = normalizeCountryCode(pair.country_a_iso3 || pair.country_a_name || pair.country_a)
-      const isoB = normalizeCountryCode(pair.country_b_iso3 || pair.country_b_name || pair.country_b)
+      const isoA = normalizeCountryCode(
+        pair.country_a_iso3 || pair.country_a_name || pair.country_a,
+      )
+      const isoB = normalizeCountryCode(
+        pair.country_b_iso3 || pair.country_b_name || pair.country_b,
+      )
       const score = Number(pair.tension_score || 0)
       if (isoA) out[isoA] = Math.max(out[isoA] || 0, score)
       if (isoB) out[isoB] = Math.max(out[isoB] || 0, score)
@@ -2777,13 +3135,22 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
 
     for (const signal of signals) {
       const data = signal as unknown as Record<string, unknown>
-      const iso3 = normalizeCountryCode(String(
-        data.iso3 || data.country_iso3 || data.country_code || data.country_name || data.country || ''
-      ))
+      const iso3 = normalizeCountryCode(
+        String(
+          data.iso3 ||
+            data.country_iso3 ||
+            data.country_code ||
+            data.country_name ||
+            data.country ||
+            '',
+        ),
+      )
       if (!iso3) continue
 
       const entry = ensureCountry(iso3)
-      const signalType = String(data.signal_type || 'unknown').trim().toLowerCase()
+      const signalType = String(data.signal_type || 'unknown')
+        .trim()
+        .toLowerCase()
       const severity = Number(data.severity || 0)
       const source = String(data.source || '').trim()
       const title = String(data.title || '').trim()
@@ -2806,9 +3173,16 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
 
     for (const convergence of convergences) {
       const data = convergence as unknown as Record<string, unknown>
-      const iso3 = normalizeCountryCode(String(
-        data.iso3 || data.country_iso3 || data.country_code || data.country_name || data.country || ''
-      ))
+      const iso3 = normalizeCountryCode(
+        String(
+          data.iso3 ||
+            data.country_iso3 ||
+            data.country_code ||
+            data.country_name ||
+            data.country ||
+            '',
+        ),
+      )
       if (!iso3) continue
       const entry = ensureCountry(iso3)
       entry.convergenceCount += 1
@@ -2816,7 +3190,9 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
 
     for (const pair of tensions) {
       const data = pair as unknown as Record<string, unknown>
-      let pairCodes: [string, string] | null = parseCountryPair(String(data.country_pair || data.pair_name || data.pair || ''))
+      let pairCodes: [string, string] | null = parseCountryPair(
+        String(data.country_pair || data.pair_name || data.pair || ''),
+      )
       if (!pairCodes) {
         const left = normalizeCountryCode(String(data.country_a || data.country_a_iso3 || ''))
         const right = normalizeCountryCode(String(data.country_b || data.country_b_iso3 || ''))
@@ -2829,7 +3205,7 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
       const eventCount = Number(data.event_count || 0)
       const pairLabel = truncateText(
         `${pairCodes[0]}-${pairCodes[1]} ${score.toFixed(1)} ${trend}${eventCount > 0 ? ` (${eventCount})` : ''}`,
-        58
+        58,
       )
 
       for (const iso3 of pairCodes) {
@@ -2846,17 +3222,17 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
 
   const countriesStyledGeoJSON = useMemo(
     () => withCountryMetrics(stableCountryGeoData, countryMetricsByIso3),
-    [stableCountryGeoData, countryMetricsByIso3]
+    [stableCountryGeoData, countryMetricsByIso3],
   )
 
   const tensionArcsGeoJSON = useMemo(
     () => tensionsToGeoJSON(tensions, countryCentroids),
-    [tensions, countryCentroids]
+    [tensions, countryCentroids],
   )
 
   const conflictsGeoJSON = useMemo(
     () => conflictSignalsToGeoJSON(signals, countryCentroids),
-    [signals, countryCentroids]
+    [signals, countryCentroids],
   )
 
   const openSelection = useCallback((selection: FlyoutSelection) => {
@@ -2967,7 +3343,9 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
   useEffect(() => {
     const map = mapRef.current
     if (!mapReady || !map) return
-    for (const [toggleKey, layerIds] of Object.entries(STRUCTURAL_LAYER_GROUPS) as Array<[string, readonly string[]]>) {
+    for (const [toggleKey, layerIds] of Object.entries(STRUCTURAL_LAYER_GROUPS) as Array<
+      [string, readonly string[]]
+    >) {
       const visibility = layerToggles[toggleKey] ? 'visible' : 'none'
       for (const layerId of layerIds) {
         if (map.getLayer(layerId)) {
@@ -2994,7 +3372,12 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
       const signalType = String(props.signal_type || 'unknown')
       const severity = Math.round((Number(props.severity) || 0) * 100)
       const ageHours = Number(props.age_hours || 0)
-      const ageLabel = ageHours < 1 ? '<1h ago' : ageHours < 24 ? `${Math.round(ageHours)}h ago` : `${Math.round(ageHours / 24)}d ago`
+      const ageLabel =
+        ageHours < 1
+          ? '<1h ago'
+          : ageHours < 24
+            ? `${Math.round(ageHours)}h ago`
+            : `${Math.round(ageHours / 24)}d ago`
 
       let meta: Record<string, unknown> = {}
       try {
@@ -3005,25 +3388,44 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
 
       let metaDetails = ''
       if (signalType === 'conflict') {
-        const fatalities = meta.fatalities != null ? `${t('worldMap.popupLabels.fatalities')}: ${meta.fatalities}` : ''
+        const fatalities =
+          meta.fatalities != null
+            ? `${t('worldMap.popupLabels.fatalities')}: ${meta.fatalities}`
+            : ''
         const eventType = meta.event_type ? String(meta.event_type) : ''
         const subType = meta.sub_event_type ? String(meta.sub_event_type) : ''
         metaDetails = [eventType, subType, fatalities].filter(Boolean).join(' · ')
       } else if (signalType === 'tension') {
         const trend = meta.trend ? `${t('worldMap.popupLabels.trend')}: ${meta.trend}` : ''
-        const count = meta.event_count != null ? t('worldMap.eventsCount', { count: meta.event_count as number }) : ''
+        const count =
+          meta.event_count != null
+            ? t('worldMap.eventsCount', { count: meta.event_count as number })
+            : ''
         metaDetails = [trend, count].filter(Boolean).join(' · ')
       } else if (signalType === 'earthquake') {
         const mag = meta.magnitude != null ? `M${Number(meta.magnitude).toFixed(1)}` : ''
-        const depth = meta.depth_km != null ? t('worldMap.depthKm', { value: Number(meta.depth_km).toFixed(0) }) : ''
+        const depth =
+          meta.depth_km != null
+            ? t('worldMap.depthKm', { value: Number(meta.depth_km).toFixed(0) })
+            : ''
         const tsunami = meta.tsunami ? `⚠ ${t('worldMap.tsunamiWarning')}` : ''
         const alert = meta.alert ? `${t('worldMap.popupLabels.alert')}: ${meta.alert}` : ''
         metaDetails = [mag, depth, tsunami, alert].filter(Boolean).join(' · ')
       } else if (signalType === 'fire') {
         const frp = meta.frp != null ? `FRP: ${Number(meta.frp).toFixed(1)} MW` : ''
-        const bright = meta.bright_ti4 != null ? `${t('worldMap.popupLabels.brightness')}: ${Number(meta.bright_ti4).toFixed(1)}K` : ''
-        const confidence = meta.confidence ? `${t('worldMap.popupLabels.confidence')}: ${meta.confidence}` : ''
-        const daynight = meta.daynight === 'D' ? t('worldMap.daytime') : meta.daynight === 'N' ? t('worldMap.nighttime') : ''
+        const bright =
+          meta.bright_ti4 != null
+            ? `${t('worldMap.popupLabels.brightness')}: ${Number(meta.bright_ti4).toFixed(1)}K`
+            : ''
+        const confidence = meta.confidence
+          ? `${t('worldMap.popupLabels.confidence')}: ${meta.confidence}`
+          : ''
+        const daynight =
+          meta.daynight === 'D'
+            ? t('worldMap.daytime')
+            : meta.daynight === 'N'
+              ? t('worldMap.nighttime')
+              : ''
         metaDetails = [frp, bright, confidence, daynight].filter(Boolean).join(' · ')
       } else if (signalType === 'military') {
         const aircraft = meta.aircraft_type ? String(meta.aircraft_type) : ''
@@ -3032,10 +3434,17 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
         metaDetails = [aircraft, actType, region].filter(Boolean).join(' · ')
       } else if (signalType === 'convergence') {
         const types = Array.isArray(meta.signal_types) ? meta.signal_types.join(', ') : ''
-        const count = meta.signal_count != null ? t('worldMap.signalsCount', { count: meta.signal_count as number }) : ''
+        const count =
+          meta.signal_count != null
+            ? t('worldMap.signalsCount', { count: meta.signal_count as number })
+            : ''
         metaDetails = [types, count].filter(Boolean).join(' · ')
       } else if (signalType === 'news') {
-        const url = meta.url ? String(meta.url).replace(/^https?:\/\//, '').split('/')[0] : ''
+        const url = meta.url
+          ? String(meta.url)
+              .replace(/^https?:\/\//, '')
+              .split('/')[0]
+          : ''
         const category = meta.category ? String(meta.category) : ''
         metaDetails = [category, url].filter(Boolean).join(' · ')
       }
@@ -3051,21 +3460,31 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
       const marketRelevance = Number(props.market_relevance_score || 0)
       if (relatedMarketCount > 0) {
         const relatedMarkets = relatedMarketsRaw
-          ? relatedMarketsRaw.split(',').map((value) => value.trim()).filter(Boolean)
+          ? relatedMarketsRaw
+              .split(',')
+              .map((value) => value.trim())
+              .filter(Boolean)
           : []
         const relatedMarketsLabel = t('worldMap.relatedMarketsCount', { count: relatedMarketCount })
-        const relevanceLabel = marketRelevance > 0 ? t('worldMap.relevancePercent', { value: Math.round(marketRelevance * 100) }) : ''
-        const previewLabel = relatedMarkets.length > 0 ? t('worldMap.topMarkets', { list: relatedMarkets.slice(0, 3).join(', ') }) : ''
-        bodyParts.push([relatedMarketsLabel, relevanceLabel, previewLabel].filter(Boolean).join(' · '))
+        const relevanceLabel =
+          marketRelevance > 0
+            ? t('worldMap.relevancePercent', { value: Math.round(marketRelevance * 100) })
+            : ''
+        const previewLabel =
+          relatedMarkets.length > 0
+            ? t('worldMap.topMarkets', { list: relatedMarkets.slice(0, 3).join(', ') })
+            : ''
+        bodyParts.push(
+          [relatedMarketsLabel, relevanceLabel, previewLabel].filter(Boolean).join(' · '),
+        )
       }
 
-      const signalIso3 = normalizeCountryCode(String(
-        props.country_iso3
-        || props.country_code
-        || props.country_name
-        || props.country
-        || ''
-      )) || undefined
+      const signalIso3 =
+        normalizeCountryCode(
+          String(
+            props.country_iso3 || props.country_code || props.country_name || props.country || '',
+          ),
+        ) || undefined
       const signalLat = Number(props.latitude)
       const signalLon = Number(props.longitude)
       const hasSignalCoordinates = Number.isFinite(signalLat) && Number.isFinite(signalLon)
@@ -3083,7 +3502,7 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
         signalType,
       })
     },
-    [openSelection, t]
+    [openSelection, t],
   )
 
   const handleHotspotClick = useCallback(
@@ -3096,26 +3515,27 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
       const lonMin = Number(props.lon_min)
       const lonMax = Number(props.lon_max)
       const hasBounds =
-        Number.isFinite(latMin)
-        && Number.isFinite(latMax)
-        && Number.isFinite(lonMin)
-        && Number.isFinite(lonMax)
+        Number.isFinite(latMin) &&
+        Number.isFinite(latMax) &&
+        Number.isFinite(lonMin) &&
+        Number.isFinite(lonMax)
 
       const signalsInZone = hasBounds
         ? geocodedSignalPoints.filter((point) => {
-          const lat = Number(point.lat)
-          const lon = Number(point.lon)
-          return lat >= latMin && lat <= latMax && lon >= lonMin && lon <= lonMax
-        }).length
+            const lat = Number(point.lat)
+            const lon = Number(point.lon)
+            return lat >= latMin && lat <= latMax && lon >= lonMin && lon <= lonMax
+          }).length
         : 0
 
       const convergencesInZone = hasBounds
-        ? convergences.filter((zone) => (
-          zone.latitude >= latMin
-          && zone.latitude <= latMax
-          && zone.longitude >= lonMin
-          && zone.longitude <= lonMax
-        )).length
+        ? convergences.filter(
+            (zone) =>
+              zone.latitude >= latMin &&
+              zone.latitude <= latMax &&
+              zone.longitude >= lonMin &&
+              zone.longitude <= lonMax,
+          ).length
         : 0
       const eventCount = Number(props.event_count || 0)
       const lastDetectedAt = String(props.last_detected_at || '')
@@ -3136,7 +3556,7 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
         lon: Number.isFinite(Number(zoneLon)) ? Number(zoneLon) : undefined,
       })
     },
-    [convergences, geocodedSignalPoints, openSelection, t]
+    [convergences, geocodedSignalPoints, openSelection, t],
   )
 
   const handleChokepointClick = useCallback(
@@ -3150,11 +3570,14 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
       const dailyCapacity = Number(props.daily_capacity_estimate || 0)
       const source = String(props.source || '')
       const chokepointSource = String(props.chokepoint_source || '')
-      const dailyMetricsDate = String(props.daily_metrics_date || props.daily_dataset_updated_at || '')
+      const dailyMetricsDate = String(
+        props.daily_metrics_date || props.daily_dataset_updated_at || '',
+      )
       const lastUpdated = String(props.last_updated || '')
       const chokepointLat = Number(props.latitude)
       const chokepointLon = Number(props.longitude)
-      const hasChokepointCoordinates = Number.isFinite(chokepointLat) && Number.isFinite(chokepointLon)
+      const hasChokepointCoordinates =
+        Number.isFinite(chokepointLat) && Number.isFinite(chokepointLon)
       openSelection({
         category: t('worldMap.categories.chokepoint'),
         title: String(props.name || t('worldMap.categories.chokepoint')),
@@ -3165,7 +3588,7 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
         source: source || undefined,
       })
     },
-    [openSelection, t]
+    [openSelection, t],
   )
 
   const handleCountryHover = useCallback(
@@ -3195,7 +3618,7 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
         tension: metrics?.tension_score || 0,
       })
     },
-    [countryMetricsByIso3]
+    [countryMetricsByIso3],
   )
 
   const handleCountryHoverLeave = useCallback(() => {
@@ -3237,23 +3660,27 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
       }> = []
       for (const signal of signals) {
         const directIso = normalizeCountryCode(
-          signal.country_iso3 || signal.country_name || signal.country || ''
+          signal.country_iso3 || signal.country_name || signal.country || '',
         )
         const pair = pairFromSignal(signal)
-        const inScope =
-          directIso === iso3
-          || (pair ? pair[0] === iso3 || pair[1] === iso3 : false)
+        const inScope = directIso === iso3 || (pair ? pair[0] === iso3 || pair[1] === iso3 : false)
         if (!inScope) continue
 
         const metadata = (signal.metadata || {}) as Record<string, unknown>
-        const signalType = String(signal.signal_type || 'unknown').trim().toLowerCase() || 'unknown'
+        const signalType =
+          String(signal.signal_type || 'unknown')
+            .trim()
+            .toLowerCase() || 'unknown'
         const source = String(signal.source || 'unknown').trim() || 'unknown'
         const sourceToken = normalizeSourceToken(source)
         const severity = Number(signal.severity || 0)
-        const relatedMarketCount = Array.isArray(signal.related_market_ids) ? signal.related_market_ids.length : 0
+        const relatedMarketCount = Array.isArray(signal.related_market_ids)
+          ? signal.related_market_ids.length
+          : 0
         const storyUrl = resolveStoryUrl(metadata)
         const domain = hostFromUrl(storyUrl)
-        const isStory = signalType === 'news' || sourceToken.includes('news') || sourceToken.includes('story')
+        const isStory =
+          signalType === 'news' || sourceToken.includes('news') || sourceToken.includes('story')
         signalRowsForCountry.push({
           id: String(signal.signal_id || `${signalType}:${source}:${signal.detected_at || ''}`),
           title: String(signal.title || formatSignalTypeLabel(signalType, t)),
@@ -3287,7 +3714,9 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
             formatSignalTypeLabel(row.signalType, t),
             row.source,
             formatAgeLabel(row.detectedAt, t),
-            row.relatedMarketCount > 0 ? t('worldMap.marketsCount', { count: row.relatedMarketCount }) : '',
+            row.relatedMarketCount > 0
+              ? t('worldMap.marketsCount', { count: row.relatedMarketCount })
+              : '',
           ].filter(Boolean)
           return {
             id: row.id,
@@ -3328,16 +3757,19 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
 
       const trackedSignals = signalRowsForCountry.length
       const uniqueSources = Object.keys(sourceCounts).length
-      const topSignalMix = summarizeTopCounts(typeCounts, 3, (value) => formatSignalTypeLabel(value, t))
+      const topSignalMix = summarizeTopCounts(typeCounts, 3, (value) =>
+        formatSignalTypeLabel(value, t),
+      )
       const topSources = summarizeTopCounts(sourceCounts, 3)
       const arcContext = popupSummary?.arcPreviews.length
         ? popupSummary.arcPreviews.join(' | ')
         : ''
-      const latestSignalTimestamp = sortedSignals.length > 0
-        ? sortedSignals
-          .map((row) => timestampValue(row.detectedAt))
-          .reduce((highest, value) => Math.max(highest, value), Number.NEGATIVE_INFINITY)
-        : Number.NEGATIVE_INFINITY
+      const latestSignalTimestamp =
+        sortedSignals.length > 0
+          ? sortedSignals
+              .map((row) => timestampValue(row.detectedAt))
+              .reduce((highest, value) => Math.max(highest, value), Number.NEGATIVE_INFINITY)
+          : Number.NEGATIVE_INFINITY
       const latestSignalLabel = Number.isFinite(latestSignalTimestamp)
         ? t('worldMap.latestSignal', { time: new Date(latestSignalTimestamp).toLocaleString() })
         : undefined
@@ -3349,27 +3781,59 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
         t,
       )
       const coordinatesLabel = countryCenter
-        ? t('worldMap.centerCoords', { lat: countryCenter.latitude.toFixed(2), lon: countryCenter.longitude.toFixed(2) })
+        ? t('worldMap.centerCoords', {
+            lat: countryCenter.latitude.toFixed(2),
+            lon: countryCenter.longitude.toFixed(2),
+          })
         : undefined
       const metricChips: CountryMetricChip[] = [
         { label: t('worldMap.chipLabels.signals'), value: `${trackedSignals}` },
-        { label: t('worldMap.chipLabels.stories'), value: `${storyRows.length}`, tone: storyRows.length > 0 ? 'info' : 'default' },
-        { label: t('worldMap.chipLabels.critical'), value: `${criticalSignals}`, tone: criticalSignals > 0 ? 'critical' : 'default' },
-        { label: t('worldMap.chipLabels.instability'), value: metrics.instability_score.toFixed(1), tone: metrics.instability_score >= 45 ? 'warn' : 'default' },
-        { label: t('worldMap.chipLabels.tension'), value: metrics.tension_score.toFixed(1), tone: metrics.tension_score >= 45 ? 'warn' : 'default' },
+        {
+          label: t('worldMap.chipLabels.stories'),
+          value: `${storyRows.length}`,
+          tone: storyRows.length > 0 ? 'info' : 'default',
+        },
+        {
+          label: t('worldMap.chipLabels.critical'),
+          value: `${criticalSignals}`,
+          tone: criticalSignals > 0 ? 'critical' : 'default',
+        },
+        {
+          label: t('worldMap.chipLabels.instability'),
+          value: metrics.instability_score.toFixed(1),
+          tone: metrics.instability_score >= 45 ? 'warn' : 'default',
+        },
+        {
+          label: t('worldMap.chipLabels.tension'),
+          value: metrics.tension_score.toFixed(1),
+          tone: metrics.tension_score >= 45 ? 'warn' : 'default',
+        },
         { label: t('worldMap.chipLabels.sources'), value: `${uniqueSources}` },
       ]
       if (popupSummary?.tensionArcCount && popupSummary.tensionArcCount > 0) {
-        metricChips.push({ label: t('worldMap.chipLabels.arcs'), value: `${popupSummary.tensionArcCount}`, tone: 'warn' })
+        metricChips.push({
+          label: t('worldMap.chipLabels.arcs'),
+          value: `${popupSummary.tensionArcCount}`,
+          tone: 'warn',
+        })
       }
       if (popupSummary?.convergenceCount && popupSummary.convergenceCount > 0) {
-        metricChips.push({ label: t('worldMap.chipLabels.convergences'), value: `${popupSummary.convergenceCount}`, tone: 'info' })
+        metricChips.push({
+          label: t('worldMap.chipLabels.convergences'),
+          value: `${popupSummary.convergenceCount}`,
+          tone: 'info',
+        })
       }
 
       openSelection({
         category: t('worldMap.categories.country'),
         title: metrics.country_name || formatCountry(iso3),
-        subtitle: t('worldMap.countrySubtitle', { iso3, tracked: trackedSignals, signals: signalRows.length, stories: storyRows.length }),
+        subtitle: t('worldMap.countrySubtitle', {
+          iso3,
+          tracked: trackedSignals,
+          signals: signalRows.length,
+          stories: storyRows.length,
+        }),
         body: [
           `${t('worldMap.popupLabels.instability')}: ${metrics.instability_score.toFixed(1)}`,
           `${t('worldMap.popupLabels.tension')}: ${metrics.tension_score.toFixed(1)}`,
@@ -3377,7 +3841,9 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
           topSignalMix ? `${t('worldMap.popupLabels.signalMix')}: ${topSignalMix}` : '',
           topSources ? `${t('worldMap.popupLabels.topSources')}: ${topSources}` : '',
           arcContext ? `${t('worldMap.popupLabels.bilateralContext')}: ${arcContext}` : '',
-        ].filter(Boolean).join(' · '),
+        ]
+          .filter(Boolean)
+          .join(' · '),
         iso3,
         countryName: metrics.country_name || formatCountry(iso3),
         lat: countryCenter?.latitude,
@@ -3396,7 +3862,7 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
         },
       })
     },
-    [countryCentroids, countryMetricsByIso3, countryPopupSummaryByIso3, openSelection, signals, t]
+    [countryCentroids, countryMetricsByIso3, countryPopupSummaryByIso3, openSelection, signals, t],
   )
 
   const handleTensionArcClick = useCallback(
@@ -3409,7 +3875,9 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
       const eventCount = Number(props.event_count || 0)
       const eventTypes = String(props.top_event_types || '')
       const lastUpdated = String(props.last_updated || '')
-      const pairCodes = parseCountryPair(String(props.country_pair || props.pair_name || props.pair || ''))
+      const pairCodes = parseCountryPair(
+        String(props.country_pair || props.pair_name || props.pair || ''),
+      )
       openSelection({
         category: t('worldMap.categories.tensionArc'),
         title: String(props.pair_name || t('worldMap.categories.tensionArc')),
@@ -3420,7 +3888,7 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
         lon: event.lngLat?.lng,
       })
     },
-    [openSelection, t]
+    [openSelection, t],
   )
 
   const handleConflictClick = useCallback(
@@ -3428,13 +3896,12 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
       if (!event.features?.length) return
       const feature = event.features[0]
       const props = (feature.properties || {}) as Record<string, unknown>
-      const conflictIso3 = normalizeCountryCode(String(
-        props.country_iso3
-        || props.country_code
-        || props.country_name
-        || props.country
-        || ''
-      )) || undefined
+      const conflictIso3 =
+        normalizeCountryCode(
+          String(
+            props.country_iso3 || props.country_code || props.country_name || props.country || '',
+          ),
+        ) || undefined
       openSelection({
         category: t('worldMap.categories.conflict'),
         title: String(props.title || t('worldMap.conflictSignal')),
@@ -3448,22 +3915,25 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
         signalType: 'conflict',
       })
     },
-    [openSelection, t]
+    [openSelection, t],
   )
 
-  const handleMapBackgroundClick = useCallback((event: LayerClickEvent & { point?: { x: number; y: number } }) => {
-    const map = mapRef.current
-    if (!map || !event.point) return
-    const layers = CLICKABLE_LAYERS.filter((layerId) => Boolean(map.getLayer(layerId)))
-    if (!layers.length) {
-      closeSelection()
-      return
-    }
-    const features = map.queryRenderedFeatures(event.point, { layers: [...layers] as string[] })
-    if (!features?.length) {
-      closeSelection()
-    }
-  }, [closeSelection])
+  const handleMapBackgroundClick = useCallback(
+    (event: LayerClickEvent & { point?: { x: number; y: number } }) => {
+      const map = mapRef.current
+      if (!map || !event.point) return
+      const layers = CLICKABLE_LAYERS.filter((layerId) => Boolean(map.getLayer(layerId)))
+      if (!layers.length) {
+        closeSelection()
+        return
+      }
+      const features = map.queryRenderedFeatures(event.point, { layers: [...layers] as string[] })
+      if (!features?.length) {
+        closeSelection()
+      }
+    },
+    [closeSelection],
+  )
 
   useEffect(() => {
     const map = mapRef.current
@@ -3535,12 +4005,12 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
   ])
 
   const loading =
-    signalsLoading
-    || convergenceLoading
-    || regionsLoading
-    || tensionsLoading
-    || instabilityLoading
-    || countriesLoading
+    signalsLoading ||
+    convergenceLoading ||
+    regionsLoading ||
+    tensionsLoading ||
+    instabilityLoading ||
+    countriesLoading
   const coreError = Boolean(mapInitError)
 
   return (
@@ -3603,12 +4073,14 @@ export default function WorldMap({ isConnected = true }: { isConnected?: boolean
           <div className="font-semibold text-foreground text-[11px]">{hoverTooltip.name}</div>
           {hoverTooltip.instability > 0 ? (
             <div className="text-muted-foreground font-mono">
-              {t('worldMap.popupLabels.instability')}: <span className="text-orange-400">{hoverTooltip.instability.toFixed(1)}</span>
+              {t('worldMap.popupLabels.instability')}:{' '}
+              <span className="text-orange-400">{hoverTooltip.instability.toFixed(1)}</span>
             </div>
           ) : null}
           {hoverTooltip.tension > 0 ? (
             <div className="text-muted-foreground font-mono">
-              {t('worldMap.popupLabels.tension')}: <span className="text-red-400">{hoverTooltip.tension.toFixed(1)}</span>
+              {t('worldMap.popupLabels.tension')}:{' '}
+              <span className="text-red-400">{hoverTooltip.tension.toFixed(1)}</span>
             </div>
           ) : null}
         </div>

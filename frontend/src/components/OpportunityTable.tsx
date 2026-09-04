@@ -1,13 +1,7 @@
 import { memo, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import {
-  ExternalLink,
-  Brain,
-  RefreshCw,
-  MessageCircle,
-  Shield,
-} from 'lucide-react'
+import { ExternalLink, Brain, RefreshCw, MessageCircle, Shield } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { Opportunity, judgeOpportunity } from '../services/api'
 import {
@@ -59,14 +53,9 @@ function compactOutcomeLabel(value: string, maxChars = 10): string {
 function formatOutcomePriceSummary(market: Opportunity['markets'][number]): string {
   const marketRow = market as unknown as Record<string, unknown>
   const labels = extractOutcomeLabels(
-    marketRow.outcome_labels
-    ?? marketRow.outcomes
-    ?? marketRow.tokens
+    marketRow.outcome_labels ?? marketRow.outcomes ?? marketRow.tokens,
   )
-  const prices = extractOutcomePrices(
-    marketRow.outcome_prices
-    ?? marketRow.prices
-  )
+  const prices = extractOutcomePrices(marketRow.outcome_prices ?? marketRow.prices)
   if (prices.length < 1) {
     return `Yes:${market.yes_price.toFixed(3)} No:${market.no_price.toFixed(3)}`
   }
@@ -99,11 +88,7 @@ export default function OpportunityTable({ opportunities, onOpenCopilot }: Props
       {/* Table Body */}
       <div className="divide-y divide-border/30">
         {opportunities.map((opp) => (
-          <TableRow
-            key={opp.stable_id || opp.id}
-            opportunity={opp}
-            onOpenCopilot={onOpenCopilot}
-          />
+          <TableRow key={opp.stable_id || opp.id} opportunity={opp} onOpenCopilot={onOpenCopilot} />
         ))}
       </div>
     </div>
@@ -122,15 +107,17 @@ const TableRow = memo(function TableRow({
   const [aiExpanded, setAiExpanded] = useState(false)
   const themeMode = useAtomValue(themeAtom)
   const queryClient = useQueryClient()
-  const translateRecommendation = (rec: string): string => rec
-    ? t(`opportunityCard.recommendation.${rec}`, { defaultValue: rec.replace('_', ' ').toUpperCase() })
-    : ''
+  const translateRecommendation = (rec: string): string =>
+    rec
+      ? t(`opportunityCard.recommendation.${rec}`, {
+          defaultValue: rec.replace('_', ' ').toUpperCase(),
+        })
+      : ''
 
   const inlineAnalysis = opportunity.ai_analysis
-  const forceWeatherLlm = (
-    (opportunity.strategy === 'weather_edge' || Boolean(opportunity.markets?.[0]?.weather))
-    && opportunity.max_position_size > 0
-  )
+  const forceWeatherLlm =
+    (opportunity.strategy === 'weather_edge' || Boolean(opportunity.markets?.[0]?.weather)) &&
+    opportunity.max_position_size > 0
   const judgeMutation = useMutation({
     mutationFn: async () => {
       const { data } = await judgeOpportunity({
@@ -149,11 +136,12 @@ const TableRow = memo(function TableRow({
   const recommendation = judgment?.recommendation || ''
   const resolutions = inlineAnalysis?.resolution_analyses || []
 
-  const riskColor = opportunity.risk_score < 0.3
-    ? 'text-green-400'
-    : opportunity.risk_score < 0.6
-      ? 'text-yellow-400'
-      : 'text-red-400'
+  const riskColor =
+    opportunity.risk_score < 0.3
+      ? 'text-green-400'
+      : opportunity.risk_score < 0.6
+        ? 'text-yellow-400'
+        : 'text-red-400'
 
   const market = opportunity.markets[0]
   const marketOutcomes = useMemo(() => {
@@ -161,54 +149,50 @@ const TableRow = memo(function TableRow({
     const marketRow = market as unknown as Record<string, unknown>
     return {
       labels: extractOutcomeLabels(
-        marketRow.outcome_labels
-        ?? marketRow.outcomes
-        ?? marketRow.tokens
+        marketRow.outcome_labels ?? marketRow.outcomes ?? marketRow.tokens,
       ),
-      prices: extractOutcomePrices(
-        marketRow.outcome_prices
-        ?? marketRow.prices
-      ),
+      prices: extractOutcomePrices(marketRow.outcome_prices ?? marketRow.prices),
     }
   }, [market])
   const sparkSeries = useMemo(
-    () => buildOutcomeSparklineSeries(
-      market?.price_history,
-      buildOutcomeFallbacks({
-        labels: marketOutcomes.labels,
-        prices: marketOutcomes.prices,
-        yesPrice: market?.yes_price,
-        noPrice: market?.no_price,
-        yesLabel: marketOutcomes.labels[0] || t('opportunityCard.yes'),
-        noLabel: marketOutcomes.labels[1] || t('opportunityCard.no'),
-        preferIndexedKeys: marketOutcomes.labels.length > 2 || marketOutcomes.prices.length > 2,
-      }),
-    ),
+    () =>
+      buildOutcomeSparklineSeries(
+        market?.price_history,
+        buildOutcomeFallbacks({
+          labels: marketOutcomes.labels,
+          prices: marketOutcomes.prices,
+          yesPrice: market?.yes_price,
+          noPrice: market?.no_price,
+          yesLabel: marketOutcomes.labels[0] || t('opportunityCard.yes'),
+          noLabel: marketOutcomes.labels[1] || t('opportunityCard.no'),
+          preferIndexedKeys: marketOutcomes.labels.length > 2 || marketOutcomes.prices.length > 2,
+        }),
+      ),
     [market, marketOutcomes, t],
   )
-  const nowSec = useMemo(() => Math.floor(Date.now() / 1000), [sparkSeries])
-  const livelineSeries = useMemo<LivelineSeries[]>(
-    () => sparkSeries.map((row, index) => ({
+  const livelineSeries = useMemo<LivelineSeries[]>(() => {
+    const nowSec = Math.floor(Date.now() / 1000)
+    return sparkSeries.map((row, index) => ({
       id: row.key,
       data: toTimeValueSeries(row.data, nowSec),
       value: row.latest ?? row.data[row.data.length - 1] ?? 0,
       color: SPARKLINE_COLORS[index % SPARKLINE_COLORS.length],
       label: row.label,
-    })),
-    [sparkSeries, nowSec],
-  )
+    }))
+  }, [sparkSeries])
   const primaryLivelineData = livelineSeries[0]?.data ?? []
   const primaryLivelineValue = livelineSeries[0]?.value ?? 0
-  const livelineWindow = primaryLivelineData.length >= 2
-    ? primaryLivelineData[primaryLivelineData.length - 1].time - primaryLivelineData[0].time
-    : 60
+  const livelineWindow =
+    primaryLivelineData.length >= 2
+      ? primaryLivelineData[primaryLivelineData.length - 1].time - primaryLivelineData[0].time
+      : 60
 
   const roiPositive = opportunity.roi_percent >= 0
-  const accentColor = recommendation ? (ACCENT_BAR_COLORS[recommendation] || '') : ''
+  const accentColor = recommendation ? ACCENT_BAR_COLORS[recommendation] || '' : ''
 
   const { polymarketUrl: polyUrl, kalshiUrl } = useMemo(
     () => getOpportunityPlatformLinks(opportunity as any),
-    [opportunity]
+    [opportunity],
   )
 
   return (
@@ -216,25 +200,34 @@ const TableRow = memo(function TableRow({
       {/* Main Row */}
       <div
         className={cn(
-          "grid grid-cols-[36px_minmax(0,1fr)_72px_76px_64px_64px_64px_64px_72px_52px] gap-0 items-center cursor-pointer transition-colors relative",
-          "hover:bg-muted/30",
-          expanded && "bg-muted/20"
+          'grid grid-cols-[36px_minmax(0,1fr)_72px_76px_64px_64px_64px_64px_72px_52px] gap-0 items-center cursor-pointer transition-colors relative',
+          'hover:bg-muted/30',
+          expanded && 'bg-muted/20',
         )}
         onClick={() => setExpanded(!expanded)}
       >
         {/* Accent bar */}
-        {accentColor && <div className={cn("absolute left-0 top-0 bottom-0 w-0.5", accentColor)} />}
+        {accentColor && <div className={cn('absolute left-0 top-0 bottom-0 w-0.5', accentColor)} />}
 
         {/* Strategy */}
         <div className="px-2 py-1.5">
-          <Badge variant="outline" className={cn("text-[8px] px-1 py-0 leading-tight", STRATEGY_COLORS[opportunity.strategy])}>
-            {STRATEGY_ABBREV[opportunity.strategy] || opportunity.strategy.slice(0, 3).toUpperCase()}
+          <Badge
+            variant="outline"
+            className={cn(
+              'text-[8px] px-1 py-0 leading-tight',
+              STRATEGY_COLORS[opportunity.strategy],
+            )}
+          >
+            {STRATEGY_ABBREV[opportunity.strategy] ||
+              opportunity.strategy.slice(0, 3).toUpperCase()}
           </Badge>
         </div>
 
         {/* Title */}
         <div className="px-2 py-1.5 min-w-0">
-          <p className="text-xs font-medium text-foreground truncate leading-tight">{opportunity.title}</p>
+          <p className="text-xs font-medium text-foreground truncate leading-tight">
+            {opportunity.title}
+          </p>
           {opportunity.category && (
             <span className="text-[9px] text-muted-foreground/60">{opportunity.category}</span>
           )}
@@ -266,34 +259,43 @@ const TableRow = memo(function TableRow({
 
         {/* ROI */}
         <div className="px-2 py-1.5 text-right">
-          <span className={cn(
-            "text-xs font-data font-bold",
-            roiPositive ? "text-green-400" : "text-red-400"
-          )}>
-            {roiPositive ? '+' : ''}{opportunity.roi_percent.toFixed(2)}%
+          <span
+            className={cn(
+              'text-xs font-data font-bold',
+              roiPositive ? 'text-green-400' : 'text-red-400',
+            )}
+          >
+            {roiPositive ? '+' : ''}
+            {opportunity.roi_percent.toFixed(2)}%
           </span>
         </div>
 
         {/* Net Profit */}
         <div className="px-2 py-1.5 text-right">
-          <span className="text-xs font-data text-green-400">{formatCompact(opportunity.net_profit)}</span>
+          <span className="text-xs font-data text-green-400">
+            {formatCompact(opportunity.net_profit)}
+          </span>
         </div>
 
         {/* Cost */}
         <div className="px-2 py-1.5 text-right">
-          <span className="text-xs font-data text-foreground/80">{formatCompact(opportunity.total_cost)}</span>
+          <span className="text-xs font-data text-foreground/80">
+            {formatCompact(opportunity.total_cost)}
+          </span>
         </div>
 
         {/* Risk */}
         <div className="px-2 py-1.5 text-right">
-          <span className={cn("text-xs font-data font-medium", riskColor)}>
+          <span className={cn('text-xs font-data font-medium', riskColor)}>
             {(opportunity.risk_score * 100).toFixed(0)}%
           </span>
         </div>
 
         {/* Liquidity */}
         <div className="px-2 py-1.5 text-right">
-          <span className="text-xs font-data text-foreground/80">{formatCompact(opportunity.min_liquidity)}</span>
+          <span className="text-xs font-data text-foreground/80">
+            {formatCompact(opportunity.min_liquidity)}
+          </span>
         </div>
 
         {/* AI Score */}
@@ -319,7 +321,9 @@ const TableRow = memo(function TableRow({
 
         {/* Time */}
         <div className="px-2 py-1.5 text-right">
-          <span className="text-[10px] font-data text-muted-foreground">{timeAgo(opportunity.detected_at, t)}</span>
+          <span className="text-[10px] font-data text-muted-foreground">
+            {timeAgo(opportunity.detected_at, t)}
+          </span>
         </div>
       </div>
 
@@ -330,21 +334,30 @@ const TableRow = memo(function TableRow({
             {/* Left: Details */}
             <div className="flex-1 space-y-2 min-w-0">
               {opportunity.description && (
-                <p className="text-[11px] text-muted-foreground leading-relaxed">{opportunity.description}</p>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  {opportunity.description}
+                </p>
               )}
 
               {/* Positions */}
               <div className="flex items-center gap-2 flex-wrap">
                 {opportunity.positions_to_take.map((pos, i) => (
                   <span key={i} className="inline-flex items-center gap-1 text-[10px]">
-                    <Badge variant="outline" className={cn(
-                      "text-[9px] px-1 py-0",
-                      pos.outcome === 'YES' ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-red-500/20 text-red-400 border-red-500/30'
-                    )}>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        'text-[9px] px-1 py-0',
+                        pos.outcome === 'YES'
+                          ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                          : 'bg-red-500/20 text-red-400 border-red-500/30',
+                      )}
+                    >
                       {pos.action} {pos.outcome}
                     </Badge>
                     <span className="font-data text-foreground/70">@${pos.price.toFixed(4)}</span>
-                    <span className="text-muted-foreground/40 truncate max-w-[200px]">{pos.market}</span>
+                    <span className="text-muted-foreground/40 truncate max-w-[200px]">
+                      {pos.market}
+                    </span>
                   </span>
                 ))}
               </div>
@@ -362,7 +375,10 @@ const TableRow = memo(function TableRow({
               {opportunity.risk_factors.length > 0 && (
                 <div className="flex items-center gap-1 flex-wrap">
                   {opportunity.risk_factors.map((f, i) => (
-                    <span key={i} className="text-[9px] text-yellow-400/80 bg-yellow-500/5 px-1 py-0 rounded">
+                    <span
+                      key={i}
+                      className="text-[9px] text-yellow-400/80 bg-yellow-500/5 px-1 py-0 rounded"
+                    >
                       {f.length > 40 ? f.slice(0, 40) + '...' : f}
                     </span>
                   ))}
@@ -376,7 +392,13 @@ const TableRow = memo(function TableRow({
                 <div className="bg-purple-500/[0.06] rounded-md p-2 border border-purple-500/10 space-y-1">
                   <div className="flex items-center gap-1.5">
                     <Brain className="w-3 h-3 text-purple-400" />
-                    <Badge variant="outline" className={cn("text-[9px] px-1 py-0 font-bold", RECOMMENDATION_COLORS[recommendation])}>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        'text-[9px] px-1 py-0 font-bold',
+                        RECOMMENDATION_COLORS[recommendation],
+                      )}
+                    >
                       {translateRecommendation(recommendation)}
                     </Badge>
                     <span className="text-[9px] font-data text-purple-300 ml-auto">
@@ -392,8 +414,15 @@ const TableRow = memo(function TableRow({
                   {judgment.reasoning && (
                     <p
                       className={`text-[9px] text-muted-foreground cursor-pointer hover:text-muted-foreground/80 transition-colors ${!aiExpanded ? 'line-clamp-2' : ''}`}
-                      onClick={(e) => { e.stopPropagation(); setAiExpanded(!aiExpanded) }}
-                      title={aiExpanded ? t('opportunityCard.clickToCollapse') : t('opportunityCard.clickToExpand')}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setAiExpanded(!aiExpanded)
+                      }}
+                      title={
+                        aiExpanded
+                          ? t('opportunityCard.clickToCollapse')
+                          : t('opportunityCard.clickToExpand')
+                      }
                     >
                       {judgment.reasoning}
                     </p>
@@ -406,11 +435,19 @@ const TableRow = memo(function TableRow({
                 <div className="bg-muted/30 rounded-md p-1.5 border border-border/50">
                   <div className="flex items-center gap-1">
                     <Shield className="w-2.5 h-2.5 text-muted-foreground" />
-                    <Badge variant="outline" className={cn('text-[8px] px-1 py-0', RECOMMENDATION_COLORS[resolutions[0].recommendation])}>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        'text-[8px] px-1 py-0',
+                        RECOMMENDATION_COLORS[resolutions[0].recommendation],
+                      )}
+                    >
                       {translateRecommendation(resolutions[0].recommendation)}
                     </Badge>
                   </div>
-                  <p className="text-[9px] text-muted-foreground mt-0.5 line-clamp-2">{resolutions[0].summary}</p>
+                  <p className="text-[9px] text-muted-foreground mt-0.5 line-clamp-2">
+                    {resolutions[0].summary}
+                  </p>
                 </div>
               )}
 
@@ -439,7 +476,10 @@ const TableRow = memo(function TableRow({
                 )}
                 {onOpenCopilot && (
                   <button
-                    onClick={(e) => { e.stopPropagation(); onOpenCopilot(opportunity) }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onOpenCopilot(opportunity)
+                    }}
                     className="inline-flex items-center gap-0.5 h-5 px-1.5 text-[9px] rounded border bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
                   >
                     <MessageCircle className="w-2 h-2" /> AI
@@ -447,11 +487,15 @@ const TableRow = memo(function TableRow({
                 )}
                 {!judgment && !isPending && (
                   <button
-                    onClick={(e) => { e.stopPropagation(); judgeMutation.mutate() }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      judgeMutation.mutate()
+                    }}
                     disabled={judgeMutation.isPending}
                     className="inline-flex items-center gap-0.5 h-5 px-1.5 text-[9px] rounded border bg-purple-500/10 text-purple-400 border-purple-500/20 hover:bg-purple-500/20 transition-colors"
                   >
-                    <Brain className="w-2 h-2" /> {judgeMutation.isPending ? '...' : t('opportunityTable.analyze')}
+                    <Brain className="w-2 h-2" />{' '}
+                    {judgeMutation.isPending ? '...' : t('opportunityTable.analyze')}
                   </button>
                 )}
                 <BuyButton opportunity={opportunity} className="ml-auto w-24" />

@@ -18,7 +18,7 @@ from datetime import datetime
 from typing import Any, Optional
 
 from config import settings
-from models import Opportunity, Event, Market
+from models import Opportunity, Event, Market, ExecutionConstraints, ExecutionLeg, ExecutionPlan
 from services.strategies.base import (
     BaseStrategy,
     ExitDecision,
@@ -181,7 +181,10 @@ class HoldingRewardYieldStrategy(BaseStrategy):
             if not reward_eligible:
                 continue
 
-            default_apy = float(self.config.get("default_holding_reward_apy", _DEFAULT_HOLDING_REWARD_APY) or _DEFAULT_HOLDING_REWARD_APY)
+            default_apy = float(
+                self.config.get("default_holding_reward_apy", _DEFAULT_HOLDING_REWARD_APY)
+                or _DEFAULT_HOLDING_REWARD_APY
+            )
             apy = _extract_reward_apy(market) or default_apy
             if apy < min_apy:
                 continue
@@ -198,25 +201,16 @@ class HoldingRewardYieldStrategy(BaseStrategy):
                     "market_question": market.question,
                     "action": "split",
                     "outcome": "YES",
-                    "price": market.yes_price,
+                    "price": 1.0,
                     "token_id": market.clob_token_ids[0] if market.clob_token_ids else None,
-                    "notional_weight": 0.5,
-                },
-                {
-                    "market_id": market.id,
-                    "market_question": market.question,
-                    "action": "split",
-                    "outcome": "NO",
-                    "price": market.no_price,
-                    "token_id": market.clob_token_ids[1] if len(market.clob_token_ids) > 1 else None,
-                    "notional_weight": 0.5,
+                    "notional_weight": 1.0,
                 },
             ]
 
             opp = self.create_opportunity(
                 title=f"Holding Reward Yield: {apy:.1f}% APY",
                 description=(
-                    f"Split USDC into YES+NO on \"{market.question}\" to earn "
+                    f'Split USDC into YES+NO on "{market.question}" to earn '
                     f"~{apy:.1f}% annualized holding rewards. "
                     f"Capital preserved via split; {days_to_res:.0f} days to resolution. "
                     f"Projected holding period yield: {holding_period_yield_pct:.2f}%."
@@ -255,6 +249,51 @@ class HoldingRewardYieldStrategy(BaseStrategy):
 
         opportunities.sort(key=lambda o: o.roi_percent, reverse=True)
         return opportunities[:max_opps]
+
+    def _build_execution_plan(
+        self,
+        *,
+        positions: list[dict[str, Any]],
+        markets: list[Market],
+        market_roster: dict[str, Any] | None = None,
+        is_guaranteed: bool = False,
+    ) -> ExecutionPlan | None:
+        del market_roster, is_guaranteed
+        if len(markets) != 1 or not positions:
+            return None
+        market = markets[0]
+        condition_id = str(getattr(market, "condition_id", "") or market.id or "").strip()
+        if not condition_id:
+            return None
+        return ExecutionPlan(
+            policy="SINGLE_LEG",
+            time_in_force="IOC",
+            legs=[
+                ExecutionLeg(
+                    leg_id="split_leg",
+                    market_id=condition_id,
+                    market_question=market.question,
+                    side="buy",
+                    limit_price=1.0,
+                    price_policy="taker_limit",
+                    time_in_force="IOC",
+                    post_only=False,
+                    notional_weight=1.0,
+                    metadata={"ctf_action": "split", "condition_id": condition_id},
+                ),
+            ],
+            constraints=ExecutionConstraints(
+                max_unhedged_notional_usd=0.0,
+                hedge_timeout_seconds=10,
+                session_timeout_seconds=60,
+                max_reprice_attempts=0,
+                pair_lock=False,
+                leg_fill_tolerance_ratio=0.0,
+            ),
+            metadata={
+                "ctf_bundle": "holding_reward_split",
+            },
+        )
 
     def _compute_risk(self, market: Market, days_to_res: float, apy: float) -> float:
         """Compute risk score for a holding reward position.

@@ -336,9 +336,7 @@ def _has_custom_on_event(strategy: "BaseStrategy") -> bool:
 # detect pipeline (so ``detect()`` is NOT dead): the three detect entry points,
 # the shared ``_invoke_detect`` dispatcher, and ``on_event`` itself (a
 # ``super().on_event(...)`` delegation, which routes to detect in the base).
-_DETECT_DISPATCH_NAMES = frozenset(
-    {"detect", "detect_async", "detect_sync", "_invoke_detect", "on_event"}
-)
+_DETECT_DISPATCH_NAMES = frozenset({"detect", "detect_async", "detect_sync", "_invoke_detect", "on_event"})
 
 
 def _code_references_detect_dispatch(code) -> bool:
@@ -381,9 +379,7 @@ def divergent_detection_warning(strategy: "BaseStrategy") -> Optional[str]:
     ``strategy_loader`` logs this at registration; returning the string (rather
     than logging here) keeps it pure and unit-testable."""
     if _has_custom_on_event(strategy) and (
-        _has_custom_detect_async(strategy)
-        or _has_custom_detect_sync(strategy)
-        or _has_custom_detect_plain(strategy)
+        _has_custom_detect_async(strategy) or _has_custom_detect_sync(strategy) or _has_custom_detect_plain(strategy)
     ):
         if _on_event_reaches_detect(strategy):
             return None
@@ -460,6 +456,7 @@ def _last_boundary_at_or_before(now: datetime, interval_seconds: int) -> datetim
 def _timedelta_seconds(seconds: int):
     """Tiny helper so the import of ``timedelta`` lives in one place."""
     from datetime import timedelta
+
     return timedelta(seconds=seconds)
 
 
@@ -807,6 +804,7 @@ class BaseStrategy(ABC):
         if self._replay_now_us is not None:
             return datetime.fromtimestamp(self._replay_now_us / 1_000_000, tz=timezone.utc)
         from utils.utcnow import replay_clock_us as _rc
+
         us = _rc()
         if us is not None:
             return datetime.fromtimestamp(us / 1_000_000, tz=timezone.utc)
@@ -919,9 +917,7 @@ class BaseStrategy(ABC):
             list of Opportunity objects (empty list if no opportunities).
         """
         if event.event_type == EventType.MARKET_DATA_REFRESH:
-            opps = await self._invoke_detect(
-                event.events or [], event.markets or [], event.prices or {}
-            )
+            opps = await self._invoke_detect(event.events or [], event.markets or [], event.prices or {})
             extra = await self._maybe_dispatch_timeframe_closes(event)
             if extra:
                 return list(opps) + list(extra)
@@ -1001,9 +997,7 @@ class BaseStrategy(ABC):
             if boundary_ts <= prior:
                 continue
             try:
-                hook_result = await self._invoke_timeframe_close_hook(
-                    timeframe, boundary_ts, event
-                )
+                hook_result = await self._invoke_timeframe_close_hook(timeframe, boundary_ts, event)
             except Exception:  # pragma: no cover - defensive: never break detect()
                 logger = self._timeframe_close_logger()
                 if logger is not None:
@@ -1039,6 +1033,7 @@ class BaseStrategy(ABC):
     def _timeframe_close_logger():
         try:
             import logging
+
             return logging.getLogger("services.strategies.base")
         except Exception:
             return None
@@ -1895,7 +1890,16 @@ class BaseStrategy(ABC):
             token_id = str(position.get("token_id") or "").strip() or None
             notional_weight = max(0.0001, to_float(position.get("notional_weight"), 1.0))
             min_fill_ratio = max(0.0, min(1.0, to_float(position.get("min_fill_ratio"), 0.0)))
-
+            leg_metadata = {
+                "position_index": index,
+                "raw_action": action or None,
+            }
+            if action in {"split", "merge", "redeem"}:
+                leg_metadata["ctf_action"] = action
+                if market is not None and getattr(market, "condition_id", None):
+                    leg_metadata["condition_id"] = market.condition_id
+            if position.get("wave") is not None:
+                leg_metadata["wave"] = position["wave"]
             legs.append(
                 ExecutionLeg(
                     leg_id=f"leg_{index + 1}",
@@ -1914,16 +1918,11 @@ class BaseStrategy(ABC):
                     price_policy=str(position.get("price_policy") or config.get("price_policy") or "maker_limit"),
                     time_in_force=str(position.get("time_in_force") or config.get("time_in_force") or "GTC"),
                     post_only=bool(
-                        position.get("post_only")
-                        or position.get("_maker_mode")
-                        or config.get("post_only", False)
+                        position.get("post_only") or position.get("_maker_mode") or config.get("post_only", False)
                     ),
                     notional_weight=notional_weight,
                     min_fill_ratio=min_fill_ratio,
-                    metadata={
-                        "position_index": index,
-                        "raw_action": action or None,
-                    },
+                    metadata=leg_metadata,
                 )
             )
 
@@ -1966,7 +1965,9 @@ class BaseStrategy(ABC):
                 and bool(planned_market_ids)
                 and all(market_id in roster_market_id_set for market_id in planned_market_ids)
             )
-            missing_market_ids = [market_id for market_id in roster_market_ids if market_id not in seen_planned_market_ids]
+            missing_market_ids = [
+                market_id for market_id in roster_market_ids if market_id not in seen_planned_market_ids
+            ]
             metadata["market_coverage"] = {
                 "scope": roster_scope or None,
                 "market_roster_hash": str(market_roster.get("roster_hash") or "").strip() or None,
@@ -2123,29 +2124,39 @@ class BaseStrategy(ABC):
             group_title = str(getattr(markets[0], "group_item_title", "") or "").strip()
             if group_title:
                 import re as _re
+
                 _MONTHS = {
-                    "january": 1, "february": 2, "march": 3, "april": 4,
-                    "may": 5, "june": 6, "july": 7, "august": 8,
-                    "september": 9, "october": 10, "november": 11, "december": 12,
+                    "january": 1,
+                    "february": 2,
+                    "march": 3,
+                    "april": 4,
+                    "may": 5,
+                    "june": 6,
+                    "july": 7,
+                    "august": 8,
+                    "september": 9,
+                    "october": 10,
+                    "november": 11,
+                    "december": 12,
                 }
                 _parsed_group_date = None
                 # Try "Month Day, Year" pattern
-                _m = _re.search(r'(\w+)\s+(\d{1,2}),?\s+(\d{4})', group_title)
+                _m = _re.search(r"(\w+)\s+(\d{1,2}),?\s+(\d{4})", group_title)
                 if _m:
                     _mon = _MONTHS.get(_m.group(1).lower())
                     if _mon:
                         try:
-                            _parsed_group_date = datetime(int(_m.group(3)), _mon, int(_m.group(2)),
-                                                          tzinfo=timezone.utc)
+                            _parsed_group_date = datetime(int(_m.group(3)), _mon, int(_m.group(2)), tzinfo=timezone.utc)
                         except ValueError:
                             pass
                 # Try ISO "YYYY-MM-DD" pattern
                 if _parsed_group_date is None:
-                    _m2 = _re.search(r'(\d{4})-(\d{2})-(\d{2})', group_title)
+                    _m2 = _re.search(r"(\d{4})-(\d{2})-(\d{2})", group_title)
                     if _m2:
                         try:
-                            _parsed_group_date = datetime(int(_m2.group(1)), int(_m2.group(2)),
-                                                          int(_m2.group(3)), tzinfo=timezone.utc)
+                            _parsed_group_date = datetime(
+                                int(_m2.group(1)), int(_m2.group(2)), int(_m2.group(3)), tzinfo=timezone.utc
+                            )
                         except ValueError:
                             pass
                 if _parsed_group_date is not None and _parsed_group_date > resolution_date:
@@ -2205,9 +2216,7 @@ class BaseStrategy(ABC):
         enriched_positions = []
         for index, position in enumerate(positions):
             enriched_position = dict(position)
-            explicit_market_id = str(
-                enriched_position.get("market_id") or enriched_position.get("id") or ""
-            ).strip()
+            explicit_market_id = str(enriched_position.get("market_id") or enriched_position.get("id") or "").strip()
             legacy_market_ref = str(enriched_position.get("market") or "").strip()
             reference_market = None
             if explicit_market_id and explicit_market_id in market_by_id:

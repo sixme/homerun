@@ -65,7 +65,7 @@ interface TypeMeta {
       onNavigateToAI?: (section: string) => void
       onOpenCopilot?: (contextType?: string, contextId?: string, label?: string) => void
       close: () => void
-    }
+    },
   ) => void
 }
 
@@ -92,7 +92,7 @@ const buildTypeMeta = (t: TFn): Record<string, TypeMeta> => ({
             event_title: item.metadata.event_title ?? item.subtitle,
             category: item.metadata.category ?? item.category,
           },
-        })
+        }),
       )
     },
   },
@@ -213,7 +213,7 @@ const useTypeMeta = () => {
   const fallbackMeta = useMemo(() => buildFallbackMeta(t), [t])
   return useCallback(
     (entityType: string): TypeMeta => typeMeta[entityType] ?? fallbackMeta,
-    [typeMeta, fallbackMeta]
+    [typeMeta, fallbackMeta],
   )
 }
 
@@ -317,27 +317,24 @@ export default function AICommandBar({
   }, [isOpen])
 
   // ---------- debounced global search ----------
-  const runSearch = useCallback(
-    async (query: string, types: Set<string> | null) => {
-      const seq = ++requestSeq.current
-      setSearchLoading(true)
-      try {
-        const data = await searchGlobal(query, {
-          limit: 30,
-          types: types ? Array.from(types) : undefined,
-        })
-        if (seq !== requestSeq.current) return
-        setSearchData(data)
-        setSelectedIndex(0)
-      } catch {
-        if (seq !== requestSeq.current) return
-        setSearchData(null)
-      } finally {
-        if (seq === requestSeq.current) setSearchLoading(false)
-      }
-    },
-    []
-  )
+  const runSearch = useCallback(async (query: string, types: Set<string> | null) => {
+    const seq = ++requestSeq.current
+    setSearchLoading(true)
+    try {
+      const data = await searchGlobal(query, {
+        limit: 30,
+        types: types ? Array.from(types) : undefined,
+      })
+      if (seq !== requestSeq.current) return
+      setSearchData(data)
+      setSelectedIndex(0)
+    } catch {
+      if (seq !== requestSeq.current) return
+      setSearchData(null)
+    } finally {
+      if (seq === requestSeq.current) setSearchLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
     if (mode !== 'global') return
@@ -419,7 +416,7 @@ export default function AICommandBar({
         },
       },
     ],
-    [t, onNavigateToAI, onClose, onOpenCopilot]
+    [t, onNavigateToAI, onClose, onOpenCopilot],
   )
 
   // ---------- ordered groups for rendering ----------
@@ -444,13 +441,15 @@ export default function AICommandBar({
   }, [searchData, orderedGroups])
 
   // ---------- helpers ----------
-  const persistRecentQuery = (q: string) => {
+  const persistRecentQuery = useCallback((q: string) => {
     const trimmed = q.trim()
     if (!trimmed) return
-    const next = [trimmed, ...recents.filter((r) => r !== trimmed)].slice(0, RECENTS_LIMIT)
-    setRecents(next)
-    saveJSON(RECENTS_KEY, next)
-  }
+    setRecents((prev) => {
+      const next = [trimmed, ...prev.filter((r) => r !== trimmed)].slice(0, RECENTS_LIMIT)
+      saveJSON(RECENTS_KEY, next)
+      return next
+    })
+  }, [])
 
   const handleResultSelect = (item: SearchResultItem) => {
     persistRecentQuery(input)
@@ -492,7 +491,7 @@ export default function AICommandBar({
     persistRecentQuery(q)
     onOpenSearchPage?.(q)
     onClose()
-  }, [input, onOpenSearchPage, onClose])
+  }, [input, onOpenSearchPage, onClose, persistRecentQuery])
 
   // ---------- keyboard ----------
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -532,7 +531,7 @@ export default function AICommandBar({
         (c) =>
           input === '' ||
           c.label.toLowerCase().includes(input.toLowerCase()) ||
-          c.description.toLowerCase().includes(input.toLowerCase())
+          c.description.toLowerCase().includes(input.toLowerCase()),
       )
       if (e.key === 'ArrowDown') {
         e.preventDefault()
@@ -585,7 +584,12 @@ export default function AICommandBar({
   }, [recents, serverRecents])
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose() }}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
+    >
       <DialogContent className="overflow-hidden p-0 shadow-2xl shadow-purple-500/10 max-w-2xl gap-0 border-border bg-background rounded-2xl top-[12%] translate-y-0">
         <DialogTitle className="sr-only">{t('aiCommandBar.title')}</DialogTitle>
 
@@ -615,7 +619,8 @@ export default function AICommandBar({
           )}
           {searchData && mode === 'global' && !searchLoading && (
             <span className="text-[10px] text-muted-foreground tabular-nums">
-              {searchData.total} · {t('aiCommandBar.latencyMs', { ms: searchData.latency_ms.toFixed(0) })}
+              {searchData.total} ·{' '}
+              {t('aiCommandBar.latencyMs', { ms: searchData.latency_ms.toFixed(0) })}
             </span>
           )}
           {mode !== 'global' && (
@@ -645,7 +650,7 @@ export default function AICommandBar({
                 'text-[11px] px-2 py-0.5 rounded-full border transition-colors',
                 enabledTypes === null
                   ? 'bg-foreground text-background border-foreground'
-                  : 'border-border text-muted-foreground hover:bg-muted'
+                  : 'border-border text-muted-foreground hover:bg-muted',
               )}
             >
               {t('aiCommandBar.allFilter')}
@@ -661,7 +666,7 @@ export default function AICommandBar({
                     'text-[11px] px-2 py-0.5 rounded-full border transition-colors flex items-center gap-1',
                     active
                       ? 'bg-foreground text-background border-foreground'
-                      : 'border-border text-muted-foreground hover:bg-muted'
+                      : 'border-border text-muted-foreground hover:bg-muted',
                   )}
                 >
                   <span className={cn('inline-flex', !active && meta.color)}>{meta.icon}</span>
@@ -787,7 +792,9 @@ export default function AICommandBar({
                     <span className="font-medium">"{input.trim()}"</span>
                   </span>
                   <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                    <kbd className="px-1.5 py-0.5 bg-background/60 rounded border border-border/60">⌘↵</kbd>
+                    <kbd className="px-1.5 py-0.5 bg-background/60 rounded border border-border/60">
+                      ⌘↵
+                    </kbd>
                   </span>
                 </button>
               )}
@@ -802,7 +809,7 @@ export default function AICommandBar({
                   (c) =>
                     input === '' ||
                     c.label.toLowerCase().includes(input.toLowerCase()) ||
-                    c.description.toLowerCase().includes(input.toLowerCase())
+                    c.description.toLowerCase().includes(input.toLowerCase()),
                 )
                 .map((cmd, i) => (
                   <button
@@ -811,7 +818,7 @@ export default function AICommandBar({
                     onMouseEnter={() => setSelectedIndex(i)}
                     className={cn(
                       'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors',
-                      i === selectedIndex ? 'bg-muted' : 'hover:bg-card'
+                      i === selectedIndex ? 'bg-muted' : 'hover:bg-card',
                     )}
                   >
                     <span className={cn('flex-shrink-0', cmd.color)}>{cmd.icon}</span>
@@ -837,7 +844,9 @@ export default function AICommandBar({
                 <div className="bg-muted rounded-xl p-4 border border-border">
                   <div className="flex items-center gap-2 mb-2">
                     <Brain className="w-4 h-4 text-purple-400" />
-                    <Badge variant="secondary" className="text-xs">{t('aiCommandBar.aiResponse')}</Badge>
+                    <Badge variant="secondary" className="text-xs">
+                      {t('aiCommandBar.aiResponse')}
+                    </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground whitespace-pre-wrap">
                     {askMutation.data.response}
@@ -845,9 +854,7 @@ export default function AICommandBar({
                 </div>
               )}
               {askMutation.error && (
-                <p className="text-sm text-red-400">
-                  {(askMutation.error as Error).message}
-                </p>
+                <p className="text-sm text-red-400">{(askMutation.error as Error).message}</p>
               )}
               {!askMutation.isPending && !askMutation.data && !askMutation.error && (
                 <p className="text-sm text-muted-foreground text-center">
@@ -864,11 +871,13 @@ export default function AICommandBar({
             <kbd className="px-1 py-0.5 bg-muted rounded">↵</kbd> {t('aiCommandBar.footer.open')}
           </span>
           <span className="flex items-center gap-1">
-            <kbd className="px-1 py-0.5 bg-muted rounded">↑↓</kbd> {t('aiCommandBar.footer.navigate')}
+            <kbd className="px-1 py-0.5 bg-muted rounded">↑↓</kbd>{' '}
+            {t('aiCommandBar.footer.navigate')}
           </span>
           {mode === 'global' && (
             <span className="flex items-center gap-1">
-              <kbd className="px-1 py-0.5 bg-muted rounded">Tab</kbd> {t('aiCommandBar.footer.commands')}
+              <kbd className="px-1 py-0.5 bg-muted rounded">Tab</kbd>{' '}
+              {t('aiCommandBar.footer.commands')}
             </span>
           )}
           <span className="flex items-center gap-1 ml-auto">
@@ -907,7 +916,7 @@ function ResultRow({ item, selected, pinned, onHover, onSelect, onTogglePin }: R
       onMouseEnter={onHover}
       className={cn(
         'group relative w-full flex items-start gap-3 px-3 py-2 rounded-xl text-left cursor-pointer transition-colors',
-        selected ? 'bg-muted' : 'hover:bg-card'
+        selected ? 'bg-muted' : 'hover:bg-card',
       )}
     >
       <span className={cn('flex-shrink-0 mt-0.5', meta.color)}>{meta.icon}</span>
@@ -925,9 +934,13 @@ function ResultRow({ item, selected, pinned, onHover, onSelect, onTogglePin }: R
           )}
           {showFinance && (
             <span className="tabular-nums whitespace-nowrap">
-              {typeof yesPrice === 'number' && <>{t('aiCommandBar.yesPrice', { price: yesPrice.toFixed(2) })}</>}
+              {typeof yesPrice === 'number' && (
+                <>{t('aiCommandBar.yesPrice', { price: yesPrice.toFixed(2) })}</>
+              )}
               {typeof yesPrice === 'number' && typeof liquidity === 'number' && ' · '}
-              {typeof liquidity === 'number' && <>{t('aiCommandBar.liquidityShort', { value: formatCompact(liquidity) })}</>}
+              {typeof liquidity === 'number' && (
+                <>{t('aiCommandBar.liquidityShort', { value: formatCompact(liquidity) })}</>
+              )}
             </span>
           )}
         </div>
@@ -940,7 +953,7 @@ function ResultRow({ item, selected, pinned, onHover, onSelect, onTogglePin }: R
         }}
         className={cn(
           'opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-background',
-          pinned && 'opacity-100'
+          pinned && 'opacity-100',
         )}
         title={pinned ? t('aiCommandBar.unpin') : t('aiCommandBar.pin')}
       >

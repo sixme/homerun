@@ -111,54 +111,56 @@ def _copy_dict(value: Any) -> dict[str, Any]:
 # ``image`` / ``icon`` (URLs), ``outcomes`` (rarely consulted at lookup).
 # If a downstream consumer needs one of those, fetch from the canonical
 # Market source (DB / catalog) rather than relying on the runtime cache.
-_HOT_MARKET_FIELDS: frozenset[str] = frozenset({
-    "id",
-    "market_id",
-    "condition_id",
-    "conditionId",
-    "slug",
-    "question",
-    "group_item_title",
-    "category",
-    "platform",
-    "active",
-    "closed",
-    "archived",
-    "resolved",
-    "accepting_orders",
-    "enable_order_book",
-    "status",
-    "neg_risk",
-    "sports_market_type",
-    "asset",
-    "timeframe",
-    "line",
-    "volume",
-    "liquidity",
-    "yes_price",
-    "no_price",
-    "up_price",
-    "down_price",
-    "outcome_prices",
-    "clob_token_ids",
-    "token_ids",
-    "end_date",
-    "end_time",
-    "start_date",
-    "start_time",
-    "game_start_time",
-    "expires_at",
-    "is_current",
-    "is_live",
-    "fetched_at",
-    "event_id",
-    "event_slug",
-    "event_title",
-    "event_category",
-    "seconds_left",
-    "price_to_beat",
-    "combined",
-})
+_HOT_MARKET_FIELDS: frozenset[str] = frozenset(
+    {
+        "id",
+        "market_id",
+        "condition_id",
+        "conditionId",
+        "slug",
+        "question",
+        "group_item_title",
+        "category",
+        "platform",
+        "active",
+        "closed",
+        "archived",
+        "resolved",
+        "accepting_orders",
+        "enable_order_book",
+        "status",
+        "neg_risk",
+        "sports_market_type",
+        "asset",
+        "timeframe",
+        "line",
+        "volume",
+        "liquidity",
+        "yes_price",
+        "no_price",
+        "up_price",
+        "down_price",
+        "outcome_prices",
+        "clob_token_ids",
+        "token_ids",
+        "end_date",
+        "end_time",
+        "start_date",
+        "start_time",
+        "game_start_time",
+        "expires_at",
+        "is_current",
+        "is_live",
+        "fetched_at",
+        "event_id",
+        "event_slug",
+        "event_title",
+        "event_category",
+        "seconds_left",
+        "price_to_beat",
+        "combined",
+    }
+)
 
 
 def _project_hot_market(value: Any) -> dict[str, Any]:
@@ -320,9 +322,7 @@ async def _dispatch_with_per_trader_fanout(event: DataEvent) -> list[Any]:
     opportunities: list[Any] = []
 
     if singleton_slugs:
-        opportunities.extend(
-            await event_dispatcher.dispatch(event, include_strategies=singleton_slugs)
-        )
+        opportunities.extend(await event_dispatcher.dispatch(event, include_strategies=singleton_slugs))
 
     for slug in sorted(per_trader_slugs):
         for trader_id, trader_params in bindings[slug]:
@@ -460,12 +460,14 @@ def _build_crypto_filter_diagnostics(
 
     primary = copy.deepcopy(per_strategy.get(primary_strategy_key) or {})
     summary = dict(primary.get("summary") or {})
-    summary.update({
-        "strategies_loaded": len(strategy_instances),
-        "strategies_reporting_diagnostics": len(strategy_instances) - len(strategies_missing_diagnostics),
-        "strategies_with_signals": sum(1 for value in opportunity_counts.values() if value > 0),
-        "total_signals_emitted": len(opportunities),
-    })
+    summary.update(
+        {
+            "strategies_loaded": len(strategy_instances),
+            "strategies_reporting_diagnostics": len(strategy_instances) - len(strategies_missing_diagnostics),
+            "strategies_with_signals": sum(1 for value in opportunity_counts.values() if value > 0),
+            "total_signals_emitted": len(opportunities),
+        }
+    )
     ordered_strategy_keys = sorted(
         per_strategy.keys(),
         key=lambda slug: (-int(per_strategy[slug].get("signals_emitted") or 0), slug),
@@ -477,22 +479,24 @@ def _build_crypto_filter_diagnostics(
             detail = f"{int(per_strategy[slug].get('signals_emitted') or 0)} signals"
         detail_parts.append(f"{slug}: {detail}")
 
-    primary.update({
-        "strategy_key": primary_strategy_key or None,
-        "scanned_at": str(primary.get("scanned_at") or utcnow().isoformat().replace("+00:00", "Z")),
-        "markets_scanned": markets_scanned,
-        "signals_emitted": len(opportunities),
-        "summary": summary,
-        "primary_strategy_key": primary_strategy_key or None,
-        "strategies": per_strategy,
-        "dispatch_summary": {
-            "strategies_loaded": len(strategy_instances),
-            "strategies_reporting_diagnostics": len(strategy_instances) - len(strategies_missing_diagnostics),
-            "strategies_missing_diagnostics": strategies_missing_diagnostics,
-            "opportunities_by_strategy": dict(sorted(opportunity_counts.items())),
-            "rejection_counts_by_strategy": rejection_counts_by_strategy,
-        },
-    })
+    primary.update(
+        {
+            "strategy_key": primary_strategy_key or None,
+            "scanned_at": str(primary.get("scanned_at") or utcnow().isoformat().replace("+00:00", "Z")),
+            "markets_scanned": markets_scanned,
+            "signals_emitted": len(opportunities),
+            "summary": summary,
+            "primary_strategy_key": primary_strategy_key or None,
+            "strategies": per_strategy,
+            "dispatch_summary": {
+                "strategies_loaded": len(strategy_instances),
+                "strategies_reporting_diagnostics": len(strategy_instances) - len(strategies_missing_diagnostics),
+                "strategies_missing_diagnostics": strategies_missing_diagnostics,
+                "opportunities_by_strategy": dict(sorted(opportunity_counts.items())),
+                "rejection_counts_by_strategy": rejection_counts_by_strategy,
+            },
+        }
+    )
     primary["message"] = (
         f"Scanned {markets_scanned} markets across {len(strategy_instances)} crypto strategies, "
         f"{len(opportunities)} signals total"
@@ -709,9 +713,7 @@ class MarketRuntime:
             if startup_active:
                 await self._refresh_crypto_markets(trigger="startup", full_source_sweep=True)
             else:
-                logger.info(
-                    "Crypto fast-binary lane disabled by worker_control; skipping startup refresh"
-                )
+                logger.info("Crypto fast-binary lane disabled by worker_control; skipping startup refresh")
                 self._crypto_markets = []
                 self._crypto_markets_by_lookup = {}
                 self._crypto_token_to_market_ids = {}
@@ -764,8 +766,10 @@ class MarketRuntime:
                 await self._main_task
             except asyncio.CancelledError:
                 pass
-        self._reference_runtime.remove_on_update(self._on_reference_update)
-        await self._reference_runtime.stop()
+        if hasattr(self._reference_runtime, "remove_on_update"):
+            self._reference_runtime.remove_on_update(self._on_reference_update)
+        if hasattr(self._reference_runtime, "stop"):
+            await self._reference_runtime.stop()
         self._started = False
 
     def get_crypto_markets(self) -> list[dict[str, Any]]:
@@ -1032,7 +1036,11 @@ class MarketRuntime:
         if not hasattr(feed_manager.cache, "get_trade_volume"):
             return {"buy_volume": 0.0, "sell_volume": 0.0, "total": 0.0, "trade_count": 0}
         volume = feed_manager.cache.get_trade_volume(normalized, lookback_seconds)
-        return copy.deepcopy(volume) if isinstance(volume, dict) else {"buy_volume": 0.0, "sell_volume": 0.0, "total": 0.0, "trade_count": 0}
+        return (
+            copy.deepcopy(volume)
+            if isinstance(volume, dict)
+            else {"buy_volume": 0.0, "sell_volume": 0.0, "total": 0.0, "trade_count": 0}
+        )
 
     def get_buy_sell_imbalance(self, token_id: str, *, lookback_seconds: float = 300.0) -> float:
         normalized = _normalize_market_id(token_id)
@@ -1143,7 +1151,9 @@ class MarketRuntime:
                         force=True,
                     )
                 except Exception as snapshot_exc:
-                    logger.warning("Failed to persist crypto worker snapshot after runtime error", exc_info=snapshot_exc)
+                    logger.warning(
+                        "Failed to persist crypto worker snapshot after runtime error", exc_info=snapshot_exc
+                    )
                 await asyncio.sleep(1.0)
 
     async def _run_loop_iteration(self) -> float:
@@ -1287,10 +1297,14 @@ class MarketRuntime:
                 except Exception:
                     observed_at_epoch = None
                 if observed_at_epoch is not None:
-                    row["yes_price_updated_at"] = datetime.fromtimestamp(
-                        float(observed_at_epoch),
-                        tz=timezone.utc,
-                    ).isoformat().replace("+00:00", "Z")
+                    row["yes_price_updated_at"] = (
+                        datetime.fromtimestamp(
+                            float(observed_at_epoch),
+                            tz=timezone.utc,
+                        )
+                        .isoformat()
+                        .replace("+00:00", "Z")
+                    )
             if no_token and feed_manager.cache.is_fresh(no_token):
                 row["no_price"] = feed_manager.cache.get_mid_price(no_token)
                 row["no_price_source"] = "redis_strict"
@@ -1299,10 +1313,14 @@ class MarketRuntime:
                 except Exception:
                     observed_at_epoch = None
                 if observed_at_epoch is not None:
-                    row["no_price_updated_at"] = datetime.fromtimestamp(
-                        float(observed_at_epoch),
-                        tz=timezone.utc,
-                    ).isoformat().replace("+00:00", "Z")
+                    row["no_price_updated_at"] = (
+                        datetime.fromtimestamp(
+                            float(observed_at_epoch),
+                            tz=timezone.utc,
+                        )
+                        .isoformat()
+                        .replace("+00:00", "Z")
+                    )
             selected_token = yes_token or no_token
             if selected_token and hasattr(feed_manager.cache, "get_price_history"):
                 row["history_tail"] = feed_manager.cache.get_price_history(selected_token, max_snapshots=20)
@@ -1368,9 +1386,7 @@ class MarketRuntime:
             # derive it from oracle history at the market's start_time.
             if row.get("price_to_beat") is None and oracle_history and row.get("start_time"):
                 try:
-                    start_dt = datetime.fromisoformat(
-                        str(row["start_time"]).replace("Z", "+00:00")
-                    )
+                    start_dt = datetime.fromisoformat(str(row["start_time"]).replace("Z", "+00:00"))
                     if start_dt.tzinfo is None:
                         start_dt = start_dt.replace(tzinfo=timezone.utc)
                     target_ms = int(start_dt.timestamp() * 1000)
@@ -1391,11 +1407,21 @@ class MarketRuntime:
                 except Exception:
                     pass
 
-            token_ids = [str(token_id or "").strip() for token_id in (row.get("clob_token_ids") or []) if str(token_id or "").strip()]
+            token_ids = [
+                str(token_id or "").strip()
+                for token_id in (row.get("clob_token_ids") or [])
+                if str(token_id or "").strip()
+            ]
             if feed_manager is not None and getattr(feed_manager, "_started", False):
-                if len(token_ids) > 0 and feed_manager.cache.is_fresh(token_ids[0], max_age_seconds=float(getattr(settings, "WS_EXECUTION_PRICE_STALE_SECONDS", 1.0) or 1.0)):
+                if len(token_ids) > 0 and feed_manager.cache.is_fresh(
+                    token_ids[0],
+                    max_age_seconds=float(getattr(settings, "WS_EXECUTION_PRICE_STALE_SECONDS", 1.0) or 1.0),
+                ):
                     row["up_price"] = feed_manager.cache.get_mid_price(token_ids[0])
-                if len(token_ids) > 1 and feed_manager.cache.is_fresh(token_ids[1], max_age_seconds=float(getattr(settings, "WS_EXECUTION_PRICE_STALE_SECONDS", 1.0) or 1.0)):
+                if len(token_ids) > 1 and feed_manager.cache.is_fresh(
+                    token_ids[1],
+                    max_age_seconds=float(getattr(settings, "WS_EXECUTION_PRICE_STALE_SECONDS", 1.0) or 1.0),
+                ):
                     row["down_price"] = feed_manager.cache.get_mid_price(token_ids[1])
                 if token_ids:
                     row["history_tail"] = feed_manager.cache.get_price_history(token_ids[0], max_snapshots=20)
@@ -1499,7 +1525,9 @@ class MarketRuntime:
                 should_log_warning = self._ml_runtime_recording_enabled or self._ml_runtime_deployment_active
                 if should_log_warning:
                     if isinstance(exc, asyncio.TimeoutError):
-                        logger.info("ML runtime state unavailable for crypto markets; temporarily disabling ML enrichment")
+                        logger.info(
+                            "ML runtime state unavailable for crypto markets; temporarily disabling ML enrichment"
+                        )
                     else:
                         logger.warning("Failed to resolve ML runtime state for crypto markets", exc_info=exc)
                     self._last_ml_runtime_failure_log_mono = now_mono
@@ -1600,9 +1628,7 @@ class MarketRuntime:
                 # batch, and those rare cases pay one cold-start (an
                 # acceptable trade vs blocking every refresh).
                 asyncio.create_task(
-                    live_execution_service.prewarm_clob_market_info_cache(
-                        condition_ids
-                    ),
+                    live_execution_service.prewarm_clob_market_info_cache(condition_ids),
                     name="market-runtime-clob-cache-prewarm",
                 )
         except Exception as exc:
@@ -1699,10 +1725,7 @@ class MarketRuntime:
         assets = ("BTC", "ETH", "SOL", "XRP")
         lookback_seconds = 4 * 60 * 60  # 4h covers every active timeframe
         results = await asyncio.gather(
-            *(
-                fetch_binance_klines(asset, lookback_seconds=lookback_seconds, interval="1m")
-                for asset in assets
-            ),
+            *(fetch_binance_klines(asset, lookback_seconds=lookback_seconds, interval="1m") for asset in assets),
             return_exceptions=True,
         )
         seeded_total = 0
@@ -1766,7 +1789,9 @@ class MarketRuntime:
         trigger: str,
     ) -> None:
         try:
-            await event_bus.publish("crypto_markets_update", {"markets": [dict(row) for row in payload], "trigger": str(trigger)})
+            await event_bus.publish(
+                "crypto_markets_update", {"markets": [dict(row) for row in payload], "trigger": str(trigger)}
+            )
         except Exception:
             pass
         self._last_error = None
@@ -1788,8 +1813,8 @@ class MarketRuntime:
         async with self._pending_opportunity_lock:
             self._pending_opportunity_payload = copied_payload
             self._pending_opportunity_trigger = str(trigger)
-            self._pending_opportunity_full_source_sweep = (
-                self._pending_opportunity_full_source_sweep or bool(full_source_sweep)
+            self._pending_opportunity_full_source_sweep = self._pending_opportunity_full_source_sweep or bool(
+                full_source_sweep
             )
         if self._opportunity_dispatch_task is None or self._opportunity_dispatch_task.done():
             self._opportunity_dispatch_task = asyncio.create_task(
@@ -1894,9 +1919,7 @@ class MarketRuntime:
         # to snapshot+clear in a single critical section.
         self._pending_tokens.add(normalized)
         if self._reactive_task is None or self._reactive_task.done():
-            self._reactive_task = loop.create_task(
-                self._drain_reactive_updates(), name="market-runtime-reactive"
-            )
+            self._reactive_task = loop.create_task(self._drain_reactive_updates(), name="market-runtime-reactive")
 
     def _on_reference_update(self, asset: str) -> None:
         if not self._started:
@@ -1914,9 +1937,7 @@ class MarketRuntime:
         # task count by ~30 per crypto-feed burst.
         self._pending_assets.add(normalized)
         if self._reactive_task is None or self._reactive_task.done():
-            self._reactive_task = loop.create_task(
-                self._drain_reactive_updates(), name="market-runtime-reactive"
-            )
+            self._reactive_task = loop.create_task(self._drain_reactive_updates(), name="market-runtime-reactive")
 
     async def _drain_reactive_updates(self) -> None:
         # Skip the explicit sleep when the debounce is zero — even a
@@ -1961,18 +1982,13 @@ class MarketRuntime:
         if not market_ids:
             return
         selected_rows = [
-            row
-            for row in self._crypto_markets
-            if _normalize_market_id(row.get("id") or row.get("slug")) in market_ids
+            row for row in self._crypto_markets if _normalize_market_id(row.get("id") or row.get("slug")) in market_ids
         ]
         if not selected_rows:
             return
         refreshed_rows = self._rebuild_crypto_rows_from_cache(selected_rows)
         await self._queue_ml_pipeline_refresh(refreshed_rows, allow_record=False)
-        merged_by_id = {
-            _normalize_market_id(row.get("id") or row.get("slug")): row
-            for row in self._crypto_markets
-        }
+        merged_by_id = {_normalize_market_id(row.get("id") or row.get("slug")): row for row in self._crypto_markets}
         for row in refreshed_rows:
             merged_by_id[_normalize_market_id(row.get("id") or row.get("slug"))] = row
         ordered_ids = [_normalize_market_id(row.get("id") or row.get("slug")) for row in self._crypto_markets]
@@ -1983,7 +1999,9 @@ class MarketRuntime:
         for row in self._crypto_markets:
             self._index_crypto_market_row(row)
         self._last_crypto_refresh_at = utcnow().isoformat().replace("+00:00", "Z")
-        trigger = "reference_ws" if assets and not tokens else "crypto_ws" if tokens and not assets else "crypto_reference_ws"
+        trigger = (
+            "reference_ws" if assets and not tokens else "crypto_ws" if tokens and not assets else "crypto_reference_ws"
+        )
         self._last_crypto_trigger = trigger
         # Publish a lightweight payload for reactive WS pushes: strip the
         # large history arrays (oracle_history ~80pts, price_history up to
@@ -1992,11 +2010,7 @@ class MarketRuntime:
         # arrays ride on the next periodic scan payload, and the frontend
         # merger preserves them across reactive updates.
         lightweight_rows = [
-            {
-                k: v
-                for k, v in row.items()
-                if k not in ("oracle_history", "history_tail", "price_history")
-            }
+            {k: v for k, v in row.items() if k not in ("oracle_history", "history_tail", "price_history")}
             for row in refreshed_rows
         ]
         await self._publish_crypto_snapshot(lightweight_rows, trigger=trigger)
@@ -2016,7 +2030,11 @@ class MarketRuntime:
         motion_summary_by_asset: dict[str, dict[str, Any]] = {}
         for existing in rows:
             row = dict(existing)
-            token_ids = [str(token_id or "").strip() for token_id in (row.get("clob_token_ids") or []) if str(token_id or "").strip()]
+            token_ids = [
+                str(token_id or "").strip()
+                for token_id in (row.get("clob_token_ids") or [])
+                if str(token_id or "").strip()
+            ]
             if feed_manager is not None and getattr(feed_manager, "_started", False):
                 if len(token_ids) > 0 and feed_manager.cache.is_fresh(token_ids[0], max_age_seconds=strict_age):
                     row["up_price"] = feed_manager.cache.get_mid_price(token_ids[0])
@@ -2026,10 +2044,14 @@ class MarketRuntime:
                     except Exception:
                         observed_at_epoch = None
                     if observed_at_epoch is not None:
-                        row["up_price_updated_at"] = datetime.fromtimestamp(
-                            float(observed_at_epoch),
-                            tz=timezone.utc,
-                        ).isoformat().replace("+00:00", "Z")
+                        row["up_price_updated_at"] = (
+                            datetime.fromtimestamp(
+                                float(observed_at_epoch),
+                                tz=timezone.utc,
+                            )
+                            .isoformat()
+                            .replace("+00:00", "Z")
+                        )
                 if len(token_ids) > 1 and feed_manager.cache.is_fresh(token_ids[1], max_age_seconds=strict_age):
                     row["down_price"] = feed_manager.cache.get_mid_price(token_ids[1])
                     row["down_price_source"] = "redis_strict"
@@ -2038,10 +2060,14 @@ class MarketRuntime:
                     except Exception:
                         observed_at_epoch = None
                     if observed_at_epoch is not None:
-                        row["down_price_updated_at"] = datetime.fromtimestamp(
-                            float(observed_at_epoch),
-                            tz=timezone.utc,
-                        ).isoformat().replace("+00:00", "Z")
+                        row["down_price_updated_at"] = (
+                            datetime.fromtimestamp(
+                                float(observed_at_epoch),
+                                tz=timezone.utc,
+                            )
+                            .isoformat()
+                            .replace("+00:00", "Z")
+                        )
                 if token_ids:
                     row["history_tail"] = feed_manager.cache.get_price_history(token_ids[0], max_snapshots=20)
             asset = str(row.get("asset") or "").strip().upper()
@@ -2050,7 +2076,9 @@ class MarketRuntime:
             row["oracle_source"] = oracle.get("source") if oracle else row.get("oracle_source")
             row["oracle_updated_at_ms"] = oracle.get("updated_at_ms") if oracle else row.get("oracle_updated_at_ms")
             row["oracle_age_seconds"] = oracle.get("age_seconds") if oracle else row.get("oracle_age_seconds")
-            row["oracle_prices_by_source"] = reference_runtime.get_oracle_prices_by_source(asset) if asset else row.get("oracle_prices_by_source")
+            row["oracle_prices_by_source"] = (
+                reference_runtime.get_oracle_prices_by_source(asset) if asset else row.get("oracle_prices_by_source")
+            )
             row["oracle_history"] = (
                 reference_runtime.get_oracle_history(
                     asset,
@@ -2193,6 +2221,7 @@ async def _publish_crypto_update_to_bus(
 
     from services.recorded_event_bus import RecordedEvent
     from services.recorded_event_bus import bus as _bus
+
     # Lazy import the storage attach (otherwise pyarrow loads on every
     # market_runtime cold start regardless of whether the topic is used).
     import services.recorded_event_bus.storage  # noqa: F401

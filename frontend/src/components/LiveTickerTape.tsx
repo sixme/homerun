@@ -80,7 +80,17 @@ interface TickerItem {
   value: string
   secondaryValue?: string
   change?: number
-  icon?: 'up' | 'down' | 'zap' | 'dollar' | 'shield' | 'clock' | 'activity' | 'target' | 'alert' | 'chart'
+  icon?:
+    | 'up'
+    | 'down'
+    | 'zap'
+    | 'dollar'
+    | 'shield'
+    | 'clock'
+    | 'activity'
+    | 'target'
+    | 'alert'
+    | 'chart'
   badge?: string
   badgeColor?: string
 }
@@ -95,7 +105,10 @@ interface EventRollup {
 }
 
 const ROLLUP_TTL_SECONDS = 180
-const COMPACT_INT = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 })
+const COMPACT_INT = new Intl.NumberFormat('en-US', {
+  notation: 'compact',
+  maximumFractionDigits: 1,
+})
 
 const ICON_MAP = {
   up: TrendingUp,
@@ -214,10 +227,7 @@ function mergeRollup(
   buckets.set(second, bucket)
 }
 
-function pruneBuckets(
-  buckets: Map<number, EventRollup>,
-  nowMs: number,
-): void {
+function pruneBuckets(buckets: Map<number, EventRollup>, nowMs: number): void {
   const minSecond = Math.floor(nowMs / 1000) - ROLLUP_TTL_SECONDS
   for (const second of buckets.keys()) {
     if (second < minSecond) buckets.delete(second)
@@ -249,7 +259,8 @@ function eventLabelKey(type: string): string | null {
   if (type === 'trader_order') return 'ticker.traderOrder'
   if (type === 'trader_event') return 'ticker.traderEvent'
   if (type === 'weather_update' || type === 'weather_status') return 'ticker.weatherUpdate'
-  if (type === 'news_workflow_update' || type === 'news_workflow_status' || type === 'news_update') return 'ticker.newsUpdate'
+  if (type === 'news_workflow_update' || type === 'news_workflow_status' || type === 'news_update')
+    return 'ticker.newsUpdate'
   if (type === 'crypto_markets_update') return 'ticker.cryptoUpdate'
   return null
 }
@@ -260,11 +271,11 @@ function rollupPatchFromMessage(
   scannerLastSeenRef: { current: string | null },
 ): Partial<EventRollup> | null {
   if (
-    type === 'ping'
-    || type === 'pong'
-    || type === 'subscribed'
-    || type === 'init'
-    || type === 'scan_requested'
+    type === 'ping' ||
+    type === 'pong' ||
+    type === 'subscribed' ||
+    type === 'init' ||
+    type === 'scan_requested'
   ) {
     return null
   }
@@ -324,14 +335,14 @@ function rollupPatchFromMessage(
   }
 
   if (
-    type === 'opportunities_update'
-    || type === 'opportunity_events'
-    || type === 'weather_update'
-    || type === 'weather_status'
-    || type === 'news_workflow_update'
-    || type === 'news_workflow_status'
-    || type === 'news_update'
-    || type === 'crypto_markets_update'
+    type === 'opportunities_update' ||
+    type === 'opportunity_events' ||
+    type === 'weather_update' ||
+    type === 'weather_status' ||
+    type === 'news_workflow_update' ||
+    type === 'news_workflow_status' ||
+    type === 'news_update' ||
+    type === 'crypto_markets_update'
   ) {
     return { total: 1 }
   }
@@ -352,7 +363,9 @@ export default function LiveTickerTape({
 }: TickerTapeProps) {
   const { t } = useTranslation()
   const [tick, setTick] = useState(0)
-  const [orchestratorSnapshot, setOrchestratorSnapshot] = useState<OrchestratorSnapshot | null>(null)
+  const [orchestratorSnapshot, setOrchestratorSnapshot] = useState<OrchestratorSnapshot | null>(
+    null,
+  )
   const rollupBucketsRef = useRef<Map<number, EventRollup>>(new Map())
   const lastEventRef = useRef<{ labelKey: string; at: number } | null>(null)
   const scannerLastSeenRef = useRef<string | null>(lastScan || null)
@@ -379,7 +392,8 @@ export default function LiveTickerTape({
 
     if (type === 'init') {
       const scannerStatus = coerceRecord(data.scanner_status)
-      const initLastScan = typeof scannerStatus.last_scan === 'string' ? scannerStatus.last_scan : null
+      const initLastScan =
+        typeof scannerStatus.last_scan === 'string' ? scannerStatus.last_scan : null
       if (initLastScan) {
         scannerLastSeenRef.current = initLastScan
       }
@@ -417,10 +431,10 @@ export default function LiveTickerTape({
     }
   }, [lastMessage])
 
-  const rollup1m = useMemo(
-    () => summarizeBuckets(rollupBucketsRef.current, Date.now(), 60),
-    [tick],
-  )
+  const rollup1m = useMemo(() => {
+    void tick
+    return summarizeBuckets(rollupBucketsRef.current, Date.now(), 60)
+  }, [tick])
 
   const lastEvent = lastEventRef.current
   const workers = workerHealth.counts
@@ -434,9 +448,8 @@ export default function LiveTickerTape({
   const orchestratorOpenOrders = normalizeCount(orchestratorSnapshot?.open_orders)
   const orchestratorExposure = normalizeNumber(orchestratorSnapshot?.gross_exposure_usd)
   const orchestratorDailyPnl = normalizeNumber(orchestratorSnapshot?.daily_pnl)
-  const orchestratorConversion = orchestratorDecisions > 0
-    ? (orchestratorOrders / orchestratorDecisions) * 100
-    : 0
+  const orchestratorConversion =
+    orchestratorDecisions > 0 ? (orchestratorOrders / orchestratorDecisions) * 100 : 0
 
   const tickerItems = useMemo<TickerItem[]>(() => {
     const items: TickerItem[] = []
@@ -460,16 +473,18 @@ export default function LiveTickerTape({
       })
     }
 
-    const workerBadge = workers.red > 0
-      ? `${workers.red} ${t('ticker.errSuffix')}`
-      : workers.amber > 0
-        ? `${workers.amber} ${t('ticker.warnSuffix')}`
-        : t('ticker.healthy')
-    const workerBadgeColor = workers.red > 0
-      ? 'text-red-400 bg-red-400/10'
-      : workers.amber > 0
-        ? 'text-amber-400 bg-amber-400/10'
-        : 'text-emerald-400 bg-emerald-400/10'
+    const workerBadge =
+      workers.red > 0
+        ? `${workers.red} ${t('ticker.errSuffix')}`
+        : workers.amber > 0
+          ? `${workers.amber} ${t('ticker.warnSuffix')}`
+          : t('ticker.healthy')
+    const workerBadgeColor =
+      workers.red > 0
+        ? 'text-red-400 bg-red-400/10'
+        : workers.amber > 0
+          ? 'text-amber-400 bg-amber-400/10'
+          : 'text-emerald-400 bg-emerald-400/10'
 
     items.push({
       id: 'workers',
@@ -517,7 +532,8 @@ export default function LiveTickerTape({
       value: `P:${compactCount(signalPending)} S:${compactCount(signalSelected)} X:${compactCount(signalExecuted)}`,
       icon: 'activity',
       badge: `F:${compactCount(signalFailed)}`,
-      badgeColor: signalFailed > 0 ? 'text-red-400 bg-red-400/10' : 'text-muted-foreground bg-muted/50',
+      badgeColor:
+        signalFailed > 0 ? 'text-red-400 bg-red-400/10' : 'text-muted-foreground bg-muted/50',
     })
 
     if (activeStrategies !== undefined) {
@@ -639,10 +655,12 @@ export default function LiveTickerTape({
   const allItems = [...tickerItems, ...tickerItems]
 
   return (
-    <div className={cn(
-      "h-8 border-b border-border/30 bg-card/40 backdrop-blur-sm overflow-hidden relative shrink-0",
-      className
-    )}>
+    <div
+      className={cn(
+        'h-8 border-b border-border/30 bg-card/40 backdrop-blur-sm overflow-hidden relative shrink-0',
+        className,
+      )}
+    >
       {/* Left edge fade */}
       <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-background to-transparent z-10" />
       {/* Right edge fade */}
@@ -650,31 +668,37 @@ export default function LiveTickerTape({
 
       {/* Live indicator */}
       <div className="absolute left-2 top-1/2 -translate-y-1/2 z-20 flex items-center gap-1">
-        <Radio className={cn(
-          "w-2.5 h-2.5",
-          isConnected ? "text-green-400" : "text-red-400"
-        )} />
+        <Radio className={cn('w-2.5 h-2.5', isConnected ? 'text-green-400' : 'text-red-400')} />
       </div>
 
       {/* Scrolling content */}
       <div
         className="ticker-animate flex items-center h-full whitespace-nowrap pl-8"
-        style={{ '--ticker-duration': `${Math.max(30, tickerItems.length * 3.6)}s` } as CSSProperties}
+        style={
+          { '--ticker-duration': `${Math.max(30, tickerItems.length * 3.6)}s` } as CSSProperties
+        }
       >
         {allItems.map((item, i) => {
           const IconComponent = item.icon ? ICON_MAP[item.icon] : null
           const iconColor = item.icon ? ICON_COLOR_MAP[item.icon] : ''
 
           return (
-            <div key={`${item.id}-${i}`} className="inline-flex items-center gap-1.5 mx-3 text-[11px]">
-              {IconComponent && <IconComponent className={cn("w-3 h-3", iconColor)} />}
+            <div
+              key={`${item.id}-${i}`}
+              className="inline-flex items-center gap-1.5 mx-3 text-[11px]"
+            >
+              {IconComponent && <IconComponent className={cn('w-3 h-3', iconColor)} />}
               <span className="text-muted-foreground font-medium">{item.label}</span>
-              <span className={cn(
-                "font-data font-semibold",
-                item.change !== undefined
-                  ? item.change >= 0 ? "text-green-400" : "text-red-400"
-                  : "text-foreground"
-              )}>
+              <span
+                className={cn(
+                  'font-data font-semibold',
+                  item.change !== undefined
+                    ? item.change >= 0
+                      ? 'text-green-400'
+                      : 'text-red-400'
+                    : 'text-foreground',
+                )}
+              >
                 {item.value}
               </span>
               {item.secondaryValue && (
@@ -683,10 +707,12 @@ export default function LiveTickerTape({
                 </span>
               )}
               {item.badge && (
-                <span className={cn(
-                  "px-1 py-0.5 rounded text-[9px] font-semibold leading-none",
-                  item.badgeColor || "text-muted-foreground bg-muted/50"
-                )}>
+                <span
+                  className={cn(
+                    'px-1 py-0.5 rounded text-[9px] font-semibold leading-none',
+                    item.badgeColor || 'text-muted-foreground bg-muted/50',
+                  )}
+                >
                   {item.badge}
                 </span>
               )}

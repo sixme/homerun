@@ -87,7 +87,7 @@ export default function AddWalletToBotDialog({
     enabled: open,
     staleTime: 30_000,
   })
-  const traders = tradersQuery.data || []
+  const traders = useMemo(() => tradersQuery.data || [], [tradersQuery.data])
 
   const existingTraderOptions = useMemo(
     () =>

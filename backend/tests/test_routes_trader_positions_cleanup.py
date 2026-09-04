@@ -1,5 +1,5 @@
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock
 
@@ -27,12 +27,14 @@ async def _build_session_factory(_tmp_path: Path):
 
 
 async def _seed_trader_with_order(session: AsyncSession) -> None:
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     session.add(
         Trader(
             id="trader-1",
             name="Crypto Trader",
-            source_configs_json=[{"source_key": "crypto", "strategy_key": "btc_eth_maker_quote", "strategy_params": {}}],
+            source_configs_json=[
+                {"source_key": "crypto", "strategy_key": "btc_eth_maker_quote", "strategy_params": {}}
+            ],
             risk_limits_json={},
             metadata_json={},
             is_enabled=True,
@@ -180,7 +182,7 @@ async def test_open_position_count_aggregates_same_market_direction(tmp_path):
     try:
         async with session_factory() as session:
             await _seed_trader_with_order(session)
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc).replace(tzinfo=None)
             session.add(
                 TraderOrder(
                     id="order-2",

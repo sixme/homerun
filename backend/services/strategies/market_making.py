@@ -34,7 +34,8 @@ import logging
 
 from .base import BaseStrategy, DecisionCheck, ExitDecision, ScoringWeights, SizingConfig, utcnow, make_aware
 from services.quality_filter import QualityFilterOverrides
-from utils.converters import to_float
+from services.strategy_sdk import StrategySDK
+from utils.converters import safe_float, to_float
 
 logger = logging.getLogger(__name__)
 
@@ -139,26 +140,35 @@ class MarketMakingStrategy(BaseStrategy):
 
         return yes_price, no_price
 
-    def _calculate_spread(self, yes_price: float, no_price: float) -> float:
-        """Calculate the bid-ask spread.
+    def _calculate_spread(
+        self,
+        market: Market,
+        yes_price: float,
+        no_price: float,
+        prices: dict[str, dict],
+    ) -> float:
+        """Calculate the real order-book bid-ask spread for market making.
 
-        If actual order book data were available we would use ask - bid.
-        With snapshot prices we estimate spread from the gap between
-        the YES and NO prices and the theoretical $1 payout:
-            spread = 1.0 - (yes_price + no_price)
-
-        A positive value means the combined cost is less than $1, which
-        represents the effective spread available to a market maker.
-        When yes + no > 1 the spread estimate becomes the overround,
-        and we still treat it as the available spread (the book is wide
-        enough that a maker can quote inside).
+        Prefers the true best ask - best bid from the live prices overlay.
+        Falls back to StrategySDK spread, rewards max spread, or snapshot spread.
         """
-        spread = 1.0 - (yes_price + no_price)
-        # A negative spread means overround (yes + no > 1.0).
-        # No genuine market-making opportunity exists in overround.
-        if spread < 0:
-            return 0.0
-        return spread
+        if market.clob_token_ids and len(market.clob_token_ids) > 0:
+            yes_token = market.clob_token_ids[0]
+            if yes_token in prices and isinstance(prices[yes_token], dict):
+                p_data = prices[yes_token]
+                bid = safe_float(p_data.get("bid"))
+                ask = safe_float(p_data.get("ask"))
+                if bid is not None and ask is not None and ask > bid:
+                    return float(ask - bid)
+
+        sdk_spread = StrategySDK.get_spread_bps(market, prices, side="YES")
+        if sdk_spread is not None and sdk_spread > 0:
+            return float(sdk_spread / 10000.0)
+
+        if market.rewards_max_spread is not None and market.rewards_max_spread > 0:
+            return float(market.rewards_max_spread)
+
+        return float(abs(1.0 - (yes_price + no_price)))
 
     def _calculate_inventory_risk(self, yes_price: float) -> float:
         """Score inventory risk based on how far the price is from 50/50.
@@ -430,7 +440,7 @@ class MarketMakingStrategy(BaseStrategy):
                 continue
 
             # --- Calculate spread ---
-            spread = self._calculate_spread(yes_price, no_price)
+            spread = self._calculate_spread(market, yes_price, no_price, prices)
 
             # Strategy spread window controls both too-thin and too-wide books.
             if spread < min_spread:

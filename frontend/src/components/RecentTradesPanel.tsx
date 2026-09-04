@@ -102,7 +102,6 @@ type LiveSignalAlert = {
   outcome: string | null
 }
 
-
 function safeParseTime(value?: string | number | null): Date | null {
   if (value == null) return null
   if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
@@ -233,10 +232,13 @@ export default function RecentTradesPanel({
   const { t } = useTranslation()
   const showManagement = mode !== 'opportunities'
   const showOpportunities = mode !== 'management'
-  const groupsOnlyManagement = showManagement && !showOpportunities && managementVariant === 'groups'
+  const groupsOnlyManagement =
+    showManagement && !showOpportunities && managementVariant === 'groups'
 
   const [hoursFilter] = useState(24)
-  const [signalLimit, setSignalLimit] = useState(DEFAULT_TRADER_OPPORTUNITY_SETTINGS.confluence_limit)
+  const [signalLimit, setSignalLimit] = useState(
+    DEFAULT_TRADER_OPPORTUNITY_SETTINGS.confluence_limit,
+  )
   const [individualTradeLimit, setIndividualTradeLimit] = useState(
     DEFAULT_TRADER_OPPORTUNITY_SETTINGS.individual_trade_limit,
   )
@@ -254,9 +256,9 @@ export default function RecentTradesPanel({
   const [showGroupForm, setShowGroupForm] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [showFilteredSignals, setShowFilteredSignals] = useState(false)
-  const [sourceScopeFilter, setSourceScopeFilter] = useState<TraderSourceScopeFilterState>(
-    () => ({ ...DEFAULT_TRADER_SOURCE_SCOPE_FILTER }),
-  )
+  const [sourceScopeFilter, setSourceScopeFilter] = useState<TraderSourceScopeFilterState>(() => ({
+    ...DEFAULT_TRADER_SOURCE_SCOPE_FILTER,
+  }))
   const [currentPage, setCurrentPage] = useState(0)
   const [settingsSaveMessage, setSettingsSaveMessage] = useState<{
     type: 'success' | 'error'
@@ -293,9 +295,10 @@ export default function RecentTradesPanel({
     },
     onError: (error: unknown) => {
       const message =
-        (error as { response?: { data?: { detail?: string } }; message?: string })?.response?.data?.detail
-        || (error as { message?: string })?.message
-        || t('recentTradesPanel.toast.settingsSaveFailed')
+        (error as { response?: { data?: { detail?: string } }; message?: string })?.response?.data
+          ?.detail ||
+        (error as { message?: string })?.message ||
+        t('recentTradesPanel.toast.settingsSaveFailed')
       setSettingsSaveMessage({ type: 'error', text: message })
       setTimeout(() => setSettingsSaveMessage(null), 5000)
     },
@@ -304,9 +307,10 @@ export default function RecentTradesPanel({
   const sourceScopeFilterActive = TRADER_SOURCE_SCOPE_OPTIONS.some(
     (option) => !sourceScopeFilter[option.key],
   )
-  const confluenceFetchLimit = showFilteredSignals || sourceScopeFilterActive
-    ? CONFLUENCE_FETCH_LIMIT_MAX
-    : Math.min(CONFLUENCE_FETCH_LIMIT_MAX, signalLimit)
+  const confluenceFetchLimit =
+    showFilteredSignals || sourceScopeFilterActive
+      ? CONFLUENCE_FETCH_LIMIT_MAX
+      : Math.min(CONFLUENCE_FETCH_LIMIT_MAX, signalLimit)
 
   const {
     data: confluenceOpportunities = [],
@@ -314,12 +318,7 @@ export default function RecentTradesPanel({
     refetch: refetchSignals,
     isRefetching: isRefetchingSignals,
   } = useQuery({
-    queryKey: [
-      'opportunities',
-      'traders',
-      confluenceFetchLimit,
-      showFilteredSignals,
-    ],
+    queryKey: ['opportunities', 'traders', confluenceFetchLimit, showFilteredSignals],
     queryFn: async (): Promise<Opportunity[]> => {
       const result = await getOpportunities({
         source: 'traders',
@@ -400,8 +399,8 @@ export default function RecentTradesPanel({
     },
     onError: (error: unknown) => {
       const message =
-        (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail
-        || t('recentTradesPanel.toast.createGroupFailed')
+        (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
+        t('recentTradesPanel.toast.createGroupFailed')
       setGroupStatusMessage(message)
     },
   })
@@ -469,7 +468,9 @@ export default function RecentTradesPanel({
       clampNumber(discoverySettings.trader_opps_insider_min_confidence || 0.62, 0, 1),
     )
     setIndividualTradeMaxAgeMinutes(
-      Math.round(clampNumber(discoverySettings.trader_opps_insider_max_age_minutes || 180, 1, 1440)),
+      Math.round(
+        clampNumber(discoverySettings.trader_opps_insider_max_age_minutes || 180, 1, 1440),
+      ),
     )
   }, [showOpportunities, discoverySettings])
 
@@ -480,16 +481,21 @@ export default function RecentTradesPanel({
 
   useEffect(() => {
     const handleOpenSettings = () => setSettingsOpen(true)
-    window.addEventListener('open-trader-opportunities-settings', handleOpenSettings as EventListener)
-    return () => window.removeEventListener('open-trader-opportunities-settings', handleOpenSettings as EventListener)
+    window.addEventListener(
+      'open-trader-opportunities-settings',
+      handleOpenSettings as EventListener,
+    )
+    return () =>
+      window.removeEventListener(
+        'open-trader-opportunities-settings',
+        handleOpenSettings as EventListener,
+      )
   }, [])
 
-  const rawTrades = rawTradesData?.trades || []
+  const rawTrades = useMemo(() => rawTradesData?.trades || [], [rawTradesData?.trades])
   const opportunities = confluenceOpportunities
   const isLoading = opportunitiesLoading || (showManagement && rawTradesLoading)
-  const isRefetching =
-    isRefetchingSignals
-    || (showManagement && isRefetchingRawTrades)
+  const isRefetching = isRefetchingSignals || (showManagement && isRefetchingRawTrades)
 
   const sortedConfluenceSignals = useMemo(() => {
     return opportunities.map(normalizeTraderOpportunity).sort((a, b) => {
@@ -538,10 +544,12 @@ export default function RecentTradesPanel({
   }
 
   const signalView = useMemo(() => {
-    const allScannedSignals = [...sortedConfluenceSignals]
-      .sort((a, b) => signalPriority(b) - signalPriority(a))
-    const scopedScannedSignals = allScannedSignals
-      .filter((signal) => signalMatchesSourceScopeFilters(signal, sourceScopeFilter))
+    const allScannedSignals = [...sortedConfluenceSignals].sort(
+      (a, b) => signalPriority(b) - signalPriority(a),
+    )
+    const scopedScannedSignals = allScannedSignals.filter((signal) =>
+      signalMatchesSourceScopeFilters(signal, sourceScopeFilter),
+    )
 
     const executableCandidates = scopedScannedSignals
       .filter(isQualifiedTraderSignal)
@@ -562,12 +570,7 @@ export default function RecentTradesPanel({
       sourceScopedOut: Math.max(0, allScannedSignals.length - scopedScannedSignals.length),
       filteredOut: Math.max(0, scopedScannedSignals.length - executableSignals.length),
     }
-  }, [
-    sortedConfluenceSignals,
-    sourceScopeFilter,
-    signalLimit,
-    showFilteredSignals,
-  ])
+  }, [sortedConfluenceSignals, sourceScopeFilter, signalLimit, showFilteredSignals])
 
   const unifiedSignals = signalView.visibleSignals
   const executableSignals = signalView.executableSignals
@@ -594,7 +597,11 @@ export default function RecentTradesPanel({
   const uniqueSignalMarkets = useMemo(() => {
     const keys = new Set<string>()
     for (const signal of unifiedSignals) {
-      keys.add(String(signal.market_id || '').trim().toLowerCase())
+      keys.add(
+        String(signal.market_id || '')
+          .trim()
+          .toLowerCase(),
+      )
     }
     return keys.size
   }, [unifiedSignals])
@@ -603,7 +610,9 @@ export default function RecentTradesPanel({
     for (const signal of unifiedSignals) {
       const wallets = Array.isArray(signal.wallets) ? signal.wallets : []
       for (const wallet of wallets) {
-        const address = String(wallet.address || '').trim().toLowerCase()
+        const address = String(wallet.address || '')
+          .trim()
+          .toLowerCase()
         if (address.startsWith('0x')) {
           addresses.add(address)
         }
@@ -613,8 +622,7 @@ export default function RecentTradesPanel({
   }, [unifiedSignals])
   const selectedSourceScopeLabels = useMemo(
     () =>
-      TRADER_SOURCE_SCOPE_OPTIONS
-        .filter((option) => sourceScopeFilter[option.key])
+      TRADER_SOURCE_SCOPE_OPTIONS.filter((option) => sourceScopeFilter[option.key])
         .map((option) => t(option.labelKey))
         .join(', '),
     [sourceScopeFilter, t],
@@ -626,8 +634,7 @@ export default function RecentTradesPanel({
     (signal) => signal.source === 'confluence' && toTier(signal.tier) === 'EXTREME',
   ).length
   const avgConviction = unifiedSignals.length
-    ? unifiedSignals.reduce((sum, signal) => sum + signal.confidence, 0) /
-      unifiedSignals.length
+    ? unifiedSignals.reduce((sum, signal) => sum + signal.confidence, 0) / unifiedSignals.length
     : 0
 
   useEffect(() => {
@@ -658,11 +665,11 @@ export default function RecentTradesPanel({
   // refs → effect fires again).
   const analyzeVisibleKey = useMemo(
     () => (showOpportunities ? paginatedSignals.map((s) => s.id).join(',') : ''),
-    [showOpportunities, paginatedSignals]
+    [showOpportunities, paginatedSignals],
   )
   const analyzeAllKey = useMemo(
     () => (showOpportunities ? unifiedSignals.map((s) => s.id).join(',') : ''),
-    [showOpportunities, unifiedSignals]
+    [showOpportunities, unifiedSignals],
   )
   useEffect(() => {
     if (!showOpportunities) {
@@ -692,7 +699,11 @@ export default function RecentTradesPanel({
       const existing = map.get(key)
       const tradeTime =
         safeParseTime(
-          trade.timestamp_iso || trade.match_time || trade.timestamp || trade.time || trade.created_at,
+          trade.timestamp_iso ||
+            trade.match_time ||
+            trade.timestamp ||
+            trade.time ||
+            trade.created_at,
         ) || null
       if (!existing) {
         map.set(key, {
@@ -706,8 +717,8 @@ export default function RecentTradesPanel({
       }
       existing.trade_count += 1
       if (
-        tradeTime
-        && (!existing.latest_trade_at || tradeTime.getTime() > existing.latest_trade_at.getTime())
+        tradeTime &&
+        (!existing.latest_trade_at || tradeTime.getTime() > existing.latest_trade_at.getTime())
       ) {
         existing.latest_trade_at = tradeTime
       }
@@ -743,31 +754,32 @@ export default function RecentTradesPanel({
     }
   }
 
-  const handleSaveTraderOpportunitySettings = useCallback((
-    next: TraderOpportunitiesSettingsForm,
-  ) => {
-    if (!discoverySettings) {
-      setSettingsSaveMessage({
-        type: 'error',
-        text: t('recentTradesPanel.toast.discoveryLoading'),
+  const handleSaveTraderOpportunitySettings = useCallback(
+    (next: TraderOpportunitiesSettingsForm) => {
+      if (!discoverySettings) {
+        setSettingsSaveMessage({
+          type: 'error',
+          text: t('recentTradesPanel.toast.discoveryLoading'),
+        })
+        setTimeout(() => setSettingsSaveMessage(null), 4000)
+        return
+      }
+
+      setSignalLimit(next.confluence_limit)
+      setIndividualTradeLimit(next.individual_trade_limit)
+      setIndividualTradeMinConfidence(next.individual_trade_min_confidence)
+      setIndividualTradeMaxAgeMinutes(next.individual_trade_max_age_minutes)
+
+      saveTraderSettingsMutation.mutate({
+        ...discoverySettings,
+        trader_opps_confluence_limit: next.confluence_limit,
+        trader_opps_insider_limit: next.individual_trade_limit,
+        trader_opps_insider_min_confidence: next.individual_trade_min_confidence,
+        trader_opps_insider_max_age_minutes: next.individual_trade_max_age_minutes,
       })
-      setTimeout(() => setSettingsSaveMessage(null), 4000)
-      return
-    }
-
-    setSignalLimit(next.confluence_limit)
-    setIndividualTradeLimit(next.individual_trade_limit)
-    setIndividualTradeMinConfidence(next.individual_trade_min_confidence)
-    setIndividualTradeMaxAgeMinutes(next.individual_trade_max_age_minutes)
-
-    saveTraderSettingsMutation.mutate({
-      ...discoverySettings,
-      trader_opps_confluence_limit: next.confluence_limit,
-      trader_opps_insider_limit: next.individual_trade_limit,
-      trader_opps_insider_min_confidence: next.individual_trade_min_confidence,
-      trader_opps_insider_max_age_minutes: next.individual_trade_max_age_minutes,
-    })
-  }, [discoverySettings, saveTraderSettingsMutation, t])
+    },
+    [discoverySettings, saveTraderSettingsMutation, t],
+  )
 
   const handleCloseSettings = useCallback(() => {
     setSettingsOpen(false)
@@ -780,12 +792,7 @@ export default function RecentTradesPanel({
       individual_trade_min_confidence: individualTradeMinConfidence,
       individual_trade_max_age_minutes: individualTradeMaxAgeMinutes,
     }),
-    [
-      individualTradeLimit,
-      individualTradeMaxAgeMinutes,
-      individualTradeMinConfidence,
-      signalLimit,
-    ],
+    [individualTradeLimit, individualTradeMaxAgeMinutes, individualTradeMinConfidence, signalLimit],
   )
 
   const handleCreateManualGroup = () => {
@@ -875,279 +882,303 @@ export default function RecentTradesPanel({
 
       {showManagement && (
         <div className="rounded-lg border border-border bg-card/60 p-4 space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-blue-400" />
-            <h3 className="text-sm font-semibold text-foreground">
-              {groupsOnlyManagement
-                ? t('recentTradesPanel.section.traderGroups')
-                : t('recentTradesPanel.section.trackedTraders')}
-            </h3>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-blue-400" />
+              <h3 className="text-sm font-semibold text-foreground">
+                {groupsOnlyManagement
+                  ? t('recentTradesPanel.section.traderGroups')
+                  : t('recentTradesPanel.section.trackedTraders')}
+              </h3>
+            </div>
+            <button
+              onClick={() => setShowGroupForm((v) => !v)}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs',
+                showGroupForm
+                  ? 'border-blue-500/40 bg-blue-500/10 text-blue-300'
+                  : 'border-border bg-muted text-foreground/80 hover:bg-accent',
+              )}
+            >
+              <FolderPlus className="w-3.5 h-3.5" />
+              {t('recentTradesPanel.manualGroup')}
+            </button>
           </div>
-          <button
-            onClick={() => setShowGroupForm((v) => !v)}
+
+          <div
             className={cn(
-              'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs',
-              showGroupForm
-                ? 'border-blue-500/40 bg-blue-500/10 text-blue-300'
-                : 'border-border bg-muted text-foreground/80 hover:bg-accent',
+              'grid gap-3',
+              groupsOnlyManagement ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2 sm:grid-cols-4',
             )}
           >
-            <FolderPlus className="w-3.5 h-3.5" />
-            {t('recentTradesPanel.manualGroup')}
-          </button>
-        </div>
-
-        <div className={cn('grid gap-3', groupsOnlyManagement ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2 sm:grid-cols-4')}>
-          {!groupsOnlyManagement && (
+            {!groupsOnlyManagement && (
+              <div className="rounded-md border border-border bg-background/40 px-3 py-2">
+                <p className="text-[11px] text-muted-foreground/70">
+                  {t('recentTradesPanel.stat.trackedWallets')}
+                </p>
+                <p className="text-sm font-semibold text-foreground">{trackedWallets}</p>
+              </div>
+            )}
             <div className="rounded-md border border-border bg-background/40 px-3 py-2">
-              <p className="text-[11px] text-muted-foreground/70">{t('recentTradesPanel.stat.trackedWallets')}</p>
-              <p className="text-sm font-semibold text-foreground">{trackedWallets}</p>
+              <p className="text-[11px] text-muted-foreground/70">
+                {t('recentTradesPanel.stat.traderGroups')}
+              </p>
+              <p className="text-sm font-semibold text-foreground">{traderGroups.length}</p>
+            </div>
+            <div className="rounded-md border border-border bg-background/40 px-3 py-2">
+              <p className="text-[11px] text-muted-foreground/70">
+                {t('recentTradesPanel.stat.groupMembers')}
+              </p>
+              <p className="text-sm font-semibold text-foreground">{totalGroupMembers}</p>
+            </div>
+            <div className="rounded-md border border-border bg-background/40 px-3 py-2">
+              <p className="text-[11px] text-muted-foreground/70">
+                {t('recentTradesPanel.stat.recentTradesHours', { n: hoursFilter })}
+              </p>
+              <p className="text-sm font-semibold text-foreground">{rawTrades.length}</p>
+            </div>
+          </div>
+
+          {groupStatusMessage && (
+            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+              {groupStatusMessage}
             </div>
           )}
-          <div className="rounded-md border border-border bg-background/40 px-3 py-2">
-            <p className="text-[11px] text-muted-foreground/70">{t('recentTradesPanel.stat.traderGroups')}</p>
-            <p className="text-sm font-semibold text-foreground">{traderGroups.length}</p>
-          </div>
-          <div className="rounded-md border border-border bg-background/40 px-3 py-2">
-            <p className="text-[11px] text-muted-foreground/70">{t('recentTradesPanel.stat.groupMembers')}</p>
-            <p className="text-sm font-semibold text-foreground">{totalGroupMembers}</p>
-          </div>
-          <div className="rounded-md border border-border bg-background/40 px-3 py-2">
-            <p className="text-[11px] text-muted-foreground/70">{t('recentTradesPanel.stat.recentTradesHours', { n: hoursFilter })}</p>
-            <p className="text-sm font-semibold text-foreground">{rawTrades.length}</p>
-          </div>
-        </div>
 
-        {groupStatusMessage && (
-          <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
-            {groupStatusMessage}
-          </div>
-        )}
-
-        {showGroupForm && (
-          <div className="rounded-md border border-border bg-background/40 p-3 space-y-2">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <input
-                type="text"
-                value={groupName}
-                onChange={(e) => setGroupName(e.target.value)}
-                placeholder={t('recentTradesPanel.form.groupNamePlaceholder')}
-                className="bg-muted border border-border rounded px-2 py-1.5 text-sm"
+          {showGroupForm && (
+            <div className="rounded-md border border-border bg-background/40 p-3 space-y-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  value={groupName}
+                  onChange={(e) => setGroupName(e.target.value)}
+                  placeholder={t('recentTradesPanel.form.groupNamePlaceholder')}
+                  className="bg-muted border border-border rounded px-2 py-1.5 text-sm"
+                />
+                <input
+                  type="text"
+                  value={groupDescription}
+                  onChange={(e) => setGroupDescription(e.target.value)}
+                  placeholder={t('recentTradesPanel.form.descriptionPlaceholder')}
+                  className="bg-muted border border-border rounded px-2 py-1.5 text-sm"
+                />
+              </div>
+              <textarea
+                value={groupWalletInput}
+                onChange={(e) => setGroupWalletInput(e.target.value)}
+                placeholder={t('recentTradesPanel.form.walletsPlaceholder')}
+                className="w-full min-h-[72px] bg-muted border border-border rounded px-2 py-1.5 text-sm"
               />
-              <input
-                type="text"
-                value={groupDescription}
-                onChange={(e) => setGroupDescription(e.target.value)}
-                placeholder={t('recentTradesPanel.form.descriptionPlaceholder')}
-                className="bg-muted border border-border rounded px-2 py-1.5 text-sm"
-              />
-            </div>
-            <textarea
-              value={groupWalletInput}
-              onChange={(e) => setGroupWalletInput(e.target.value)}
-              placeholder={t('recentTradesPanel.form.walletsPlaceholder')}
-              className="w-full min-h-[72px] bg-muted border border-border rounded px-2 py-1.5 text-sm"
-            />
-            <div className="flex items-center justify-end">
-              <button
-                onClick={handleCreateManualGroup}
-                disabled={createGroupMutation.isPending}
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium',
-                  'bg-blue-500/20 text-blue-300 hover:bg-blue-500/30',
-                  createGroupMutation.isPending && 'opacity-50',
-                )}
-              >
-                {createGroupMutation.isPending ? (
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <FolderPlus className="w-3.5 h-3.5" />
-                )}
-                {t('recentTradesPanel.createTrack')}
-              </button>
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Layers className="w-4 h-4 text-muted-foreground/70" />
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              {t('recentTradesPanel.section.existingGroups')}
-            </p>
-          </div>
-          {groupsLoading ? (
-            <div className="rounded-md border border-border bg-background/40 p-3 text-sm text-muted-foreground/70">
-              {t('recentTradesPanel.loading.groups')}
-            </div>
-          ) : traderGroups.length === 0 ? (
-            <div className="rounded-md border border-dashed border-border bg-background/20 p-3 text-sm text-muted-foreground/70">
-              {t('recentTradesPanel.empty.noGroups')}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {traderGroups.map((group) => (
-                <div
-                  key={group.id}
-                  className="rounded-md border border-border bg-background/40 p-3"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{group.name}</p>
-                      <p className="text-[11px] text-muted-foreground/70">
-                        {t('recentTradesPanel.group.memberCount', { n: group.member_count })}
-                        <span className="mx-1">•</span>
-                        {group.source_type.replace(/_/g, ' ')}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => trackGroupMembersMutation.mutate(group.id)}
-                        disabled={trackGroupMembersMutation.isPending}
-                        className="inline-flex items-center gap-1 rounded-md bg-blue-500/15 px-2 py-1 text-[11px] text-blue-300 hover:bg-blue-500/25"
-                      >
-                        <CheckCircle2 className="w-3 h-3" />
-                        {t('recentTradesPanel.action.track')}
-                      </button>
-                      <button
-                        onClick={() => deleteGroupMutation.mutate(group.id)}
-                        disabled={deleteGroupMutation.isPending}
-                        className="inline-flex items-center gap-1 rounded-md bg-red-500/15 px-2 py-1 text-[11px] text-red-300 hover:bg-red-500/25"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                        {t('recentTradesPanel.action.delete')}
-                      </button>
-                    </div>
-                  </div>
-                  {group.members && group.members.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {group.members.slice(0, 4).map((member) => (
-                        <button
-                          key={member.id}
-                          onClick={() => onNavigateToWallet?.(member.wallet_address)}
-                          className="inline-flex items-center gap-1 rounded bg-muted/80 px-2 py-0.5 text-[11px] text-foreground/80 hover:bg-muted"
-                        >
-                          <Wallet className="w-3 h-3 text-muted-foreground/70" />
-                          {member.username || shortAddress(member.wallet_address, t)}
-                        </button>
-                      ))}
-                    </div>
+              <div className="flex items-center justify-end">
+                <button
+                  onClick={handleCreateManualGroup}
+                  disabled={createGroupMutation.isPending}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium',
+                    'bg-blue-500/20 text-blue-300 hover:bg-blue-500/30',
+                    createGroupMutation.isPending && 'opacity-50',
                   )}
-                </div>
-              ))}
+                >
+                  {createGroupMutation.isPending ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <FolderPlus className="w-3.5 h-3.5" />
+                  )}
+                  {t('recentTradesPanel.createTrack')}
+                </button>
+              </div>
             </div>
           )}
-        </div>
 
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Target className="w-4 h-4 text-muted-foreground/70" />
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              {t('recentTradesPanel.section.suggestedGroups')}
-            </p>
-          </div>
-          {suggestionsLoading ? (
-            <div className="rounded-md border border-border bg-background/40 p-3 text-sm text-muted-foreground/70">
-              {t('recentTradesPanel.loading.suggestions')}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Layers className="w-4 h-4 text-muted-foreground/70" />
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                {t('recentTradesPanel.section.existingGroups')}
+              </p>
             </div>
-          ) : groupSuggestions.length === 0 ? (
-            <div className="rounded-md border border-dashed border-border bg-background/20 p-3 text-sm text-muted-foreground/70">
-              {t('recentTradesPanel.empty.noSuggestions')}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {groupSuggestions.map((suggestion) => {
-                const trackedOverlap = suggestion.wallet_addresses.filter((address) =>
-                  trackedWalletSet.has(address.toLowerCase()),
-                ).length
-
-                return (
+            {groupsLoading ? (
+              <div className="rounded-md border border-border bg-background/40 p-3 text-sm text-muted-foreground/70">
+                {t('recentTradesPanel.loading.groups')}
+              </div>
+            ) : traderGroups.length === 0 ? (
+              <div className="rounded-md border border-dashed border-border bg-background/20 p-3 text-sm text-muted-foreground/70">
+                {t('recentTradesPanel.empty.noGroups')}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {traderGroups.map((group) => (
                   <div
-                    key={suggestion.id}
+                    key={group.id}
                     className="rounded-md border border-border bg-background/40 p-3"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <p className="text-sm font-medium text-foreground">{suggestion.name}</p>
+                        <p className="text-sm font-medium text-foreground">{group.name}</p>
                         <p className="text-[11px] text-muted-foreground/70">
-                          {t('recentTradesPanel.suggestion.tradersCount', { n: suggestion.wallet_count })}
+                          {t('recentTradesPanel.group.memberCount', { n: group.member_count })}
                           <span className="mx-1">•</span>
-                          {suggestion.kind.replace(/_/g, ' ')}
+                          {group.source_type.replace(/_/g, ' ')}
                         </p>
                       </div>
-                      <button
-                        onClick={() => handleCreateSuggestionGroup(suggestion)}
-                        disabled={
-                          createGroupMutation.isPending
-                          || !!suggestion.already_exists
-                        }
-                        className={cn(
-                          'inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px]',
-                          suggestion.already_exists
-                            ? 'bg-muted text-muted-foreground'
-                            : 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30',
-                        )}
-                      >
-                        <FolderPlus className="w-3 h-3" />
-                        {suggestion.already_exists
-                          ? t('recentTradesPanel.suggestion.created')
-                          : t('recentTradesPanel.createTrack')}
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => trackGroupMembersMutation.mutate(group.id)}
+                          disabled={trackGroupMembersMutation.isPending}
+                          className="inline-flex items-center gap-1 rounded-md bg-blue-500/15 px-2 py-1 text-[11px] text-blue-300 hover:bg-blue-500/25"
+                        >
+                          <CheckCircle2 className="w-3 h-3" />
+                          {t('recentTradesPanel.action.track')}
+                        </button>
+                        <button
+                          onClick={() => deleteGroupMutation.mutate(group.id)}
+                          disabled={deleteGroupMutation.isPending}
+                          className="inline-flex items-center gap-1 rounded-md bg-red-500/15 px-2 py-1 text-[11px] text-red-300 hover:bg-red-500/25"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          {t('recentTradesPanel.action.delete')}
+                        </button>
+                      </div>
                     </div>
-                    <p className="mt-1 text-xs text-muted-foreground/70 line-clamp-2">
-                      {suggestion.description}
-                    </p>
-                    <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground/70">
-                      <span>{t('recentTradesPanel.suggestion.avgScore', { score: (suggestion.avg_composite_score ?? 0).toFixed(2) })}</span>
-                      <span>{t('recentTradesPanel.suggestion.alreadyTracked', { n: trackedOverlap })}</span>
-                    </div>
+                    {group.members && group.members.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {group.members.slice(0, 4).map((member) => (
+                          <button
+                            key={member.id}
+                            onClick={() => onNavigateToWallet?.(member.wallet_address)}
+                            className="inline-flex items-center gap-1 rounded bg-muted/80 px-2 py-0.5 text-[11px] text-foreground/80 hover:bg-muted"
+                          >
+                            <Wallet className="w-3 h-3 text-muted-foreground/70" />
+                            {member.username || shortAddress(member.wallet_address, t)}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-
-        {!groupsOnlyManagement && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Activity className="w-4 h-4 text-muted-foreground/70" />
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                {t('recentTradesPanel.section.activeTrackedTraders')}
-              </p>
-            </div>
-            {trackedWalletActivity.length === 0 ? (
-              <div className="rounded-md border border-dashed border-border bg-background/20 p-3 text-sm text-muted-foreground/70">
-                {t('recentTradesPanel.empty.noActivity')}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                {trackedWalletActivity.slice(0, 9).map((wallet) => (
-                  <button
-                    key={wallet.wallet_address}
-                    onClick={() => onNavigateToWallet?.(wallet.wallet_address)}
-                    className="rounded-md border border-border bg-background/40 p-3 text-left hover:border-border/80 transition-colors"
-                  >
-                    <p className="text-sm font-medium text-foreground">
-                      {wallet.wallet_username || wallet.wallet_label || shortAddress(wallet.wallet_address, t)}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground/70 font-mono">
-                      {shortAddress(wallet.wallet_address, t)}
-                    </p>
-                    <div className="mt-2 flex items-center justify-between text-xs">
-                      <span className="text-blue-300">{t('recentTradesPanel.tradesCount', { n: wallet.trade_count })}</span>
-                      <span className="text-muted-foreground/70">
-                        {wallet.latest_trade_at ? formatTimeAgo(wallet.latest_trade_at.toISOString(), t) : t('recentTradesPanel.time.unknown')}
-                      </span>
-                    </div>
-                  </button>
                 ))}
               </div>
             )}
           </div>
-        )}
-      </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Target className="w-4 h-4 text-muted-foreground/70" />
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                {t('recentTradesPanel.section.suggestedGroups')}
+              </p>
+            </div>
+            {suggestionsLoading ? (
+              <div className="rounded-md border border-border bg-background/40 p-3 text-sm text-muted-foreground/70">
+                {t('recentTradesPanel.loading.suggestions')}
+              </div>
+            ) : groupSuggestions.length === 0 ? (
+              <div className="rounded-md border border-dashed border-border bg-background/20 p-3 text-sm text-muted-foreground/70">
+                {t('recentTradesPanel.empty.noSuggestions')}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {groupSuggestions.map((suggestion) => {
+                  const trackedOverlap = suggestion.wallet_addresses.filter((address) =>
+                    trackedWalletSet.has(address.toLowerCase()),
+                  ).length
+
+                  return (
+                    <div
+                      key={suggestion.id}
+                      className="rounded-md border border-border bg-background/40 p-3"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{suggestion.name}</p>
+                          <p className="text-[11px] text-muted-foreground/70">
+                            {t('recentTradesPanel.suggestion.tradersCount', {
+                              n: suggestion.wallet_count,
+                            })}
+                            <span className="mx-1">•</span>
+                            {suggestion.kind.replace(/_/g, ' ')}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleCreateSuggestionGroup(suggestion)}
+                          disabled={createGroupMutation.isPending || !!suggestion.already_exists}
+                          className={cn(
+                            'inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px]',
+                            suggestion.already_exists
+                              ? 'bg-muted text-muted-foreground'
+                              : 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30',
+                          )}
+                        >
+                          <FolderPlus className="w-3 h-3" />
+                          {suggestion.already_exists
+                            ? t('recentTradesPanel.suggestion.created')
+                            : t('recentTradesPanel.createTrack')}
+                        </button>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground/70 line-clamp-2">
+                        {suggestion.description}
+                      </p>
+                      <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground/70">
+                        <span>
+                          {t('recentTradesPanel.suggestion.avgScore', {
+                            score: (suggestion.avg_composite_score ?? 0).toFixed(2),
+                          })}
+                        </span>
+                        <span>
+                          {t('recentTradesPanel.suggestion.alreadyTracked', { n: trackedOverlap })}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {!groupsOnlyManagement && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Activity className="w-4 h-4 text-muted-foreground/70" />
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  {t('recentTradesPanel.section.activeTrackedTraders')}
+                </p>
+              </div>
+              {trackedWalletActivity.length === 0 ? (
+                <div className="rounded-md border border-dashed border-border bg-background/20 p-3 text-sm text-muted-foreground/70">
+                  {t('recentTradesPanel.empty.noActivity')}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {trackedWalletActivity.slice(0, 9).map((wallet) => (
+                    <button
+                      key={wallet.wallet_address}
+                      onClick={() => onNavigateToWallet?.(wallet.wallet_address)}
+                      className="rounded-md border border-border bg-background/40 p-3 text-left hover:border-border/80 transition-colors"
+                    >
+                      <p className="text-sm font-medium text-foreground">
+                        {wallet.wallet_username ||
+                          wallet.wallet_label ||
+                          shortAddress(wallet.wallet_address, t)}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground/70 font-mono">
+                        {shortAddress(wallet.wallet_address, t)}
+                      </p>
+                      <div className="mt-2 flex items-center justify-between text-xs">
+                        <span className="text-blue-300">
+                          {t('recentTradesPanel.tradesCount', { n: wallet.trade_count })}
+                        </span>
+                        <span className="text-muted-foreground/70">
+                          {wallet.latest_trade_at
+                            ? formatTimeAgo(wallet.latest_trade_at.toISOString(), t)
+                            : t('recentTradesPanel.time.unknown')}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
       {showOpportunities && (
@@ -1157,7 +1188,9 @@ export default function RecentTradesPanel({
               <Filter className="w-4 h-4 text-muted-foreground/70" />
 
               <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">{t('recentTradesPanel.filter.maxSignals')}</span>
+                <span className="text-xs text-muted-foreground">
+                  {t('recentTradesPanel.filter.maxSignals')}
+                </span>
                 <select
                   value={signalLimit}
                   onChange={(e) => setSignalLimit(Number(e.target.value))}
@@ -1244,7 +1277,9 @@ export default function RecentTradesPanel({
                 <Filter className="w-4 h-4 text-muted-foreground/70" />
 
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground/70">{t('recentTradesPanel.filter.maxSignals')}</span>
+                  <span className="text-sm text-muted-foreground/70">
+                    {t('recentTradesPanel.filter.maxSignals')}
+                  </span>
                   <select
                     value={signalLimit}
                     onChange={(e) => setSignalLimit(Number(e.target.value))}
@@ -1312,18 +1347,28 @@ export default function RecentTradesPanel({
                   </p>
                 </div>
                 <div className="rounded-lg border border-border/40 bg-card/40 p-3">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{t('recentTradesPanel.summary.highExtreme')}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                    {t('recentTradesPanel.summary.highExtreme')}
+                  </p>
                   <p className="text-lg font-semibold text-orange-400">
                     {highSignals}
-                    <span className="text-muted-foreground/60 text-sm ml-1">/ {extremeSignals}</span>
+                    <span className="text-muted-foreground/60 text-sm ml-1">
+                      / {extremeSignals}
+                    </span>
                   </p>
                 </div>
                 <div className="rounded-lg border border-border/40 bg-card/40 p-3">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{t('recentTradesPanel.summary.avgConviction')}</p>
-                  <p className="text-lg font-semibold text-foreground">{avgConviction.toFixed(1)}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                    {t('recentTradesPanel.summary.avgConviction')}
+                  </p>
+                  <p className="text-lg font-semibold text-foreground">
+                    {avgConviction.toFixed(1)}
+                  </p>
                 </div>
                 <div className="rounded-lg border border-border/40 bg-card/40 p-3">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{t('recentTradesPanel.summary.marketsWallets')}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                    {t('recentTradesPanel.summary.marketsWallets')}
+                  </p>
                   <p className="text-lg font-semibold text-foreground">
                     <span className="text-blue-400">{uniqueSignalMarkets}</span>
                     <span className="text-muted-foreground/50 mx-1">/</span>
@@ -1331,16 +1376,22 @@ export default function RecentTradesPanel({
                   </p>
                 </div>
                 <div className="rounded-lg border border-border/40 bg-card/40 p-3">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{t('recentTradesPanel.summary.sourceScope')}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                    {t('recentTradesPanel.summary.sourceScope')}
+                  </p>
                   <p className="text-sm font-semibold text-cyan-300">{selectedSourceScopeLabels}</p>
                   <p className="text-[10px] text-muted-foreground/70 mt-1">
                     {t('recentTradesPanel.summary.otherCount', { n: displayedOtherCount })}
                   </p>
                 </div>
                 <div className="rounded-lg border border-border/40 bg-card/40 p-3">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{t('recentTradesPanel.summary.filteredOut')}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                    {t('recentTradesPanel.summary.filteredOut')}
+                  </p>
                   <p className="text-lg font-semibold text-red-300">{filteredOutSignals}</p>
-                  <p className="text-[10px] text-orange-300/80 mt-1">{t('recentTradesPanel.summary.scopeCount', { n: sourceScopedOutSignals })}</p>
+                  <p className="text-[10px] text-orange-300/80 mt-1">
+                    {t('recentTradesPanel.summary.scopeCount', { n: sourceScopedOutSignals })}
+                  </p>
                 </div>
               </div>
             </>
@@ -1363,10 +1414,10 @@ export default function RecentTradesPanel({
                 {sourceScopeFilterActive
                   ? t('recentTradesPanel.empty.noScopeMatch', { labels: selectedSourceScopeLabels })
                   : showFilteredSignals
-                  ? t('recentTradesPanel.empty.noConfluence')
-                  : filteredOutSignals > 0
-                    ? t('recentTradesPanel.empty.filteredFromExec', { n: filteredOutSignals })
-                    : t('recentTradesPanel.empty.noQualified')}
+                    ? t('recentTradesPanel.empty.noConfluence')
+                    : filteredOutSignals > 0
+                      ? t('recentTradesPanel.empty.filteredFromExec', { n: filteredOutSignals })
+                      : t('recentTradesPanel.empty.noQualified')}
               </p>
             </div>
           ) : viewMode === 'terminal' ? (
@@ -1460,7 +1511,10 @@ export default function RecentTradesPanel({
                 <div className="min-w-0">
                   <p className="text-xs font-semibold">
                     {alert.outcome
-                      ? t('recentTradesPanel.alert.titleWithOutcome', { tier: alert.tier, outcome: alert.outcome })
+                      ? t('recentTradesPanel.alert.titleWithOutcome', {
+                          tier: alert.tier,
+                          outcome: alert.outcome,
+                        })
                       : t('recentTradesPanel.alert.title', { tier: alert.tier })}
                   </p>
                   <p className="text-xs mt-0.5 line-clamp-2">{alert.market}</p>

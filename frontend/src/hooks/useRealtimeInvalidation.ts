@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { QueryClient, QueryKey } from '@tanstack/react-query'
 
-type WSMessage = {
-  type?: string
-  topic?: string
-  data?: Record<string, any>
-} | null | undefined
+type WSMessage =
+  | {
+      type?: string
+      topic?: string
+      data?: Record<string, any>
+    }
+  | null
+  | undefined
 
 type RealtimeContext = {
   activeTab?: string
@@ -155,14 +158,18 @@ export function useRealtimeInvalidation(
             ...incomingDecision,
             failed_checks: Array.isArray(incomingDecision.failed_checks)
               ? incomingDecision.failed_checks
-              : (Array.isArray(row?.failed_checks) ? row.failed_checks : []),
+              : Array.isArray(row?.failed_checks)
+                ? row.failed_checks
+                : [],
             payload: incomingDecision.payload ?? row?.payload ?? {},
           }
         })
         if (!found) {
           nextRows.unshift({
             ...incomingDecision,
-            failed_checks: Array.isArray(incomingDecision.failed_checks) ? incomingDecision.failed_checks : [],
+            failed_checks: Array.isArray(incomingDecision.failed_checks)
+              ? incomingDecision.failed_checks
+              : [],
             payload: incomingDecision.payload ?? {},
           })
         }
@@ -216,37 +223,33 @@ export function useRealtimeInvalidation(
       queryClient.setQueryData(['trader-orchestrator-overview'], (old: any) => {
         if (!old || typeof old !== 'object') return old
 
-        const previousWorker =
-          old.worker && typeof old.worker === 'object'
-            ? old.worker
-            : {}
-        const previousControl =
-          old.control && typeof old.control === 'object'
-            ? old.control
-            : {}
-        const previousMetrics =
-          old.metrics && typeof old.metrics === 'object'
-            ? old.metrics
-            : {}
+        const previousWorker = old.worker && typeof old.worker === 'object' ? old.worker : {}
+        const previousControl = old.control && typeof old.control === 'object' ? old.control : {}
+        const previousMetrics = old.metrics && typeof old.metrics === 'object' ? old.metrics : {}
 
         const snapshotControl =
-          snapshot.control && typeof snapshot.control === 'object'
-            ? snapshot.control
-            : {}
+          snapshot.control && typeof snapshot.control === 'object' ? snapshot.control : {}
         const snapshotRuntimeState =
           snapshot.runtime_state && typeof snapshot.runtime_state === 'object'
             ? snapshot.runtime_state
             : undefined
-        const nextEnabled = typeof snapshot.is_enabled === 'boolean'
-          ? snapshot.is_enabled
-          : (typeof snapshotControl.is_enabled === 'boolean' ? snapshotControl.is_enabled : previousControl.is_enabled)
-        const nextPaused = typeof snapshot.is_paused === 'boolean'
-          ? snapshot.is_paused
-          : (typeof snapshotControl.is_paused === 'boolean' ? snapshotControl.is_paused : previousControl.is_paused)
-        const snapshotMode = String(snapshot.mode || snapshotControl.mode || '').trim().toLowerCase()
-        const nextMode = snapshotMode === 'shadow' || snapshotMode === 'live'
-          ? snapshotMode
-          : previousControl.mode
+        const nextEnabled =
+          typeof snapshot.is_enabled === 'boolean'
+            ? snapshot.is_enabled
+            : typeof snapshotControl.is_enabled === 'boolean'
+              ? snapshotControl.is_enabled
+              : previousControl.is_enabled
+        const nextPaused =
+          typeof snapshot.is_paused === 'boolean'
+            ? snapshot.is_paused
+            : typeof snapshotControl.is_paused === 'boolean'
+              ? snapshotControl.is_paused
+              : previousControl.is_paused
+        const snapshotMode = String(snapshot.mode || snapshotControl.mode || '')
+          .trim()
+          .toLowerCase()
+        const nextMode =
+          snapshotMode === 'shadow' || snapshotMode === 'live' ? snapshotMode : previousControl.mode
 
         return {
           ...old,
@@ -263,10 +266,14 @@ export function useRealtimeInvalidation(
           runtime_state: snapshotRuntimeState,
           metrics: {
             ...previousMetrics,
-            decisions_count: Number(snapshot.decisions_count ?? previousMetrics.decisions_count ?? 0),
+            decisions_count: Number(
+              snapshot.decisions_count ?? previousMetrics.decisions_count ?? 0,
+            ),
             orders_count: Number(snapshot.orders_count ?? previousMetrics.orders_count ?? 0),
             open_orders: Number(snapshot.open_orders ?? previousMetrics.open_orders ?? 0),
-            gross_exposure_usd: Number(snapshot.gross_exposure_usd ?? previousMetrics.gross_exposure_usd ?? 0),
+            gross_exposure_usd: Number(
+              snapshot.gross_exposure_usd ?? previousMetrics.gross_exposure_usd ?? 0,
+            ),
             daily_pnl: Number(snapshot.daily_pnl ?? previousMetrics.daily_pnl ?? 0),
           },
         }
@@ -275,7 +282,9 @@ export function useRealtimeInvalidation(
 
     const applyPricesUpdateToOpportunityCaches = (payload: any) => {
       if (!payload || typeof payload !== 'object') return
-      const marketId = String(payload.market_id || '').trim().toLowerCase()
+      const marketId = String(payload.market_id || '')
+        .trim()
+        .toLowerCase()
       if (!marketId) return
       const nextYes = Number(payload.yes_price)
       const nextNo = Number(payload.no_price)
@@ -290,41 +299,44 @@ export function useRealtimeInvalidation(
       const pricedAtIso = ingestTs > 0 ? new Date(ingestTs * 1000).toISOString() : null
       const isFresh = Boolean(payload.is_fresh)
 
-      const patchRows = (rows: any[]): any[] => rows.map((row: any) => {
-        if (!row || typeof row !== 'object' || !Array.isArray(row.markets)) return row
-        let touched = false
-        const nextMarkets = row.markets.map((market: any) => {
-          if (!market || typeof market !== 'object') return market
-          const currentMarketId = String(
-            market.condition_id || market.conditionId || market.id || '',
-          ).trim().toLowerCase()
-          if (currentMarketId !== marketId) return market
-          touched = true
-          const updated = {
-            ...market,
-            is_price_fresh: isFresh,
-            price_age_seconds: isFresh ? 0 : market.price_age_seconds,
+      const patchRows = (rows: any[]): any[] =>
+        rows.map((row: any) => {
+          if (!row || typeof row !== 'object' || !Array.isArray(row.markets)) return row
+          let touched = false
+          const nextMarkets = row.markets.map((market: any) => {
+            if (!market || typeof market !== 'object') return market
+            const currentMarketId = String(
+              market.condition_id || market.conditionId || market.id || '',
+            )
+              .trim()
+              .toLowerCase()
+            if (currentMarketId !== marketId) return market
+            touched = true
+            const updated = {
+              ...market,
+              is_price_fresh: isFresh,
+              price_age_seconds: isFresh ? 0 : market.price_age_seconds,
+            }
+            if (yesPrice !== null) {
+              updated.current_yes_price = yesPrice
+              updated.yes_price = yesPrice
+            }
+            if (noPrice !== null) {
+              updated.current_no_price = noPrice
+              updated.no_price = noPrice
+            }
+            if (pricedAtIso) {
+              updated.price_updated_at = pricedAtIso
+            }
+            return updated
+          })
+          if (!touched) return row
+          return {
+            ...row,
+            markets: nextMarkets,
+            last_priced_at: pricedAtIso || row.last_priced_at,
           }
-          if (yesPrice !== null) {
-            updated.current_yes_price = yesPrice
-            updated.yes_price = yesPrice
-          }
-          if (noPrice !== null) {
-            updated.current_no_price = noPrice
-            updated.no_price = noPrice
-          }
-          if (pricedAtIso) {
-            updated.price_updated_at = pricedAtIso
-          }
-          return updated
         })
-        if (!touched) return row
-        return {
-          ...row,
-          markets: nextMarkets,
-          last_priced_at: pricedAtIso || row.last_priced_at,
-        }
-      })
 
       queryClient.setQueriesData({ queryKey: ['opportunities'] }, (old: any) => {
         if (Array.isArray(old)) {
@@ -350,15 +362,15 @@ export function useRealtimeInvalidation(
     const viewingData = activeTab === 'data'
     const viewingArbitrage = viewingOpportunities && opportunitiesView === 'scanner'
     const viewingNews =
-      (viewingOpportunities && opportunitiesView === 'news')
-      || (viewingData && dataView === 'feed')
+      (viewingOpportunities && opportunitiesView === 'news') || (viewingData && dataView === 'feed')
     const viewingWeather = viewingOpportunities && opportunitiesView === 'weather'
-    const viewingScannerFamily = viewingOpportunities
-      && opportunitiesView !== 'search'
-      && opportunitiesView !== 'crypto'
-      && opportunitiesView !== 'news'
-      && opportunitiesView !== 'weather'
-      && opportunitiesView !== 'traders'
+    const viewingScannerFamily =
+      viewingOpportunities &&
+      opportunitiesView !== 'search' &&
+      opportunitiesView !== 'crypto' &&
+      opportunitiesView !== 'news' &&
+      opportunitiesView !== 'weather' &&
+      opportunitiesView !== 'traders'
     const viewingWorld = viewingData && dataView === 'map'
     const viewingTrading = activeTab === 'trading'
 
@@ -370,13 +382,16 @@ export function useRealtimeInvalidation(
     }
 
     if (messageType === 'opportunities_update' || messageType === 'init') {
-      queueInvalidations([
-        ['opportunities'],
-        ['opportunity-strategy-counts'],
-        ['opportunity-category-counts'],
-        ['opportunity-subfilters'],
-        ['scanner-status'],
-      ], { immediate: viewingScannerFamily })
+      queueInvalidations(
+        [
+          ['opportunities'],
+          ['opportunity-strategy-counts'],
+          ['opportunity-category-counts'],
+          ['opportunity-subfilters'],
+          ['scanner-status'],
+        ],
+        { immediate: viewingScannerFamily },
+      )
     }
     if (messageType === 'init' && Array.isArray(lastMessage.data?.workers_status)) {
       mergeWorkerStatuses(lastMessage.data.workers_status)
@@ -424,10 +439,7 @@ export function useRealtimeInvalidation(
       ])
     }
     if (messageType === 'tracked_trader_pool_update') {
-      queueInvalidations([
-        ['discovery-pool-stats'],
-        ['discovery-leaderboard'],
-      ])
+      queueInvalidations([['discovery-pool-stats'], ['discovery-leaderboard']])
     }
     if (messageType === 'news_workflow_status' && lastMessage.data) {
       // Direct cache update for news workflow status
@@ -482,33 +494,39 @@ export function useRealtimeInvalidation(
       if (lastMessage.data.status) {
         queryClient.setQueryData(['weather-workflow-status'], lastMessage.data.status)
       }
-      queueInvalidations([
-        ['weather-workflow-opportunities', 'count'],
-        ...(viewingWeather
-          ? ([
-              ['weather-workflow-opportunities'],
-              ['weather-workflow-opportunity-ids-analyze-all'],
-              ['weather-workflow-opportunity-dates'],
-              ['weather-workflow-intents'],
-              ['weather-workflow-performance'],
-            ] as QueryKey[])
-          : []),
-      ], { immediate: viewingWeather })
+      queueInvalidations(
+        [
+          ['weather-workflow-opportunities', 'count'],
+          ...(viewingWeather
+            ? ([
+                ['weather-workflow-opportunities'],
+                ['weather-workflow-opportunity-ids-analyze-all'],
+                ['weather-workflow-opportunity-dates'],
+                ['weather-workflow-intents'],
+                ['weather-workflow-performance'],
+              ] as QueryKey[])
+            : []),
+        ],
+        { immediate: viewingWeather },
+      )
     }
     if (messageType === 'weather_status' && lastMessage.data) {
       queryClient.setQueryData(['weather-workflow-status'], lastMessage.data)
-      queueInvalidations([
-        ['weather-workflow-opportunities', 'count'],
-        ...(viewingWeather
-          ? ([
-              ['weather-workflow-opportunities'],
-              ['weather-workflow-opportunity-ids-analyze-all'],
-              ['weather-workflow-opportunity-dates'],
-              ['weather-workflow-intents'],
-              ['weather-workflow-performance'],
-            ] as QueryKey[])
-          : []),
-      ], { immediate: viewingWeather })
+      queueInvalidations(
+        [
+          ['weather-workflow-opportunities', 'count'],
+          ...(viewingWeather
+            ? ([
+                ['weather-workflow-opportunities'],
+                ['weather-workflow-opportunity-ids-analyze-all'],
+                ['weather-workflow-opportunity-dates'],
+                ['weather-workflow-intents'],
+                ['weather-workflow-performance'],
+              ] as QueryKey[])
+            : []),
+        ],
+        { immediate: viewingWeather },
+      )
     }
     if (messageType === 'events_status' && lastMessage.data) {
       // Direct cache update for events status
@@ -573,9 +591,7 @@ export function useRealtimeInvalidation(
         }))
       }
       // Still invalidate derived queries
-      queueInvalidations([
-        ['signals-stats'],
-      ])
+      queueInvalidations([['signals-stats']])
     }
     if (messageType === 'crypto_markets_update' && lastMessage.data) {
       // Direct cache update for crypto markets
@@ -587,47 +603,44 @@ export function useRealtimeInvalidation(
       // Direct cache update for trader orchestrator status
       queryClient.setQueryData(['trader-orchestrator-status'], lastMessage.data)
       mergeOrchestratorSnapshotIntoOverview(lastMessage.data)
-      queueInvalidations([
-        ['trader-orchestrator-overview'],
-        ...(viewingTrading ? ([['traders-list']] as QueryKey[]) : []),
-      ], { immediate: true })
+      queueInvalidations(
+        [
+          ['trader-orchestrator-overview'],
+          ...(viewingTrading ? ([['traders-list']] as QueryKey[]) : []),
+        ],
+        { immediate: true },
+      )
     }
     if (messageType === 'trader_decision') {
       upsertTraderDecisionCache(lastMessage.data)
-      queueInvalidations([
-        ['trader-orchestrator-overview'],
-      ])
+      queueInvalidations([['trader-orchestrator-overview']])
     }
     if (messageType === 'trader_order') {
       upsertTraderOrderCache(lastMessage.data)
       queueInvalidations([
         ['trader-orchestrator-overview'],
-        ...(viewingTrading
-          ? ([
-              ['trader-orders-all'],
-              ['trader-orders'],
-            ] as QueryKey[])
-          : []),
+        ...(viewingTrading ? ([['trader-orders-all'], ['trader-orders']] as QueryKey[]) : []),
       ])
     }
     if (messageType === 'execution_order') {
       queueInvalidations([
         ['trader-orchestrator-overview'],
-        ...(viewingTrading
-          ? ([
-              ['trader-orders-all'],
-              ['trader-orders'],
-            ] as QueryKey[])
-          : []),
+        ...(viewingTrading ? ([['trader-orders-all'], ['trader-orders']] as QueryKey[]) : []),
       ])
     }
     if (messageType === 'trader_event') {
       upsertTraderEventCache(lastMessage.data)
       if (viewingTrading) {
-        queueInvalidations([
-          ['trader-orchestrator-overview'],
-        ])
+        queueInvalidations([['trader-orchestrator-overview']])
       }
     }
-  }, [context.activeTab, context.opportunitiesView, lastMessage, queryClient, queueInvalidations, setScannerActivity])
+  }, [
+    context.activeTab,
+    context.dataView,
+    context.opportunitiesView,
+    lastMessage,
+    queryClient,
+    queueInvalidations,
+    setScannerActivity,
+  ])
 }

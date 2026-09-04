@@ -14,12 +14,7 @@ import {
 import { MarkdownTextPrimitive } from '@assistant-ui/react-markdown'
 import { useMessage, useMessagePartText } from '@assistant-ui/react'
 import { motion } from 'framer-motion'
-import {
-  encodeSeg,
-  SegmentedContent,
-  RichTextContent,
-  markdownComponents,
-} from './ChatRendering'
+import { encodeSeg, SegmentedContent, RichTextContent, markdownComponents } from './ChatRendering'
 import {
   MessageSquare,
   Plus,
@@ -53,14 +48,23 @@ import { activeChatSessionIdAtom } from '../../store/atoms'
 type SessionGroupKey = 'today' | 'yesterday' | 'thisWeek' | 'older'
 
 function groupSessionsByDate(sessions: AIChatSession[]): Record<SessionGroupKey, AIChatSession[]> {
-  const groups: Record<SessionGroupKey, AIChatSession[]> = { today: [], yesterday: [], thisWeek: [], older: [] }
+  const groups: Record<SessionGroupKey, AIChatSession[]> = {
+    today: [],
+    yesterday: [],
+    thisWeek: [],
+    older: [],
+  }
   const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const yesterday = new Date(today.getTime() - 86400000)
   const weekAgo = new Date(today.getTime() - 7 * 86400000)
 
   for (const session of sessions) {
-    const date = session.updated_at ? new Date(session.updated_at) : session.created_at ? new Date(session.created_at) : null
+    const date = session.updated_at
+      ? new Date(session.updated_at)
+      : session.created_at
+        ? new Date(session.created_at)
+        : null
     let group: SessionGroupKey
     if (!date) {
       group = 'older'
@@ -79,7 +83,9 @@ function groupSessionsByDate(sessions: AIChatSession[]): Record<SessionGroupKey,
   return groups
 }
 
-function toThreadMessages(messages: AIChatSessionDetail['messages'] | undefined): ThreadMessageLike[] {
+function toThreadMessages(
+  messages: AIChatSessionDetail['messages'] | undefined,
+): ThreadMessageLike[] {
   return (messages ?? [])
     .filter((message) => message.role === 'user' || message.role === 'assistant')
     .map((message) => ({
@@ -96,8 +102,9 @@ function getSessionSortValue(session: AIChatSession): number {
 }
 
 function upsertSessionList(sessions: AIChatSession[], session: AIChatSession): AIChatSession[] {
-  return [...sessions.filter((item) => item.session_id !== session.session_id), session]
-    .sort((left, right) => getSessionSortValue(right) - getSessionSortValue(left))
+  return [...sessions.filter((item) => item.session_id !== session.session_id), session].sort(
+    (left, right) => getSessionSortValue(right) - getSessionSortValue(left),
+  )
 }
 
 function coerceSessionPayload(data: Record<string, unknown>): AIChatSession | null {
@@ -152,15 +159,18 @@ function SessionSidebar({
   const handleArchive = async (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation()
     await archiveAIChatSession(sessionId)
-    queryClient.setQueryData<{ sessions: AIChatSession[]; total: number } | undefined>(['ai-chat-sessions'], (current) => {
-      if (!current) return current
-      const nextSessions = current.sessions.filter((session) => session.session_id !== sessionId)
-      const removed = nextSessions.length !== current.sessions.length
-      return {
-        sessions: nextSessions,
-        total: removed ? Math.max(0, current.total - 1) : current.total,
-      }
-    })
+    queryClient.setQueryData<{ sessions: AIChatSession[]; total: number } | undefined>(
+      ['ai-chat-sessions'],
+      (current) => {
+        if (!current) return current
+        const nextSessions = current.sessions.filter((session) => session.session_id !== sessionId)
+        const removed = nextSessions.length !== current.sessions.length
+        return {
+          sessions: nextSessions,
+          total: removed ? Math.max(0, current.total - 1) : current.total,
+        }
+      },
+    )
     queryClient.invalidateQueries({ queryKey: ['ai-chat-sessions'] })
     onArchiveSession(sessionId)
   }
@@ -224,7 +234,9 @@ function SessionSidebar({
             if (!items?.length) return null
             return (
               <div key={key}>
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 px-2 mb-1.5">{label}</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 px-2 mb-1.5">
+                  {label}
+                </p>
                 <div className="space-y-0.5">
                   {items.map((session) => (
                     <div
@@ -251,17 +263,28 @@ function SessionSidebar({
                             autoFocus
                             className="flex-1 bg-transparent border-b border-purple-500/40 text-xs outline-none px-0.5"
                           />
-                          <button onClick={(e) => { e.stopPropagation(); void commitRename(session.session_id) }}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              void commitRename(session.session_id)
+                            }}
+                          >
                             <Check className="w-3 h-3 text-emerald-400" />
                           </button>
-                          <button onClick={(e) => { e.stopPropagation(); setRenamingId(null) }}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setRenamingId(null)
+                            }}
+                          >
                             <X className="w-3 h-3 text-muted-foreground" />
                           </button>
                         </div>
                       ) : (
                         <>
                           <span className="flex-1 text-xs truncate">
-                            {session.title || t('ai.chatView.chatNumber', { id: session.session_id.slice(0, 8) })}
+                            {session.title ||
+                              t('ai.chatView.chatNumber', { id: session.session_id.slice(0, 8) })}
                           </span>
                           <div className="hidden group-hover:flex items-center gap-0.5">
                             <button
@@ -271,7 +294,9 @@ function SessionSidebar({
                               <Pencil className="w-3 h-3" />
                             </button>
                             <button
-                              onClick={(e) => { void handleArchive(session.session_id, e) }}
+                              onClick={(e) => {
+                                void handleArchive(session.session_id, e)
+                              }}
                               className="p-0.5 rounded hover:bg-red-500/20 text-red-400"
                             >
                               <Trash2 className="w-3 h-3" />
@@ -305,7 +330,9 @@ function UserMessage() {
         <User className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[10px] uppercase tracking-wider text-blue-600 dark:text-blue-400/70 mb-1">{t('ai.chatView.you')}</p>
+        <p className="text-[10px] uppercase tracking-wider text-blue-600 dark:text-blue-400/70 mb-1">
+          {t('ai.chatView.you')}
+        </p>
         <MessagePrimitive.Parts
           components={{
             Text: () => (
@@ -330,12 +357,13 @@ function AssistantTextContent() {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.15 }}
-    >
-      <RichTextContent text={raw} standalone={false} isStreaming={isStreaming} contextMarkdown={<MarkdownTextPrimitive components={markdownComponents} />} />
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15 }}>
+      <RichTextContent
+        text={raw}
+        standalone={false}
+        isStreaming={isStreaming}
+        contextMarkdown={<MarkdownTextPrimitive components={markdownComponents} />}
+      />
     </motion.div>
   )
 }
@@ -348,7 +376,9 @@ function AssistantMessage() {
         <Bot className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[10px] uppercase tracking-wider text-purple-600 dark:text-purple-400/70 mb-1">{t('ai.chatView.homerunAi')}</p>
+        <p className="text-[10px] uppercase tracking-wider text-purple-600 dark:text-purple-400/70 mb-1">
+          {t('ai.chatView.homerunAi')}
+        </p>
         <MessagePrimitive.Parts
           components={{
             Text: AssistantTextContent,
@@ -468,140 +498,153 @@ function ChatRuntime({
   const sessionIdRef = useRef<string | null>(sessionId)
   sessionIdRef.current = sessionId
 
-  const chatModelAdapter = useMemo<ChatModelAdapter>(() => ({
-    async *run({ messages, abortSignal }) {
-      const lastUserMessage = [...messages].reverse().find((message) => message.role === 'user')
-      if (!lastUserMessage) return
+  const chatModelAdapter = useMemo<ChatModelAdapter>(
+    () => ({
+      async *run({ messages, abortSignal }) {
+        const lastUserMessage = [...messages].reverse().find((message) => message.role === 'user')
+        if (!lastUserMessage) return
 
-      const userText = lastUserMessage.content
-        .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
-        .map((part) => part.text)
-        .join('\n')
+        const userText = lastUserMessage.content
+          .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
+          .map((part) => part.text)
+          .join('\n')
 
-      const state = {
-        segments: [] as string[],
-        answerChunks: [] as string[],
-        isThinking: true,
-        done: false,
-        error: null as string | null,
-        sessionId: sessionIdRef.current,
-        changed: true,
-      }
+        const state = {
+          segments: [] as string[],
+          answerChunks: [] as string[],
+          isThinking: true,
+          done: false,
+          error: null as string | null,
+          sessionId: sessionIdRef.current,
+          changed: true,
+        }
 
-      const THINKING_SEG = encodeSeg('thinking', { content: '' })
+        const THINKING_SEG = encodeSeg('thinking', { content: '' })
 
-      streamAIChat(
-        {
-          message: userText,
-          session_id: sessionIdRef.current || undefined,
-        },
-        (chunk) => {
-          state.isThinking = false
-          state.answerChunks.push(chunk)
-          state.changed = true
-        },
-        (data) => {
-          if (data.session_id && data.session_id !== state.sessionId) {
-            state.sessionId = data.session_id
-            onSessionBound(paneKey, {
-              session_id: data.session_id,
-              context_type: null,
-              context_id: null,
-              title: null,
-              created_at: null,
-              updated_at: new Date().toISOString(),
-            })
-          }
-          state.isThinking = false
-          state.done = true
-          state.changed = true
-        },
-        (error) => {
-          state.isThinking = false
-          state.error = error
-          state.changed = true
-        },
-        abortSignal,
-        (event: ChatStreamEvent) => {
-          switch (event.event) {
-            case 'session': {
-              const boundSession = coerceSessionPayload(event.data)
-              if (!boundSession) break
-              state.sessionId = boundSession.session_id
-              onSessionBound(paneKey, boundSession)
-              break
+        streamAIChat(
+          {
+            message: userText,
+            session_id: sessionIdRef.current || undefined,
+          },
+          (chunk) => {
+            state.isThinking = false
+            state.answerChunks.push(chunk)
+            state.changed = true
+          },
+          (data) => {
+            if (data.session_id && data.session_id !== state.sessionId) {
+              state.sessionId = data.session_id
+              onSessionBound(paneKey, {
+                session_id: data.session_id,
+                context_type: null,
+                context_id: null,
+                title: null,
+                created_at: null,
+                updated_at: new Date().toISOString(),
+              })
             }
-            case 'thinking':
-              state.isThinking = true
-              state.changed = true
-              break
-            case 'tool_start':
-              state.isThinking = false
-              state.segments.push(encodeSeg('tool_start', {
-                tool: event.data.tool,
-                input: event.data.input || {},
-              }))
-              state.changed = true
-              break
-            case 'tool_end':
-              state.segments.push(encodeSeg('tool_end', {
-                tool: event.data.tool,
-                output: event.data.output || {},
-              }))
-              state.isThinking = false
-              state.changed = true
-              break
-            case 'tool_error':
-              state.segments.push(encodeSeg('tool_error', {
-                tool: event.data.tool,
-                error: event.data.error || 'Unknown error',
-              }))
-              state.changed = true
-              break
+            state.isThinking = false
+            state.done = true
+            state.changed = true
+          },
+          (error) => {
+            state.isThinking = false
+            state.error = error
+            state.changed = true
+          },
+          abortSignal,
+          (event: ChatStreamEvent) => {
+            switch (event.event) {
+              case 'session': {
+                const boundSession = coerceSessionPayload(event.data)
+                if (!boundSession) break
+                state.sessionId = boundSession.session_id
+                onSessionBound(paneKey, boundSession)
+                break
+              }
+              case 'thinking':
+                state.isThinking = true
+                state.changed = true
+                break
+              case 'tool_start':
+                state.isThinking = false
+                state.segments.push(
+                  encodeSeg('tool_start', {
+                    tool: event.data.tool,
+                    input: event.data.input || {},
+                  }),
+                )
+                state.changed = true
+                break
+              case 'tool_end':
+                state.segments.push(
+                  encodeSeg('tool_end', {
+                    tool: event.data.tool,
+                    output: event.data.output || {},
+                  }),
+                )
+                state.isThinking = false
+                state.changed = true
+                break
+              case 'tool_error':
+                state.segments.push(
+                  encodeSeg('tool_error', {
+                    tool: event.data.tool,
+                    error: event.data.error || 'Unknown error',
+                  }),
+                )
+                state.changed = true
+                break
+            }
+          },
+        )
+
+        let lastYielded = ''
+        const startTime = Date.now()
+        const maxWait = 180_000
+
+        while (true) {
+          await new Promise((resolve) => setTimeout(resolve, 40))
+
+          if (state.error) {
+            const errorDisplay = state.segments.join('') + `\n\n**Error:** ${state.error}`
+            yield { content: [{ type: 'text' as const, text: errorDisplay }] }
+            return
           }
-        },
-      )
 
-      let lastYielded = ''
-      const startTime = Date.now()
-      const maxWait = 180_000
+          if (state.changed) {
+            state.changed = false
+            const answerSoFar = state.answerChunks.join('')
+            const thinkingPrefix = state.isThinking ? THINKING_SEG : ''
+            const display = thinkingPrefix + state.segments.join('') + answerSoFar
 
-      while (true) {
-        await new Promise((resolve) => setTimeout(resolve, 40))
+            if (display && display !== lastYielded) {
+              lastYielded = display
+              yield { content: [{ type: 'text' as const, text: display }] }
+            }
+          }
 
-        if (state.error) {
-          const errorDisplay = state.segments.join('') + `\n\n**Error:** ${state.error}`
-          yield { content: [{ type: 'text' as const, text: errorDisplay }] }
-          return
-        }
+          if (state.done) {
+            const finalAnswer = state.answerChunks.join('') || 'No response generated.'
+            const finalDisplay = state.segments.join('') + finalAnswer
+            yield { content: [{ type: 'text' as const, text: finalDisplay }] }
+            queryClient.invalidateQueries({ queryKey: ['ai-chat-sessions'] })
+            return
+          }
 
-        if (state.changed) {
-          state.changed = false
-          const answerSoFar = state.answerChunks.join('')
-          const thinkingPrefix = state.isThinking ? THINKING_SEG : ''
-          const display = thinkingPrefix + state.segments.join('') + answerSoFar
-
-          if (display && display !== lastYielded) {
-            lastYielded = display
-            yield { content: [{ type: 'text' as const, text: display }] }
+          if (Date.now() - startTime > maxWait) {
+            yield {
+              content: [
+                { type: 'text' as const, text: state.segments.join('') + '*Request timed out.*' },
+              ],
+            }
+            return
           }
         }
-
-        if (state.done) {
-          const finalAnswer = state.answerChunks.join('') || 'No response generated.'
-          const finalDisplay = state.segments.join('') + finalAnswer
-          yield { content: [{ type: 'text' as const, text: finalDisplay }] }
-          queryClient.invalidateQueries({ queryKey: ['ai-chat-sessions'] })
-          return
-        }
-
-        if (Date.now() - startTime > maxWait) {
-          yield { content: [{ type: 'text' as const, text: state.segments.join('') + '*Request timed out.*' }] }
-          return
-        }
-      }
-    },
-  }), [onSessionBound, paneKey, queryClient])
+      },
+    }),
+    [onSessionBound, paneKey, queryClient],
+  )
 
   const runtime = useLocalRuntime(chatModelAdapter, { initialMessages })
 
@@ -639,7 +682,7 @@ export default function AIChatView() {
     queryFn: () => listAIChatSessions({ limit: 100 }),
     refetchInterval: 15000,
   })
-  const sessions = sessionsData?.sessions ?? []
+  const sessions = useMemo(() => sessionsData?.sessions ?? [], [sessionsData?.sessions])
 
   const createDraftPane = useCallback((): ChatPaneState => {
     draftCounterRef.current += 1
@@ -659,108 +702,126 @@ export default function AIChatView() {
     setActiveSessionId(null)
   }, [createDraftPane, setActiveSessionId])
 
-  const handleSelectSession = useCallback(async (sessionId: string) => {
-    const requestId = ++selectionRequestRef.current
-    const existingPaneKey = sessionPaneKeysRef.current[sessionId]
-    const previousPaneKey = activePaneKeyRef.current
-    const previousSessionId = activeSessionIdRef.current
+  const handleSelectSession = useCallback(
+    async (sessionId: string) => {
+      const requestId = ++selectionRequestRef.current
+      const existingPaneKey = sessionPaneKeysRef.current[sessionId]
+      const previousPaneKey = activePaneKeyRef.current
+      const previousSessionId = activeSessionIdRef.current
 
-    setActiveSessionId(sessionId)
+      setActiveSessionId(sessionId)
 
-    if (existingPaneKey) {
-      setIsLoadingSession(false)
-      setActivePaneKey(existingPaneKey)
-      return
-    }
-
-    setIsLoadingSession(true)
-    setActivePaneKey(null)
-
-    try {
-      const detail = await getAIChatSession(sessionId)
-      if (selectionRequestRef.current !== requestId) return
-
-      const paneKey = `session:${sessionId}`
-      sessionPaneKeysRef.current[sessionId] = paneKey
-      setPanes((current) => {
-        if (current.some((pane) => pane.paneKey === paneKey)) {
-          return current
-        }
-        return [...current, { paneKey, sessionId, initialMessages: toThreadMessages(detail.messages) }]
-      })
-      setActivePaneKey(paneKey)
-    } catch {
-      if (selectionRequestRef.current !== requestId) return
-
-      setActiveSessionId(previousSessionId)
-      if (previousPaneKey) {
-        setActivePaneKey(previousPaneKey)
-      } else {
-        const draftPane = createDraftPane()
-        setPanes((current) => [...current, draftPane])
-        setActivePaneKey(draftPane.paneKey)
+      if (existingPaneKey) {
+        setIsLoadingSession(false)
+        setActivePaneKey(existingPaneKey)
+        return
       }
-    } finally {
-      if (selectionRequestRef.current === requestId) {
+
+      setIsLoadingSession(true)
+      setActivePaneKey(null)
+
+      try {
+        const detail = await getAIChatSession(sessionId)
+        if (selectionRequestRef.current !== requestId) return
+
+        const paneKey = `session:${sessionId}`
+        sessionPaneKeysRef.current[sessionId] = paneKey
+        setPanes((current) => {
+          if (current.some((pane) => pane.paneKey === paneKey)) {
+            return current
+          }
+          return [
+            ...current,
+            { paneKey, sessionId, initialMessages: toThreadMessages(detail.messages) },
+          ]
+        })
+        setActivePaneKey(paneKey)
+      } catch {
+        if (selectionRequestRef.current !== requestId) return
+
+        setActiveSessionId(previousSessionId)
+        if (previousPaneKey) {
+          setActivePaneKey(previousPaneKey)
+        } else {
+          const draftPane = createDraftPane()
+          setPanes((current) => [...current, draftPane])
+          setActivePaneKey(draftPane.paneKey)
+        }
+      } finally {
+        if (selectionRequestRef.current === requestId) {
+          setIsLoadingSession(false)
+        }
+      }
+    },
+    [createDraftPane, setActiveSessionId],
+  )
+
+  const handleArchiveSession = useCallback(
+    (sessionId: string) => {
+      const removedPaneKey = sessionPaneKeysRef.current[sessionId]
+      delete sessionPaneKeysRef.current[sessionId]
+
+      const shouldOpenDraft =
+        activePaneKeyRef.current === removedPaneKey || activeSessionIdRef.current === sessionId
+      const nextDraftPane = shouldOpenDraft ? createDraftPane() : null
+
+      if (shouldOpenDraft) {
+        selectionRequestRef.current += 1
         setIsLoadingSession(false)
       }
-    }
-  }, [createDraftPane, setActiveSessionId])
 
-  const handleArchiveSession = useCallback((sessionId: string) => {
-    const removedPaneKey = sessionPaneKeysRef.current[sessionId]
-    delete sessionPaneKeysRef.current[sessionId]
+      setPanes((current) => {
+        const filtered = current.filter((pane) => pane.sessionId !== sessionId)
+        return nextDraftPane ? [...filtered, nextDraftPane] : filtered
+      })
 
-    const shouldOpenDraft = activePaneKeyRef.current === removedPaneKey || activeSessionIdRef.current === sessionId
-    const nextDraftPane = shouldOpenDraft ? createDraftPane() : null
+      if (nextDraftPane) {
+        setActivePaneKey(nextDraftPane.paneKey)
+        setActiveSessionId(null)
+      }
+    },
+    [createDraftPane, setActiveSessionId],
+  )
 
-    if (shouldOpenDraft) {
-      selectionRequestRef.current += 1
-      setIsLoadingSession(false)
-    }
-
-    setPanes((current) => {
-      const filtered = current.filter((pane) => pane.sessionId !== sessionId)
-      return nextDraftPane ? [...filtered, nextDraftPane] : filtered
-    })
-
-    if (nextDraftPane) {
-      setActivePaneKey(nextDraftPane.paneKey)
-      setActiveSessionId(null)
-    }
-  }, [createDraftPane, setActiveSessionId])
-
-  const handleSessionBound = useCallback((paneKey: string, session: AIChatSession) => {
-    const normalizedSession: AIChatSession = {
-      ...session,
-      updated_at: session.updated_at ?? session.created_at ?? new Date().toISOString(),
-    }
-
-    sessionPaneKeysRef.current[normalizedSession.session_id] = paneKey
-    setPanes((current) => current.map((pane) => (
-      pane.paneKey === paneKey
-        ? { ...pane, sessionId: normalizedSession.session_id }
-        : pane
-    )))
-
-    queryClient.setQueryData<{ sessions: AIChatSession[]; total: number } | undefined>(['ai-chat-sessions'], (current) => {
-      if (!current) {
-        return { sessions: [normalizedSession], total: 1 }
+  const handleSessionBound = useCallback(
+    (paneKey: string, session: AIChatSession) => {
+      const normalizedSession: AIChatSession = {
+        ...session,
+        updated_at: session.updated_at ?? session.created_at ?? new Date().toISOString(),
       }
 
-      const exists = current.sessions.some((item) => item.session_id === normalizedSession.session_id)
-      return {
-        sessions: upsertSessionList(current.sessions, normalizedSession),
-        total: exists ? current.total : current.total + 1,
+      sessionPaneKeysRef.current[normalizedSession.session_id] = paneKey
+      setPanes((current) =>
+        current.map((pane) =>
+          pane.paneKey === paneKey ? { ...pane, sessionId: normalizedSession.session_id } : pane,
+        ),
+      )
+
+      queryClient.setQueryData<{ sessions: AIChatSession[]; total: number } | undefined>(
+        ['ai-chat-sessions'],
+        (current) => {
+          if (!current) {
+            return { sessions: [normalizedSession], total: 1 }
+          }
+
+          const exists = current.sessions.some(
+            (item) => item.session_id === normalizedSession.session_id,
+          )
+          return {
+            sessions: upsertSessionList(current.sessions, normalizedSession),
+            total: exists ? current.total : current.total + 1,
+          }
+        },
+      )
+
+      if (activePaneKeyRef.current === paneKey) {
+        setActiveSessionId(normalizedSession.session_id)
       }
-    })
 
-    if (activePaneKeyRef.current === paneKey) {
-      setActiveSessionId(normalizedSession.session_id)
-    }
-
-    queryClient.invalidateQueries({ queryKey: ['ai-chat-sessions'] })
-  }, [queryClient, setActiveSessionId])
+      queryClient.invalidateQueries({ queryKey: ['ai-chat-sessions'] })
+    },
+    [queryClient, setActiveSessionId],
+  )
 
   useEffect(() => {
     if (didAutoSelect.current) return
@@ -785,7 +846,9 @@ export default function AIChatView() {
       <SessionSidebar
         sessions={sessions}
         activeSessionId={activeSessionId}
-        onSelectSession={(sessionId) => { void handleSelectSession(sessionId) }}
+        onSelectSession={(sessionId) => {
+          void handleSelectSession(sessionId)
+        }}
         onNewChat={handleNewChat}
         onArchiveSession={handleArchiveSession}
         collapsed={sidebarCollapsed}
@@ -793,7 +856,10 @@ export default function AIChatView() {
       />
       <div className="flex-1 flex flex-col min-w-0">
         {panes.map((pane) => (
-          <div key={pane.paneKey} className={cn('flex-1 min-h-0', activePaneKey !== pane.paneKey && 'hidden')}>
+          <div
+            key={pane.paneKey}
+            className={cn('flex-1 min-h-0', activePaneKey !== pane.paneKey && 'hidden')}
+          >
             <ChatRuntime
               paneKey={pane.paneKey}
               sessionId={pane.sessionId}

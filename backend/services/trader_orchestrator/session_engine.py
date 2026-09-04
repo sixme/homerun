@@ -216,10 +216,7 @@ def _execution_profile_for_signal(
         and str(market_roster.get("scope") or "").strip().lower() == "event"
     )
 
-    is_traders = (
-        source_key == "traders"
-        or context_source == "traders"
-    )
+    is_traders = source_key == "traders" or context_source == "traders"
     if is_traders:
         return {
             "policy": "REPRICE_LOOP" if legs_count <= 1 else "SEQUENTIAL_HEDGE",
@@ -269,13 +266,12 @@ def _normalize_plan_leg_sides(payload: dict[str, Any], legs: list[dict[str, Any]
         metadata = leg.get("metadata")
         metadata = metadata if isinstance(metadata, dict) else {}
         position_index = safe_int(metadata.get("position_index"), index)
-        position = positions[position_index] if 0 <= position_index < len(positions) and isinstance(positions[position_index], dict) else {}
-        action = (
-            metadata.get("raw_action")
-            or position.get("action")
-            or position.get("side")
-            or leg.get("side")
+        position = (
+            positions[position_index]
+            if 0 <= position_index < len(positions) and isinstance(positions[position_index], dict)
+            else {}
         )
+        action = metadata.get("raw_action") or position.get("action") or position.get("side") or leg.get("side")
         leg["side"] = normalize_position_side(action, fallback=str(leg.get("side") or "buy"))
 
 
@@ -1023,19 +1019,15 @@ class ExecutionSessionEngine:
                 live_market_payload = signal_payload.get("live_market")
                 if isinstance(live_market_payload, dict):
                     signal_selected_token_id = str(live_market_payload.get("selected_token_id") or "").strip()
-                    signal_market_key = str(
-                        live_market_payload.get("market_id") or live_market_payload.get("condition_id") or ""
-                    ).strip().lower()
+                    signal_market_key = (
+                        str(live_market_payload.get("market_id") or live_market_payload.get("condition_id") or "")
+                        .strip()
+                        .lower()
+                    )
                     leg_token_id = str(leg_payload.get("token_id") or "").strip()
                     leg_market_key = leg_market_id.strip().lower() if leg_market_id else ""
-                    if (
-                        signal_selected_token_id
-                        and leg_token_id
-                        and signal_selected_token_id == leg_token_id
-                    ) or (
-                        signal_market_key
-                        and leg_market_key
-                        and signal_market_key == leg_market_key
+                    if (signal_selected_token_id and leg_token_id and signal_selected_token_id == leg_token_id) or (
+                        signal_market_key and leg_market_key and signal_market_key == leg_market_key
                     ):
                         order_payload["live_market"] = dict(live_market_payload)
 
@@ -1236,9 +1228,7 @@ class ExecutionSessionEngine:
                         "payload_extras": payload_extras,
                         "token_id": detail.get("token_id"),
                         "shares": detail.get("requested_shares", requested_shares),
-                        "effective_notional_usd": float(
-                            detail.get("effective_notional_usd", 0.0) or 0.0
-                        ),
+                        "effective_notional_usd": float(detail.get("effective_notional_usd", 0.0) or 0.0),
                         "effective_price": detail.get("effective_price", limit_price),
                     }
             except Exception as exc:
@@ -1345,8 +1335,12 @@ class ExecutionSessionEngine:
             submission_intent = {
                 "state": "pre_submit_persisted",
                 "persisted_at": _iso_utc(now),
-                "requested_notional_usd": float(requested_notional) if requested_notional is not None and requested_notional > 0.0 else None,
-                "requested_shares": float(requested_shares) if requested_shares is not None and requested_shares > 0.0 else None,
+                "requested_notional_usd": float(requested_notional)
+                if requested_notional is not None and requested_notional > 0.0
+                else None,
+                "requested_shares": float(requested_shares)
+                if requested_shares is not None and requested_shares > 0.0
+                else None,
                 "time_in_force": str(leg_payload.get("time_in_force") or "").strip().upper() or None,
                 "post_only": bool(leg_payload.get("post_only", False)),
                 "price_policy": str(leg_payload.get("price_policy") or "").strip().lower() or None,
@@ -1398,7 +1392,9 @@ class ExecutionSessionEngine:
                 side=str(leg_payload.get("side") or "buy"),
                 price=order_seed["entry_price"],
                 size=float(requested_shares) if requested_shares is not None and requested_shares > 0.0 else None,
-                notional_usd=float(requested_notional) if requested_notional is not None and requested_notional > 0.0 else None,
+                notional_usd=float(requested_notional)
+                if requested_notional is not None and requested_notional > 0.0
+                else None,
                 status="placing",
                 reason=reason,
                 payload_json={"submission_intent": dict(submission_intent)},
@@ -1440,15 +1436,13 @@ class ExecutionSessionEngine:
                 if not _is_active_order_status(order_mode, getattr(trader_order, "status", None)):
                     continue
                 try:
-                    await ensure_shadow_simulation_ledger(
-                        self.db, order=trader_order, commit=False
-                    )
+                    await ensure_shadow_simulation_ledger(self.db, order=trader_order, commit=False)
                 except ValueError as capital_exc:
                     trader_order.status = "cancelled"
                     trader_order.error_message = str(capital_exc)
-                    trader_order.reason = (
-                        str(trader_order.reason or "") + " | insufficient_shadow_capital"
-                    ).strip(" |")
+                    trader_order.reason = (str(trader_order.reason or "") + " | insufficient_shadow_capital").strip(
+                        " |"
+                    )
                     capital_payload = dict(trader_order.payload_json or {})
                     capital_payload["shadow_capital_reject"] = {
                         "error": str(capital_exc),
@@ -1557,12 +1551,10 @@ class ExecutionSessionEngine:
             _publish_started_at = _time.monotonic()
             _publish_tasks = [event_bus.publish("execution_session", _serialize_execution_session(session_row))]
             _publish_tasks.extend(
-                event_bus.publish("execution_leg", _serialize_execution_leg(leg_row))
-                for leg_row in leg_rows.values()
+                event_bus.publish("execution_leg", _serialize_execution_leg(leg_row)) for leg_row in leg_rows.values()
             )
             _publish_tasks.extend(
-                event_bus.publish("trader_order", _serialize_order(trader_order))
-                for trader_order in trader_orders
+                event_bus.publish("trader_order", _serialize_order(trader_order)) for trader_order in trader_orders
             )
             _publish_tasks.extend(
                 event_bus.publish("execution_order", _serialize_execution_order(execution_order))
@@ -1639,7 +1631,8 @@ class ExecutionSessionEngine:
                     verification_reason=str(verification_fields.get("verification_reason") or "").strip() or None,
                     provider_order_id=str(verification_fields.get("provider_order_id") or "").strip() or None,
                     provider_clob_order_id=str(verification_fields.get("provider_clob_order_id") or "").strip() or None,
-                    execution_wallet_address=str(verification_fields.get("execution_wallet_address") or "").strip() or None,
+                    execution_wallet_address=str(verification_fields.get("execution_wallet_address") or "").strip()
+                    or None,
                     verification_tx_hash=str(verification_fields.get("verification_tx_hash") or "").strip() or None,
                     verified_at=cancelled_at,
                     force=True,
@@ -1686,9 +1679,7 @@ class ExecutionSessionEngine:
                         trader_id=trader_id,
                     )
             except asyncio.CancelledError:
-                await asyncio.shield(
-                    _finalize_cancelled_live_submit(error_message=wave_error_message)
-                )
+                await asyncio.shield(_finalize_cancelled_live_submit(error_message=wave_error_message))
                 raise
             finally:
                 _record_execution_timing("venue_submit_wave", _started_at)
@@ -1723,11 +1714,13 @@ class ExecutionSessionEngine:
                 effective_price=None,
                 error_message=rejection_reason,
                 orders_written=0,
-                payload=_payload_with_execution_timing({
-                    "execution_plan": plan,
-                    "bundle_coverage": bundle_coverage,
-                    "legs": [],
-                }),
+                payload=_payload_with_execution_timing(
+                    {
+                        "execution_plan": plan,
+                        "bundle_coverage": bundle_coverage,
+                        "legs": [],
+                    }
+                ),
                 created_orders=[],
             )
 
@@ -1755,11 +1748,13 @@ class ExecutionSessionEngine:
                 effective_price=None,
                 error_message=rejection_reason,
                 orders_written=0,
-                payload=_payload_with_execution_timing({
-                    "execution_plan": plan,
-                    "self_crossing_plan": self_crossing_violation,
-                    "legs": [],
-                }),
+                payload=_payload_with_execution_timing(
+                    {
+                        "execution_plan": plan,
+                        "self_crossing_plan": self_crossing_violation,
+                        "legs": [],
+                    }
+                ),
                 created_orders=[],
             )
 
@@ -1795,11 +1790,13 @@ class ExecutionSessionEngine:
                 effective_price=None,
                 error_message=rejection_reason,
                 orders_written=0,
-                payload=_payload_with_execution_timing({
-                    "execution_plan": plan,
-                    "bundle_preflight": preflight_violation,
-                    "legs": [],
-                }),
+                payload=_payload_with_execution_timing(
+                    {
+                        "execution_plan": plan,
+                        "bundle_preflight": preflight_violation,
+                        "legs": [],
+                    }
+                ),
                 created_orders=[],
             )
 
@@ -1875,9 +1872,7 @@ class ExecutionSessionEngine:
             # the writes that dominated cycle time on all-reject signals.
             _preflight_legs_pre_rejected = len(preflight_pre_rejected_results)
             if _preflight_legs_pre_rejected:
-                _prev_rejected = (
-                    safe_float(_execution_timing_ms.get("preflight_legs_pre_rejected"), 0.0) or 0.0
-                )
+                _prev_rejected = safe_float(_execution_timing_ms.get("preflight_legs_pre_rejected"), 0.0) or 0.0
                 _execution_timing_ms["preflight_legs_pre_rejected"] = round(
                     _prev_rejected + float(_preflight_legs_pre_rejected),
                     3,
@@ -1903,9 +1898,7 @@ class ExecutionSessionEngine:
                 # concrete DB-write savings the hoist delivers.
                 _placeholders_skipped_for_preflight = _preflight_legs_pre_rejected
                 if _placeholders_skipped_for_preflight:
-                    _prev_avoided = (
-                        safe_float(_execution_timing_ms.get("preflight_dbwrites_avoided"), 0.0) or 0.0
-                    )
+                    _prev_avoided = safe_float(_execution_timing_ms.get("preflight_dbwrites_avoided"), 0.0) or 0.0
                     _execution_timing_ms["preflight_dbwrites_avoided"] = round(
                         _prev_avoided + float(_placeholders_skipped_for_preflight),
                         3,
@@ -1985,6 +1978,7 @@ class ExecutionSessionEngine:
                         if prev_clob_id:
                             try:
                                 from services.live_execution_service import live_execution_service
+
                                 await live_execution_service.cancel_order(prev_clob_id)
                             except Exception:
                                 pass
@@ -2144,19 +2138,15 @@ class ExecutionSessionEngine:
                     live_market_payload = signal_payload.get("live_market")
                     if isinstance(live_market_payload, dict):
                         signal_selected_token_id = str(live_market_payload.get("selected_token_id") or "").strip()
-                        signal_market_key = str(
-                            live_market_payload.get("market_id") or live_market_payload.get("condition_id") or ""
-                        ).strip().lower()
+                        signal_market_key = (
+                            str(live_market_payload.get("market_id") or live_market_payload.get("condition_id") or "")
+                            .strip()
+                            .lower()
+                        )
                         leg_token_id = str(leg_payload.get("token_id") or "").strip()
                         leg_market_key = leg_market_id.strip().lower() if leg_market_id else ""
-                        if (
-                            signal_selected_token_id
-                            and leg_token_id
-                            and signal_selected_token_id == leg_token_id
-                        ) or (
-                            signal_market_key
-                            and leg_market_key
-                            and signal_market_key == leg_market_key
+                        if (signal_selected_token_id and leg_token_id and signal_selected_token_id == leg_token_id) or (
+                            signal_market_key and leg_market_key and signal_market_key == leg_market_key
                         ):
                             order_payload["live_market"] = dict(live_market_payload)
                 live_market_payload = order_payload.get("live_market")
@@ -2223,6 +2213,20 @@ class ExecutionSessionEngine:
                         "filled_shares": actual_filled_shares,
                     }
                 )
+
+            if wave_index < len(waves) - 1 and (failed_legs > 0 or skipped_legs > 0):
+                if requires_pair_lock(plan["policy"], constraints) or _requires_full_bundle_execution(signal, legs):
+                    _append_event(
+                        event_type="bundle_wave_aborted",
+                        severity="warn",
+                        message=f"Wave {wave_index} had {failed_legs} failed and {skipped_legs} skipped legs in pair-locked bundle; aborting subsequent waves.",
+                        payload={
+                            "wave_index": wave_index,
+                            "failed_legs": failed_legs,
+                            "skipped_legs": skipped_legs,
+                        },
+                    )
+                    break
 
         pair_lock_enabled = requires_pair_lock(plan["policy"], constraints)
         max_unhedged = safe_float(constraints.get("max_unhedged_notional_usd"), 0.0)
@@ -2324,30 +2328,34 @@ class ExecutionSessionEngine:
                     effective_price=effective_price,
                     error_message=violation_reason,
                     orders_written=0,
-                    payload=_payload_with_execution_timing({
-                        "execution_plan": plan,
-                        "legs": leg_execution_records,
-                        "pair_lock_violation": {
-                            "current_unhedged_notional_usd": current_unhedged,
-                            "max_unhedged_notional_usd": max_unhedged,
-                            "cancelled_provider_orders": cancelled_provider_orders,
-                            "cancel_failed_provider_orders": cancel_failed_provider_orders,
-                        },
-                    }),
+                    payload=_payload_with_execution_timing(
+                        {
+                            "execution_plan": plan,
+                            "legs": leg_execution_records,
+                            "pair_lock_violation": {
+                                "current_unhedged_notional_usd": current_unhedged,
+                                "max_unhedged_notional_usd": max_unhedged,
+                                "cancelled_provider_orders": cancelled_provider_orders,
+                                "cancel_failed_provider_orders": cancel_failed_provider_orders,
+                            },
+                        }
+                    ),
                     created_orders=created_order_records,
                 )
 
         tolerance_ratio = max(0.0, min(1.0, safe_float(constraints.get("leg_fill_tolerance_ratio"), 0.02) or 0.02))
-        has_partial_bundle_fill = len(legs) > 1 and any(
-            safe_float(item.get("actual_filled_shares"), 0.0) > 0.0 for item in order_write_inputs
-        ) and any(
-            _remaining_requested_shares(
-                requested_shares=item.get("requested_shares"),
-                filled_shares=item.get("actual_filled_shares"),
-                tolerance_ratio=tolerance_ratio,
+        has_partial_bundle_fill = (
+            len(legs) > 1
+            and any(safe_float(item.get("actual_filled_shares"), 0.0) > 0.0 for item in order_write_inputs)
+            and any(
+                _remaining_requested_shares(
+                    requested_shares=item.get("requested_shares"),
+                    filled_shares=item.get("actual_filled_shares"),
+                    tolerance_ratio=tolerance_ratio,
+                )
+                > 0.0
+                for item in order_write_inputs
             )
-            > 0.0
-            for item in order_write_inputs
         )
         if has_partial_bundle_fill:
             _append_event(
@@ -2384,7 +2392,9 @@ class ExecutionSessionEngine:
                         cancelled_provider_orders.append(candidate_id)
                         break
                 else:
-                    cancel_failed_provider_orders.extend([candidate_id for candidate_id in candidate_ids if candidate_id])
+                    cancel_failed_provider_orders.extend(
+                        [candidate_id for candidate_id in candidate_ids if candidate_id]
+                    )
 
             rescue_inputs: list[tuple[dict[str, Any], float, dict[str, Any], float, float]] = []
             for item in order_write_inputs:
@@ -2399,7 +2409,10 @@ class ExecutionSessionEngine:
                 side_key = str(leg_payload.get("side") or "buy").strip().lower()
                 base_price = safe_float(
                     leg_payload.get("limit_price"),
-                    safe_float(item.get("actual_fill_price"), safe_float(getattr(item.get("result"), "effective_price", None), None)),
+                    safe_float(
+                        item.get("actual_fill_price"),
+                        safe_float(getattr(item.get("result"), "effective_price", None), None),
+                    ),
                 )
                 rescue_price = reprice_limit_price(base_price, side_key, 2) if base_price is not None else None
                 if rescue_price is None or rescue_price <= 0.0:
@@ -2409,15 +2422,16 @@ class ExecutionSessionEngine:
                 leg_payload["post_only"] = False
                 if rescue_price is not None and rescue_price > 0.0:
                     leg_payload["limit_price"] = rescue_price
-                rescue_notional = remaining_shares * max(0.0001, safe_float(leg_payload.get("limit_price"), 0.01) or 0.01)
+                rescue_notional = remaining_shares * max(
+                    0.0001, safe_float(leg_payload.get("limit_price"), 0.01) or 0.01
+                )
                 rescue_inputs.append((leg_payload, rescue_notional, item, rescue_price or 0.0, remaining_shares))
 
             rescue_results: list[Any] = []
             if rescue_inputs:
                 rescue_results = await _submit_execution_wave_with_cancellation_protection(
                     legs_with_notionals=[
-                        (leg_payload, rescue_notional)
-                        for leg_payload, rescue_notional, _, _, _ in rescue_inputs
+                        (leg_payload, rescue_notional) for leg_payload, rescue_notional, _, _, _ in rescue_inputs
                     ],
                     wave_error_message="Execution session cancelled during bundle rescue submission.",
                 )
@@ -2434,7 +2448,9 @@ class ExecutionSessionEngine:
                 rescue_filled_shares = _result_filled_shares(rescue_result)
                 rescue_filled_notional = _result_filled_notional(rescue_result)
                 rescue_fill_price = _result_fill_price(rescue_result)
-                item["actual_filled_shares"] = float(max(0.0, safe_float(item.get("actual_filled_shares"), 0.0) + rescue_filled_shares))
+                item["actual_filled_shares"] = float(
+                    max(0.0, safe_float(item.get("actual_filled_shares"), 0.0) + rescue_filled_shares)
+                )
                 item["actual_filled_notional_usd"] = float(
                     max(0.0, safe_float(item.get("actual_filled_notional_usd"), 0.0) + rescue_filled_notional)
                 )
@@ -2484,9 +2500,13 @@ class ExecutionSessionEngine:
                 for record in leg_execution_records:
                     if str(record.get("leg_id") or "") != str(item.get("leg_id") or ""):
                         continue
-                    record["status"] = str(getattr(rescue_result, "status", "") or "").strip().lower() or record.get("status")
+                    record["status"] = str(getattr(rescue_result, "status", "") or "").strip().lower() or record.get(
+                        "status"
+                    )
                     record["effective_price"] = safe_float(item.get("actual_fill_price"), record.get("effective_price"))
-                    record["notional_usd"] = safe_float(item.get("actual_filled_notional_usd"), record.get("notional_usd"))
+                    record["notional_usd"] = safe_float(
+                        item.get("actual_filled_notional_usd"), record.get("notional_usd")
+                    )
                     record["filled_shares"] = safe_float(item.get("actual_filled_shares"), record.get("filled_shares"))
                     break
 
@@ -2508,7 +2528,8 @@ class ExecutionSessionEngine:
                         "market_question": str(item.get("market_question") or ""),
                         "direction": str(item.get("direction") or ""),
                         "entry_price": safe_float(rescue_price, safe_float(rescue_fill_price, None)),
-                        "normalized_status": str(getattr(rescue_result, "status", "") or "").strip().lower() or "failed",
+                        "normalized_status": str(getattr(rescue_result, "status", "") or "").strip().lower()
+                        or "failed",
                         "result": rescue_result,
                         "order_payload": recovery_payload,
                         "exit_config": {},
@@ -2551,10 +2572,15 @@ class ExecutionSessionEngine:
                         continue
                     leg_payload = dict(item.get("leg_payload") or {})
                     flatten_side = "SELL" if str(leg_payload.get("side") or "buy").strip().lower() == "buy" else "BUY"
-                    token_id = str(item.get("order_payload", {}).get("token_id") or leg_payload.get("token_id") or "").strip()
+                    token_id = str(
+                        item.get("order_payload", {}).get("token_id") or leg_payload.get("token_id") or ""
+                    ).strip()
                     base_price = safe_float(
                         item.get("actual_fill_price"),
-                        safe_float(leg_payload.get("limit_price"), safe_float(getattr(item.get("result"), "effective_price", None), None)),
+                        safe_float(
+                            leg_payload.get("limit_price"),
+                            safe_float(getattr(item.get("result"), "effective_price", None), None),
+                        ),
                     )
                     fallback_price = _recovery_price(
                         side=flatten_side,
@@ -2653,7 +2679,8 @@ class ExecutionSessionEngine:
                                 error_message=flatten_execution.error_message,
                                 payload=dict(flatten_execution.payload or {}),
                                 provider_order_id=flatten_execution.order_id,
-                                provider_clob_order_id=str(flatten_execution.payload.get("clob_order_id") or "").strip() or None,
+                                provider_clob_order_id=str(flatten_execution.payload.get("clob_order_id") or "").strip()
+                                or None,
                                 shares=float(filled_shares),
                                 notional_usd=float(flatten_notional),
                             ),
@@ -2686,7 +2713,8 @@ class ExecutionSessionEngine:
                     )
 
                 residual_exposure = any(
-                    max(0.0, safe_float(attempt.get("residual_shares"), 0.0) or 0.0) > 0.0 for attempt in flatten_attempts
+                    max(0.0, safe_float(attempt.get("residual_shares"), 0.0) or 0.0) > 0.0
+                    for attempt in flatten_attempts
                 )
                 bundle_recovery_outcome = {
                     "cancelled_provider_orders": cancelled_provider_orders,
@@ -2742,7 +2770,9 @@ class ExecutionSessionEngine:
                     payload=bundle_recovery_outcome,
                 )
             failed_legs = sum(
-                1 for leg_row in leg_rows.values() if str(leg_row.status or "").strip().lower() in {"failed", "cancelled"}
+                1
+                for leg_row in leg_rows.values()
+                if str(leg_row.status or "").strip().lower() in {"failed", "cancelled"}
             )
             open_legs = sum(1 for leg_row in leg_rows.values() if str(leg_row.status or "").strip().lower() == "open")
             completed_legs = sum(
@@ -2760,7 +2790,9 @@ class ExecutionSessionEngine:
             actual_filled_notional = max(0.0, safe_float(item.get("actual_filled_notional_usd"), 0.0) or 0.0)
             actual_fill_price = safe_float(item.get("actual_fill_price"), None)
             leg_row_id = str(item.get("leg_row_id") or "").strip()
-            leg_market_id = str(item.get("market_id") or leg_payload.get("market_id") or getattr(signal, "market_id", "") or "").strip()
+            leg_market_id = str(
+                item.get("market_id") or leg_payload.get("market_id") or getattr(signal, "market_id", "") or ""
+            ).strip()
             leg_market_question = (
                 str(item.get("market_question") or "").strip()
                 or str(leg_payload.get("market_question") or getattr(signal, "market_question", "") or "").strip()
@@ -2861,7 +2893,9 @@ class ExecutionSessionEngine:
             persisted_at = utcnow()
             existing_trader_order = item.get("existing_trader_order")
             existing_execution_order = item.get("existing_execution_order")
-            if isinstance(existing_trader_order, TraderOrder) and isinstance(existing_execution_order, ExecutionSessionOrder):
+            if isinstance(existing_trader_order, TraderOrder) and isinstance(
+                existing_execution_order, ExecutionSessionOrder
+            ):
                 persisted_payload = dict(existing_trader_order.payload_json or {})
                 persisted_payload.update(order_payload)
                 submission_intent = dict(persisted_payload.get("submission_intent") or {})
@@ -2911,7 +2945,11 @@ class ExecutionSessionEngine:
                 existing_trader_order.notional_usd = (
                     float(actual_filled_notional)
                     if actual_filled_notional > 0.0
-                    else (0.0 if persisted_order_status in {"failed", "cancelled", "rejected", "error", "skipped"} else None)
+                    else (
+                        0.0
+                        if persisted_order_status in {"failed", "cancelled", "rejected", "error", "skipped"}
+                        else None
+                    )
                 )
                 if actual_fill_price is not None and actual_fill_price > 0.0:
                     existing_trader_order.effective_price = float(actual_fill_price)
@@ -2924,7 +2962,11 @@ class ExecutionSessionEngine:
                     existing_trader_order.market_question = leg_market_question
                 if leg_direction:
                     existing_trader_order.direction = leg_direction
-                if leg_entry_price is not None and leg_entry_price > 0.0 and safe_float(existing_trader_order.entry_price, 0.0) <= 0.0:
+                if (
+                    leg_entry_price is not None
+                    and leg_entry_price > 0.0
+                    and safe_float(existing_trader_order.entry_price, 0.0) <= 0.0
+                ):
                     existing_trader_order.entry_price = float(leg_entry_price)
                 if actual_filled_notional > 0.0 and existing_trader_order.executed_at is None:
                     existing_trader_order.executed_at = persisted_at
@@ -2941,7 +2983,8 @@ class ExecutionSessionEngine:
                     verification_reason=str(verification_fields.get("verification_reason") or "").strip() or None,
                     provider_order_id=str(verification_fields.get("provider_order_id") or "").strip() or None,
                     provider_clob_order_id=str(verification_fields.get("provider_clob_order_id") or "").strip() or None,
-                    execution_wallet_address=str(verification_fields.get("execution_wallet_address") or "").strip() or None,
+                    execution_wallet_address=str(verification_fields.get("execution_wallet_address") or "").strip()
+                    or None,
                     verification_tx_hash=str(verification_fields.get("verification_tx_hash") or "").strip() or None,
                     verified_at=persisted_at,
                     force=True,
@@ -2974,7 +3017,9 @@ class ExecutionSessionEngine:
                 existing_execution_order.provider_clob_order_id = (
                     str(result.provider_clob_order_id or "").strip() or existing_execution_order.provider_clob_order_id
                 )
-                existing_execution_order.action = str(item.get("session_order_action") or existing_execution_order.action or "submit")
+                existing_execution_order.action = str(
+                    item.get("session_order_action") or existing_execution_order.action or "submit"
+                )
                 existing_execution_order.side = str(leg_payload.get("side") or existing_execution_order.side or "buy")
                 if actual_fill_price is not None and actual_fill_price > 0.0:
                     existing_execution_order.price = float(actual_fill_price)
@@ -3153,11 +3198,13 @@ class ExecutionSessionEngine:
             effective_price=effective_price,
             error_message=error_message,
             orders_written=orders_written,
-            payload=_payload_with_execution_timing({
-                "execution_plan": plan,
-                "legs": leg_execution_records,
-                "submit_breakdowns": list(_submit_wave_breakdowns),
-            }),
+            payload=_payload_with_execution_timing(
+                {
+                    "execution_plan": plan,
+                    "legs": leg_execution_records,
+                    "submit_breakdowns": list(_submit_wave_breakdowns),
+                }
+            ),
             created_orders=created_order_records,
         )
 
@@ -3372,16 +3419,15 @@ class ExecutionSessionEngine:
             {
                 str(order.get("trader_order_id") or "").strip()
                 for order in detail.get("orders", [])
-                if str(order.get("status") or "").strip().lower() in {"open", "submitted", "placing", "cancelled", "failed"}
+                if str(order.get("status") or "").strip().lower()
+                in {"open", "submitted", "placing", "cancelled", "failed"}
                 and str(order.get("trader_order_id") or "").strip()
             }
         )
         if trader_order_ids:
             trader_order_rows = (
-                await self.db.execute(
-                    select(TraderOrder).where(TraderOrder.id.in_(trader_order_ids))
-                )
-            ).scalars().all()
+                (await self.db.execute(select(TraderOrder).where(TraderOrder.id.in_(trader_order_ids)))).scalars().all()
+            )
             trader_orders_by_id = {str(row.id): row for row in trader_order_rows}
 
         updated_trader_orders: list[TraderOrder] = []
@@ -3439,7 +3485,9 @@ class ExecutionSessionEngine:
             payload = dict(trader_order.payload_json or {})
             submission_intent = payload.get("submission_intent")
             submission_intent = dict(submission_intent) if isinstance(submission_intent, dict) else {}
-            is_pre_submit_placeholder = status_key == "placing" or str(trader_order.status or "").strip().lower() == "placing"
+            is_pre_submit_placeholder = (
+                status_key == "placing" or str(trader_order.status or "").strip().lower() == "placing"
+            )
 
             # Merge live provider snapshot into payload so _extract_live_fill_metrics
             # sees the latest fill data even if reconciliation hasn't written it yet.
@@ -3454,7 +3502,11 @@ class ExecutionSessionEngine:
                 avg_price_snap = safe_float(snapshot.get("average_fill_price"))
                 filled_notional_snap = max(0.0, safe_float(snapshot.get("filled_notional_usd"), 0.0) or 0.0)
                 if filled_notional_snap <= 0.0 and filled_size_snap > 0.0:
-                    ref_price = avg_price_snap if avg_price_snap and avg_price_snap > 0 else safe_float(snapshot.get("limit_price"))
+                    ref_price = (
+                        avg_price_snap
+                        if avg_price_snap and avg_price_snap > 0
+                        else safe_float(snapshot.get("limit_price"))
+                    )
                     if ref_price and ref_price > 0:
                         filled_notional_snap = filled_size_snap * ref_price
                 if filled_size_snap > 0.0:
@@ -3507,7 +3559,11 @@ class ExecutionSessionEngine:
                 status=next_status,
                 now=now,
                 provider_snapshot_status=next_status if next_status in {"cancelled", "failed"} else None,
-                mapped_status="failed" if next_status == "failed" else "cancelled" if next_status == "cancelled" else "executed",
+                mapped_status="failed"
+                if next_status == "failed"
+                else "cancelled"
+                if next_status == "cancelled"
+                else "executed",
             )
             trader_order.updated_at = now
             if reason:
@@ -3666,4 +3722,3 @@ class ExecutionSessionEngine:
         )
         await self.db.commit()
         return True
-

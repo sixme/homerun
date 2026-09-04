@@ -592,7 +592,7 @@ export default function UnifiedStrategiesManager({
     staleTime: 10000,
   })
 
-  const catalog = strategiesQuery.data || []
+  const catalog = useMemo(() => strategiesQuery.data || [], [strategiesQuery.data])
 
   // ── Derived state ──
 

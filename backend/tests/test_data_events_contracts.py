@@ -25,7 +25,7 @@ def test_data_event_rejects_naive_timestamp():
         DataEvent(
             event_type=EventType.PRICE_CHANGE,
             source="unit_test",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc).replace(tzinfo=None),
         )
 
 

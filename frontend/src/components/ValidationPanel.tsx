@@ -51,6 +51,7 @@ import { Label } from './ui/label'
 import { Switch } from './ui/switch'
 import { cn } from '../lib/utils'
 
+const EMPTY_HEALTH_ROWS: StrategyHealthRow[] = []
 
 export default function ValidationPanel() {
   const { t } = useTranslation()
@@ -84,12 +85,12 @@ export default function ValidationPanel() {
     const a = draft
     const b = configQuery.data
     return (
-      a.enabled !== b.enabled
-      || a.min_samples !== b.min_samples
-      || a.min_directional_accuracy !== b.min_directional_accuracy
-      || a.max_mae_roi !== b.max_mae_roi
-      || a.lookback_days !== b.lookback_days
-      || a.auto_promote !== b.auto_promote
+      a.enabled !== b.enabled ||
+      a.min_samples !== b.min_samples ||
+      a.min_directional_accuracy !== b.min_directional_accuracy ||
+      a.max_mae_roi !== b.max_mae_roi ||
+      a.lookback_days !== b.lookback_days ||
+      a.auto_promote !== b.auto_promote
     )
   }, [draft, configQuery.data])
 
@@ -112,8 +113,13 @@ export default function ValidationPanel() {
   })
 
   const overrideMutation = useMutation({
-    mutationFn: async ({ strategyType, status }: { strategyType: string; status: 'active' | 'demoted' }) =>
-      overrideValidationStrategy(strategyType, status),
+    mutationFn: async ({
+      strategyType,
+      status,
+    }: {
+      strategyType: string
+      status: 'active' | 'demoted'
+    }) => overrideValidationStrategy(strategyType, status),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['validation-strategy-health'] }),
   })
   const clearOverrideMutation = useMutation({
@@ -121,7 +127,7 @@ export default function ValidationPanel() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['validation-strategy-health'] }),
   })
 
-  const healthRows: StrategyHealthRow[] = healthQuery.data || []
+  const healthRows: StrategyHealthRow[] = healthQuery.data || EMPTY_HEALTH_ROWS
   const summary = useMemo(() => {
     let active = 0
     let demoted = 0
@@ -142,7 +148,9 @@ export default function ValidationPanel() {
     <div className="h-full min-h-0 flex flex-col">
       {/* Header */}
       <div className="shrink-0 px-4 py-2.5 border-b border-border/40 flex items-center gap-3">
-        <Shield className={cn('w-4 h-4 shrink-0', enabled ? 'text-emerald-400' : 'text-muted-foreground')} />
+        <Shield
+          className={cn('w-4 h-4 shrink-0', enabled ? 'text-emerald-400' : 'text-muted-foreground')}
+        />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold leading-tight">{t('validation.title')}</p>
           <p className="text-[10px] text-muted-foreground leading-tight">
@@ -173,7 +181,9 @@ export default function ValidationPanel() {
           <div className="flex items-center gap-2">
             <Gauge className="w-3.5 h-3.5 text-cyan-400" />
             <span className="text-xs font-semibold">{t('validation.thresholds')}</span>
-            {configQuery.isLoading && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />}
+            {configQuery.isLoading && (
+              <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
+            )}
           </div>
 
           {configQuery.data ? (
@@ -201,18 +211,25 @@ export default function ValidationPanel() {
                   value={draft.min_samples ?? 25}
                   step={1}
                   min={1}
-                  onChange={(v) => setDraft((d) => ({ ...d, min_samples: Math.max(1, Math.round(v)) }))}
+                  onChange={(v) =>
+                    setDraft((d) => ({ ...d, min_samples: Math.max(1, Math.round(v)) }))
+                  }
                   disabled={!enabled}
                 />
                 <NumberField
                   label={t('validation.minDirectionalAccuracy')}
                   hint={t('validation.minDirectionalAccuracyHint')}
-                  value={(draft.min_directional_accuracy ?? 0.52)}
+                  value={draft.min_directional_accuracy ?? 0.52}
                   step={0.01}
                   min={0}
                   max={1}
                   format={(n) => `${(n * 100).toFixed(1)}%`}
-                  onChange={(v) => setDraft((d) => ({ ...d, min_directional_accuracy: Math.max(0, Math.min(1, v)) }))}
+                  onChange={(v) =>
+                    setDraft((d) => ({
+                      ...d,
+                      min_directional_accuracy: Math.max(0, Math.min(1, v)),
+                    }))
+                  }
                   disabled={!enabled}
                 />
                 <NumberField
@@ -231,7 +248,9 @@ export default function ValidationPanel() {
                   step={1}
                   min={7}
                   max={365}
-                  onChange={(v) => setDraft((d) => ({ ...d, lookback_days: Math.max(7, Math.round(v)) }))}
+                  onChange={(v) =>
+                    setDraft((d) => ({ ...d, lookback_days: Math.max(7, Math.round(v)) }))
+                  }
                   disabled={!enabled}
                 />
               </div>
@@ -286,7 +305,9 @@ export default function ValidationPanel() {
             </>
           ) : (
             <div className="text-[11px] text-muted-foreground py-4 text-center">
-              {configQuery.isError ? t('validation.loadConfigFailed') : t('validation.loadingEllipsis')}
+              {configQuery.isError
+                ? t('validation.loadConfigFailed')
+                : t('validation.loadingEllipsis')}
             </div>
           )}
         </div>
@@ -297,10 +318,16 @@ export default function ValidationPanel() {
             <ShieldCheck className="w-3.5 h-3.5 text-violet-400" />
             <span className="text-xs font-semibold">{t('validation.strategyRoster')}</span>
             <span className="ml-auto text-[10px] text-muted-foreground font-mono flex items-center gap-3">
-              <span className="text-emerald-300">{t('validation.activeCount', { n: summary.active })}</span>
-              <span className="text-red-300">{t('validation.demotedCount', { n: summary.demoted })}</span>
+              <span className="text-emerald-300">
+                {t('validation.activeCount', { n: summary.active })}
+              </span>
+              <span className="text-red-300">
+                {t('validation.demotedCount', { n: summary.demoted })}
+              </span>
               <span>{t('validation.untrackedCount', { n: summary.untracked })}</span>
-              <span className="text-cyan-300">{t('validation.manualCount', { n: summary.manual })}</span>
+              <span className="text-cyan-300">
+                {t('validation.manualCount', { n: summary.manual })}
+              </span>
             </span>
           </div>
 
@@ -327,23 +354,36 @@ export default function ValidationPanel() {
                   const isActive = row.status === 'active'
                   const isDemoted = row.status === 'demoted'
                   return (
-                    <tr key={row.strategy_type} className="border-b border-border/10 hover:bg-card/60">
+                    <tr
+                      key={row.strategy_type}
+                      className="border-b border-border/10 hover:bg-card/60"
+                    >
                       <td className="py-1.5 px-3 font-mono text-foreground">{row.strategy_type}</td>
                       <td className="py-1.5 px-2">
-                        <span className={cn(
-                          'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] border font-medium',
-                          isDemoted
-                            ? 'border-red-500/30 bg-red-500/10 text-red-300'
-                            : isActive
-                              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-                              : 'border-amber-500/30 bg-amber-500/10 text-amber-300',
-                        )}>
-                          <span className={cn(
-                            'inline-block w-1.5 h-1.5 rounded-full',
-                            isDemoted ? 'bg-red-400' : isActive ? 'bg-emerald-400' : 'bg-amber-400',
-                          )} />
+                        <span
+                          className={cn(
+                            'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] border font-medium',
+                            isDemoted
+                              ? 'border-red-500/30 bg-red-500/10 text-red-300'
+                              : isActive
+                                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                                : 'border-amber-500/30 bg-amber-500/10 text-amber-300',
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              'inline-block w-1.5 h-1.5 rounded-full',
+                              isDemoted
+                                ? 'bg-red-400'
+                                : isActive
+                                  ? 'bg-emerald-400'
+                                  : 'bg-amber-400',
+                            )}
+                          />
                           {row.status}
-                          {row.manual_override && <span className="opacity-60">· {t('validation.manual')}</span>}
+                          {row.manual_override && (
+                            <span className="opacity-60">· {t('validation.manual')}</span>
+                          )}
                         </span>
                       </td>
                       <td className="py-1.5 px-2 text-right font-mono">
@@ -355,7 +395,9 @@ export default function ValidationPanel() {
                           : '—'}
                       </td>
                       <td className="py-1.5 px-2 text-right font-mono">
-                        {Number.isFinite(Number(row.mae_roi)) ? Number(row.mae_roi).toFixed(2) : '—'}
+                        {Number.isFinite(Number(row.mae_roi))
+                          ? Number(row.mae_roi).toFixed(2)
+                          : '—'}
                       </td>
                       <td className="py-1.5 px-2 text-[10px] text-muted-foreground">
                         {row.updated_at ? formatTimestamp(row.updated_at) : '—'}
@@ -368,10 +410,17 @@ export default function ValidationPanel() {
                             variant="outline"
                             className={cn(
                               'h-6 gap-1 px-2 text-[10px]',
-                              isActive ? '' : 'border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10',
+                              isActive
+                                ? ''
+                                : 'border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10',
                             )}
                             disabled={overrideBusy || isActive}
-                            onClick={() => overrideMutation.mutate({ strategyType: row.strategy_type, status: 'active' })}
+                            onClick={() =>
+                              overrideMutation.mutate({
+                                strategyType: row.strategy_type,
+                                status: 'active',
+                              })
+                            }
                           >
                             <CheckCircle2 className="w-3 h-3" />
                             {t('validation.activate')}
@@ -385,7 +434,12 @@ export default function ValidationPanel() {
                               isDemoted ? '' : 'border-red-500/30 text-red-300 hover:bg-red-500/10',
                             )}
                             disabled={overrideBusy || isDemoted}
-                            onClick={() => overrideMutation.mutate({ strategyType: row.strategy_type, status: 'demoted' })}
+                            onClick={() =>
+                              overrideMutation.mutate({
+                                strategyType: row.strategy_type,
+                                status: 'demoted',
+                              })
+                            }
                           >
                             <ShieldOff className="w-3 h-3" />
                             {t('validation.demote')}
@@ -397,9 +451,11 @@ export default function ValidationPanel() {
                             className="h-6 gap-1 px-2 text-[10px]"
                             disabled={overrideBusy || !row.manual_override}
                             onClick={() => clearOverrideMutation.mutate(row.strategy_type)}
-                            title={row.manual_override
-                              ? t('validation.clearOverrideTitle')
-                              : t('validation.noOverrideActive')}
+                            title={
+                              row.manual_override
+                                ? t('validation.clearOverrideTitle')
+                                : t('validation.noOverrideActive')
+                            }
                           >
                             <X className="w-3 h-3" />
                             {t('validation.clear')}
@@ -434,7 +490,6 @@ export default function ValidationPanel() {
     </div>
   )
 }
-
 
 function NumberField({
   label,
@@ -488,7 +543,6 @@ function NumberField({
     </div>
   )
 }
-
 
 function formatTimestamp(iso: string): string {
   try {

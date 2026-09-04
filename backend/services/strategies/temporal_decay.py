@@ -43,10 +43,30 @@ _DEADLINE_PATTERNS = [
 ]
 
 _MONTH_MAP = {
-    "january": 1, "jan": 1, "february": 2, "feb": 2, "march": 3, "mar": 3,
-    "april": 4, "apr": 4, "may": 5, "june": 6, "jun": 6, "july": 7, "jul": 7,
-    "august": 8, "aug": 8, "september": 9, "sep": 9, "sept": 9, "october": 10,
-    "oct": 10, "november": 11, "nov": 11, "december": 12, "dec": 12,
+    "january": 1,
+    "jan": 1,
+    "february": 2,
+    "feb": 2,
+    "march": 3,
+    "mar": 3,
+    "april": 4,
+    "apr": 4,
+    "may": 5,
+    "june": 6,
+    "jun": 6,
+    "july": 7,
+    "jul": 7,
+    "august": 8,
+    "aug": 8,
+    "september": 9,
+    "sep": 9,
+    "sept": 9,
+    "october": 10,
+    "oct": 10,
+    "november": 11,
+    "nov": 11,
+    "december": 12,
+    "dec": 12,
 }
 
 # All numeric tunables live in default_config below — module-level
@@ -74,14 +94,14 @@ class TemporalDecayStrategy(BaseStrategy):
         "max_days_to_deadline": 30.0,
         "min_days_to_deadline": 1.0,
         # Decay-curve fit parameters.
-        "min_deviation": 0.07,            # only fire on big price-vs-curve gaps
-        "min_history_points": 8,          # need a stable baseline
-        "decay_rate": 0.5,                # sqrt-time exponent (heuristic, tunable)
+        "min_deviation": 0.07,  # only fire on big price-vs-curve gaps
+        "min_history_points": 8,  # need a stable baseline
+        "decay_rate": 0.5,  # sqrt-time exponent (heuristic, tunable)
         # Entry-side gates: keep contracts off the price extremes where
         # spread/slippage dominate.
         "min_entry_price": 0.10,
         "max_entry_price": 0.90,
-        "min_expected_move": 0.04,        # reject if target re-price < this
+        "min_expected_move": 0.04,  # reject if target re-price < this
         # Bundle-level gates passed into create_opportunity.
         "min_liquidity_hard": 2000.0,
         "min_position_size": 50.0,
@@ -92,8 +112,15 @@ class TemporalDecayStrategy(BaseStrategy):
         "stop_loss_pct": 5.0,
         "trailing_stop_pct": 7.0,
         "exclude_market_keywords": [
-            "bitcoin", "btc", "ethereum", "eth", "solana", "sol", "xrp",
-            "doge", "crypto",
+            "bitcoin",
+            "btc",
+            "ethereum",
+            "eth",
+            "solana",
+            "sol",
+            "xrp",
+            "doge",
+            "crypto",
         ],
     }
 
@@ -138,8 +165,7 @@ class TemporalDecayStrategy(BaseStrategy):
     @staticmethod
     def _market_text(market: Market) -> str:
         chunks: list[str] = []
-        for value in (market.id, market.question, getattr(market, "slug", None),
-                      getattr(market, "event_slug", None)):
+        for value in (market.id, market.question, getattr(market, "slug", None), getattr(market, "event_slug", None)):
             text = str(value or "").strip().lower()
             if text:
                 chunks.append(text)
@@ -191,6 +217,7 @@ class TemporalDecayStrategy(BaseStrategy):
                 except ValueError:
                     return None
                 import calendar
+
                 _, day = calendar.monthrange(year, month)
                 return datetime(year, month, day, 23, 59, 59, tzinfo=timezone.utc)
             try:
@@ -273,10 +300,10 @@ class TemporalDecayStrategy(BaseStrategy):
                 continue
 
             first_seen_dt = datetime.fromtimestamp(history[0][0], tz=timezone.utc)
-            total_days = max((deadline - first_seen_dt).total_seconds() / 86400.0, 1.0)
+            total_days = max((deadline - first_seen_dt).total_seconds() / 86400.0, max_days, 1.0)
             ratio = min(days_remaining / total_days, 1.0)
             initial_price = market_baselines[market.id][1]
-            expected_price = initial_price * (ratio ** decay_rate)
+            expected_price = initial_price * (ratio**decay_rate)
             deviation = yes_price - expected_price
             if abs(deviation) < min_dev:
                 continue
@@ -306,17 +333,19 @@ class TemporalDecayStrategy(BaseStrategy):
 
             realistic_roi = (expected_move / max(entry_price, 0.001)) * 100.0
 
-            positions = [{
-                "action": "BUY",
-                "outcome": outcome,
-                "market": market.question[:50],
-                "price": entry_price,
-                "token_id": token_id,
-                "rationale": (
-                    f"Expected decay price: ${expected_price:.3f}, actual: ${yes_price:.3f} "
-                    f"({direction_desc} by {abs(deviation):.3f})"
-                ),
-            }]
+            positions = [
+                {
+                    "action": "BUY",
+                    "outcome": outcome,
+                    "market": market.question[:50],
+                    "price": entry_price,
+                    "token_id": token_id,
+                    "rationale": (
+                        f"Expected decay price: ${expected_price:.3f}, actual: ${yes_price:.3f} "
+                        f"({direction_desc} by {abs(deviation):.3f})"
+                    ),
+                }
+            ]
 
             opp = self.create_opportunity(
                 title=f"Temporal Decay: {market.question[:50]}...",
@@ -364,8 +393,7 @@ class TemporalDecayStrategy(BaseStrategy):
     def custom_checks(self, signal, context, params, payload):
         source = str(getattr(signal, "source", "") or "").strip().lower()
         return [
-            DecisionCheck("source", "Signal source", source == "scanner",
-                          detail=f"got={source}"),
+            DecisionCheck("source", "Signal source", source == "scanner", detail=f"got={source}"),
         ]
 
     def should_exit(self, position: Any, market_state: dict) -> ExitDecision:
@@ -387,9 +415,7 @@ class TemporalDecayStrategy(BaseStrategy):
         return self.default_exit_check(position, market_state)
 
     def on_blocked(self, signal, reason: str, context: dict) -> None:
-        logger.info("%s: signal blocked — %s (market=%s)", self.name, reason,
-                    getattr(signal, "market_id", "?"))
+        logger.info("%s: signal blocked — %s (market=%s)", self.name, reason, getattr(signal, "market_id", "?"))
 
     def on_size_capped(self, original_size: float, capped_size: float, reason: str) -> None:
-        logger.info("%s: size capped $%.0f → $%.0f — %s", self.name,
-                    original_size, capped_size, reason)
+        logger.info("%s: size capped $%.0f → $%.0f — %s", self.name, original_size, capped_size, reason)

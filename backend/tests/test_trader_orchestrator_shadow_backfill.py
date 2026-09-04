@@ -1,5 +1,5 @@
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock
 
@@ -23,12 +23,14 @@ async def test_backfill_passes_shadow_simulation_fee_and_slippage_to_ledger(tmp_
     engine, session_factory = await _build_session_factory(tmp_path)
     try:
         async with session_factory() as session:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc).replace(tzinfo=None)
             session.add(
                 Trader(
                     id="trader-1",
                     name="Backfill Trader",
-                    source_configs_json=[{"source_key": "crypto", "strategy_key": "btc_eth_maker_quote", "strategy_params": {}}],
+                    source_configs_json=[
+                        {"source_key": "crypto", "strategy_key": "btc_eth_maker_quote", "strategy_params": {}}
+                    ],
                     risk_limits_json={},
                     metadata_json={},
                     is_enabled=True,
@@ -73,8 +75,10 @@ async def test_backfill_passes_shadow_simulation_fee_and_slippage_to_ledger(tmp_
                     "position_id": "position-1",
                 }
             )
+            from services.simulation import simulation_service
+
             monkeypatch.setattr(
-                trader_orchestrator_worker.simulation_service,
+                simulation_service,
                 "record_orchestrator_shadow_fill",
                 record_mock,
             )

@@ -82,16 +82,18 @@ function useTimeAgo() {
     const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
     if (seconds < 0) return t('newsIntelligencePanel.time.justNow')
     if (seconds < 60) return t('newsIntelligencePanel.time.secondsAgo', { n: seconds })
-    if (seconds < 3600) return t('newsIntelligencePanel.time.minutesAgo', { n: Math.floor(seconds / 60) })
-    if (seconds < 86400) return t('newsIntelligencePanel.time.hoursAgo', { n: Math.floor(seconds / 3600) })
+    if (seconds < 3600)
+      return t('newsIntelligencePanel.time.minutesAgo', { n: Math.floor(seconds / 60) })
+    if (seconds < 86400)
+      return t('newsIntelligencePanel.time.hoursAgo', { n: Math.floor(seconds / 3600) })
     return t('newsIntelligencePanel.time.daysAgo', { n: Math.floor(seconds / 86400) })
   }
 }
 
 function articleRecencyMs(article: NewsArticle): number {
-  return parseUtcDate(article.published)?.getTime()
-    ?? parseUtcDate(article.fetched_at)?.getTime()
-    ?? 0
+  return (
+    parseUtcDate(article.published)?.getTime() ?? parseUtcDate(article.fetched_at)?.getTime() ?? 0
+  )
 }
 
 function edgeColor(edge: number): string {
@@ -262,19 +264,25 @@ function resolveMarketLinks(inputs: MarketLinkInputs): MarketLink[] {
 function resolveFindingMarketLinks(finding: NewsWorkflowFinding): MarketLink[] {
   const evidence = asRecord(finding.evidence)
   const eventGraph = asRecord(finding.event_graph)
-  const marketContext = (
-    asRecord(evidence?.market)
-    ?? asRecord(eventGraph?.market)
-    ?? {}
-  )
+  const marketContext = asRecord(evidence?.market) ?? asRecord(eventGraph?.market) ?? {}
 
   return resolveMarketLinks({
-    marketId: cleanMarketText(marketContext.id || marketContext.market_id || finding.market_id) || null,
-    marketSlug: cleanMarketText(marketContext.slug || marketContext.market_slug || finding.market_slug) || null,
-    eventSlug: cleanMarketText(marketContext.event_slug || marketContext.eventSlug || finding.market_event_slug) || null,
-    eventTicker: cleanMarketText(marketContext.event_ticker || marketContext.eventTicker || finding.market_event_ticker) || null,
+    marketId:
+      cleanMarketText(marketContext.id || marketContext.market_id || finding.market_id) || null,
+    marketSlug:
+      cleanMarketText(marketContext.slug || marketContext.market_slug || finding.market_slug) ||
+      null,
+    eventSlug:
+      cleanMarketText(
+        marketContext.event_slug || marketContext.eventSlug || finding.market_event_slug,
+      ) || null,
+    eventTicker:
+      cleanMarketText(
+        marketContext.event_ticker || marketContext.eventTicker || finding.market_event_ticker,
+      ) || null,
     platform: cleanMarketText(marketContext.platform || finding.market_platform) || null,
-    marketUrl: cleanMarketText(marketContext.market_url || marketContext.url || finding.market_url) || null,
+    marketUrl:
+      cleanMarketText(marketContext.market_url || marketContext.url || finding.market_url) || null,
     polymarketUrl: finding.polymarket_url ?? null,
     kalshiUrl: finding.kalshi_url ?? null,
     conditionId: cleanMarketText(marketContext.condition_id || marketContext.conditionId) || null,
@@ -314,9 +322,10 @@ function collectSupportingArticlesFromFinding(
   maxItems = 24,
 ): NewsSupportingArticle[] {
   const evidence = finding.evidence as Record<string, unknown> | null
-  const cluster = (evidence?.cluster && typeof evidence.cluster === 'object')
-    ? (evidence.cluster as Record<string, unknown>)
-    : null
+  const cluster =
+    evidence?.cluster && typeof evidence.cluster === 'object'
+      ? (evidence.cluster as Record<string, unknown>)
+      : null
   const supportingArticles: NewsSupportingArticle[] = []
 
   const payloadArticles = Array.isArray(finding.supporting_articles)
@@ -335,9 +344,7 @@ function collectSupportingArticlesFromFinding(
     })
   }
 
-  const clusterRefs = Array.isArray(cluster?.article_refs)
-    ? cluster.article_refs
-    : []
+  const clusterRefs = Array.isArray(cluster?.article_refs) ? cluster.article_refs : []
   for (const raw of clusterRefs) {
     if (!raw || typeof raw !== 'object') continue
     const ref = raw as Record<string, unknown>
@@ -370,20 +377,18 @@ function collectSupportingArticlesFromFinding(
   return dedupeSupportingArticles(supportingArticles, maxItems)
 }
 
-function resolveCurrentOddsForFinding(
-  finding: NewsWorkflowFinding,
-): { yes: number | null; no: number | null; signal: number | null } {
+function resolveCurrentOddsForFinding(finding: NewsWorkflowFinding): {
+  yes: number | null
+  no: number | null
+  signal: number | null
+} {
   const isBuyYes = finding.direction === 'buy_yes'
 
-  let yes = (
-    toFiniteProbability(finding.current_yes_price)
-    ?? toFiniteProbability(finding.yes_price)
-    ?? toFiniteProbability(finding.market_price)
-  )
-  let no = (
-    toFiniteProbability(finding.current_no_price)
-    ?? toFiniteProbability(finding.no_price)
-  )
+  let yes =
+    toFiniteProbability(finding.current_yes_price) ??
+    toFiniteProbability(finding.yes_price) ??
+    toFiniteProbability(finding.market_price)
+  let no = toFiniteProbability(finding.current_no_price) ?? toFiniteProbability(finding.no_price)
 
   if (no == null && yes != null) no = Math.max(0, Math.min(1, 1 - yes))
   if (yes == null && no != null) yes = Math.max(0, Math.min(1, 1 - no))
@@ -395,44 +400,37 @@ function resolveCurrentOddsForFinding(
   }
 }
 
-function resolveFindingOutcomes(
-  finding: NewsWorkflowFinding,
-): { labels: string[]; prices: number[] } {
+function resolveFindingOutcomes(finding: NewsWorkflowFinding): {
+  labels: string[]
+  prices: number[]
+} {
   const evidence = asRecord(finding.evidence)
   const eventGraph = asRecord(finding.event_graph)
-  const market = (
-    asRecord(evidence?.market)
-    ?? asRecord(eventGraph?.market)
-    ?? {}
-  )
+  const market = asRecord(evidence?.market) ?? asRecord(eventGraph?.market) ?? {}
 
   const labels = extractOutcomeLabels(
-    finding.outcome_labels
-    ?? market.outcome_labels
-    ?? market.outcomes
-    ?? market.tokens
+    finding.outcome_labels ?? market.outcome_labels ?? market.outcomes ?? market.tokens,
   )
 
   const prices = extractOutcomePrices(
-    finding.outcome_prices
-    ?? market.outcome_prices
-    ?? market.outcomePrices
-    ?? market.prices
+    finding.outcome_prices ?? market.outcome_prices ?? market.outcomePrices ?? market.prices,
   )
 
   return { labels, prices }
 }
 
 function resolveFindingStrategySdk(finding: NewsWorkflowFinding): string {
-  const explicit = String(finding.strategy_sdk || '').trim().toLowerCase()
+  const explicit = String(finding.strategy_sdk || '')
+    .trim()
+    .toLowerCase()
   if (explicit) return explicit
 
   const evidence = asRecord(finding.evidence)
   const strategy = cleanMarketText(
-    evidence?.strategy_sdk
-    || evidence?.strategy_slug
-    || evidence?.strategy_key
-    || evidence?.strategy,
+    evidence?.strategy_sdk ||
+      evidence?.strategy_slug ||
+      evidence?.strategy_key ||
+      evidence?.strategy,
   ).toLowerCase()
   if (strategy) return strategy
 
@@ -471,8 +469,12 @@ function mergeFindingsByMarket(findings: NewsWorkflowFinding[]): NewsWorkflowFin
       24,
     )
 
-    const primaryHistoryLen = Array.isArray(primary.price_history) ? primary.price_history.length : 0
-    const secondaryHistoryLen = Array.isArray(secondary.price_history) ? secondary.price_history.length : 0
+    const primaryHistoryLen = Array.isArray(primary.price_history)
+      ? primary.price_history.length
+      : 0
+    const secondaryHistoryLen = Array.isArray(secondary.price_history)
+      ? secondary.price_history.length
+      : 0
     const snapshotSource = primaryHistoryLen >= secondaryHistoryLen ? primary : secondary
     const fallbackSnapshot = snapshotSource === primary ? secondary : primary
 
@@ -485,42 +487,40 @@ function mergeFindingsByMarket(findings: NewsWorkflowFinding[]): NewsWorkflowFin
       keyword_score: Math.max(existing.keyword_score, candidate.keyword_score),
       event_score: Math.max(existing.event_score, candidate.event_score),
       rerank_score: Math.max(existing.rerank_score, candidate.rerank_score),
-      created_at: findingCreatedAtMs(candidate) >= findingCreatedAtMs(existing)
-        ? candidate.created_at
-        : existing.created_at,
+      created_at:
+        findingCreatedAtMs(candidate) >= findingCreatedAtMs(existing)
+          ? candidate.created_at
+          : existing.created_at,
       supporting_articles: mergedArticles,
       supporting_article_count: Math.max(
         Number(existing.supporting_article_count ?? 0),
         Number(candidate.supporting_article_count ?? 0),
         mergedArticles.length,
       ),
-      price_history: (
+      price_history:
         Array.isArray(snapshotSource.price_history) && snapshotSource.price_history.length >= 2
-      ) ? snapshotSource.price_history : fallbackSnapshot.price_history,
-      yes_price: (
-        snapshotSource.yes_price
-        ?? fallbackSnapshot.yes_price
-        ?? primary.yes_price
-        ?? secondary.yes_price
-      ),
-      no_price: (
-        snapshotSource.no_price
-        ?? fallbackSnapshot.no_price
-        ?? primary.no_price
-        ?? secondary.no_price
-      ),
-      current_yes_price: (
-        snapshotSource.current_yes_price
-        ?? fallbackSnapshot.current_yes_price
-        ?? primary.current_yes_price
-        ?? secondary.current_yes_price
-      ),
-      current_no_price: (
-        snapshotSource.current_no_price
-        ?? fallbackSnapshot.current_no_price
-        ?? primary.current_no_price
-        ?? secondary.current_no_price
-      ),
+          ? snapshotSource.price_history
+          : fallbackSnapshot.price_history,
+      yes_price:
+        snapshotSource.yes_price ??
+        fallbackSnapshot.yes_price ??
+        primary.yes_price ??
+        secondary.yes_price,
+      no_price:
+        snapshotSource.no_price ??
+        fallbackSnapshot.no_price ??
+        primary.no_price ??
+        secondary.no_price,
+      current_yes_price:
+        snapshotSource.current_yes_price ??
+        fallbackSnapshot.current_yes_price ??
+        primary.current_yes_price ??
+        secondary.current_yes_price,
+      current_no_price:
+        snapshotSource.current_no_price ??
+        fallbackSnapshot.current_no_price ??
+        primary.current_no_price ??
+        secondary.current_no_price,
     }
 
     grouped.set(key, merged)
@@ -551,7 +551,9 @@ function ArticleRow({ article }: { article: NewsArticle }) {
       }}
     >
       <div className="flex items-center gap-3">
-        <div className="shrink-0 text-base">{CATEGORY_ICONS[article.category] || '\ud83d\udcf0'}</div>
+        <div className="shrink-0 text-base">
+          {CATEGORY_ICONS[article.category] || '\ud83d\udcf0'}
+        </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             {categoryName && (
@@ -568,24 +570,42 @@ function ArticleRow({ article }: { article: NewsArticle }) {
             </a>
           </div>
           <div className="flex items-center gap-2 mt-0.5">
-            <Badge variant="outline" className={cn("text-[9px] h-4 px-1.5", SOURCE_COLORS[article.feed_source] || 'bg-muted/50 text-muted-foreground border-border')}>
+            <Badge
+              variant="outline"
+              className={cn(
+                'text-[9px] h-4 px-1.5',
+                SOURCE_COLORS[article.feed_source] ||
+                  'bg-muted/50 text-muted-foreground border-border',
+              )}
+            >
               {article.feed_source.replace('_', ' ')}
             </Badge>
-            <span className="text-[10px] text-muted-foreground truncate max-w-[180px]">{article.source}</span>
-            {timeStr && <span className="text-[10px] text-muted-foreground font-data shrink-0">{timeLabel}</span>}
+            <span className="text-[10px] text-muted-foreground truncate max-w-[180px]">
+              {article.source}
+            </span>
+            {timeStr && (
+              <span className="text-[10px] text-muted-foreground font-data shrink-0">
+                {timeLabel}
+              </span>
+            )}
             {article.has_embedding && (
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" title={t('newsIntelligencePanel.vectorIndexed')} />
+              <span
+                className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"
+                title={t('newsIntelligencePanel.vectorIndexed')}
+              />
             )}
           </div>
         </div>
         <div className="shrink-0 text-muted-foreground p-1">
-          {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          {expanded ? (
+            <ChevronUp className="w-3.5 h-3.5" />
+          ) : (
+            <ChevronDown className="w-3.5 h-3.5" />
+          )}
         </div>
       </div>
       {expanded && article.summary && (
-        <p className="mt-1.5 ml-9 text-xs text-muted-foreground line-clamp-3">
-          {article.summary}
-        </p>
+        <p className="mt-1.5 ml-9 text-xs text-muted-foreground line-clamp-3">{article.summary}</p>
       )}
     </div>
   )
@@ -606,15 +626,14 @@ function FindingCard({
   const [modalOpen, setModalOpen] = useState(false)
   const themeMode = useAtomValue(themeAtom)
   const evidence = finding.evidence as Record<string, unknown> | null
-  const cluster = (evidence?.cluster && typeof evidence.cluster === 'object')
-    ? (evidence.cluster as Record<string, unknown>)
-    : null
+  const cluster =
+    evidence?.cluster && typeof evidence.cluster === 'object'
+      ? (evidence.cluster as Record<string, unknown>)
+      : null
   const clusterSources = Array.isArray(cluster?.sources)
     ? cluster.sources.filter((s): s is string => typeof s === 'string')
     : []
-  const clusterSize = typeof cluster?.article_count === 'number'
-    ? cluster.article_count
-    : 0
+  const clusterSize = typeof cluster?.article_count === 'number' ? cluster.article_count : 0
   const dedupedSupportingArticles = useMemo(
     () => collectSupportingArticlesFromFinding(finding, 24),
     [finding],
@@ -624,37 +643,38 @@ function FindingCard({
   const yesOutcomeLabel = outcomeSnapshot.labels[0] || t('newsIntelligencePanel.outcome.yes')
   const noOutcomeLabel = outcomeSnapshot.labels[1] || t('newsIntelligencePanel.outcome.no')
   const sparkSeries = useMemo(
-    () => buildOutcomeSparklineSeries(
-      finding.price_history,
-      buildOutcomeFallbacks({
-        labels: outcomeSnapshot.labels,
-        prices: outcomeSnapshot.prices,
-        yesPrice: odds.yes,
-        noPrice: odds.no,
-        yesLabel: yesOutcomeLabel,
-        noLabel: noOutcomeLabel,
-        preferIndexedKeys: outcomeSnapshot.labels.length > 2 || outcomeSnapshot.prices.length > 2,
-      }),
-    ),
+    () =>
+      buildOutcomeSparklineSeries(
+        finding.price_history,
+        buildOutcomeFallbacks({
+          labels: outcomeSnapshot.labels,
+          prices: outcomeSnapshot.prices,
+          yesPrice: odds.yes,
+          noPrice: odds.no,
+          yesLabel: yesOutcomeLabel,
+          noLabel: noOutcomeLabel,
+          preferIndexedKeys: outcomeSnapshot.labels.length > 2 || outcomeSnapshot.prices.length > 2,
+        }),
+      ),
     [finding.price_history, odds.yes, odds.no, outcomeSnapshot, yesOutcomeLabel, noOutcomeLabel],
   )
   const hasSparkline = sparkSeries.length > 0
-  const nowSec = useMemo(() => Math.floor(Date.now() / 1000), [sparkSeries])
-  const livelineSeries = useMemo<LivelineSeries[]>(
-    () => sparkSeries.map((row, index) => ({
+  const livelineSeries = useMemo<LivelineSeries[]>(() => {
+    const nowSec = Math.floor(Date.now() / 1000)
+    return sparkSeries.map((row, index) => ({
       id: row.key,
       data: toTimeValueSeries(row.data, nowSec),
       value: row.latest ?? row.data[row.data.length - 1] ?? 0,
       color: SPARKLINE_COLORS[index % SPARKLINE_COLORS.length],
       label: row.label,
-    })),
-    [sparkSeries, nowSec],
-  )
+    }))
+  }, [sparkSeries])
   const primaryLivelineData = livelineSeries[0]?.data ?? []
   const primaryLivelineValue = livelineSeries[0]?.value ?? 0
-  const livelineWindow = primaryLivelineData.length >= 2
-    ? primaryLivelineData[primaryLivelineData.length - 1].time - primaryLivelineData[0].time
-    : 60
+  const livelineWindow =
+    primaryLivelineData.length >= 2
+      ? primaryLivelineData[primaryLivelineData.length - 1].time - primaryLivelineData[0].time
+      : 60
   const marketLinks = useMemo(() => resolveFindingMarketLinks(finding), [finding])
 
   const articleCount = Math.max(
@@ -690,268 +710,331 @@ function FindingCard({
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [isModalView, modalOpen])
 
-
   return (
     <>
-    <Card className={cn(
-      "overflow-hidden border-border/40 transition-all group",
-      !isModalView && "hover:border-border/80 hover:shadow-lg hover:shadow-black/20",
-      isModalView && "w-[min(1100px,calc(100vw-2rem))] max-h-[90vh] overflow-y-auto rounded-2xl border-border/70 bg-background shadow-[0_40px_120px_rgba(0,0,0,0.55)] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
-    )}>
-      <div className={cn('h-0.5', finding.actionable ? (finding.edge_percent >= 15 ? 'bg-green-400' : 'bg-yellow-400') : 'bg-muted')} />
-      <div className="p-4">
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="outline" className={cn(
-              "text-[10px] font-semibold",
-              isBuyYes ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-red-500/10 text-red-400 border-red-500/20"
-            )}>
-              {t('newsIntelligencePanel.buyOutcome', { outcome: compactOutcomeLabel(directionLabel, 18).toUpperCase() })}
-            </Badge>
-            {finding.actionable && (
-              <Badge variant="outline" className="text-[10px] bg-green-500/10 text-green-400 border-green-500/20">
-                {t('newsIntelligencePanel.actionable')}
-              </Badge>
-            )}
-            {articleCount > 1 && (
-              <Badge variant="outline" className="text-[10px] bg-blue-500/10 text-blue-400 border-blue-500/20">
-                {t('newsIntelligencePanel.articleCount', { n: articleCount })}
-              </Badge>
-            )}
-            <Badge
-              variant="outline"
-              className="max-w-[170px] truncate text-[9px] font-mono border-border/50 bg-muted/25 text-muted-foreground"
-              title={t('newsIntelligencePanel.sdkTooltip', { sdk: strategySdk })}
-            >
-              {t('newsIntelligencePanel.sdkLabel', { sdk: strategySdk })}
-            </Badge>
-          </div>
-          <div className="text-right shrink-0">
-            <span className={cn("text-lg font-bold font-data", edgeColor(finding.edge_percent))}>
-              {finding.edge_percent.toFixed(1)}%
-            </span>
-            <span className="text-[10px] text-muted-foreground block">{t('newsIntelligencePanel.edgeLabel')}</span>
-            <div className="text-[10px] font-data mt-0.5">
-              <span className="text-green-400">{compactOutcomeLabel(yesOutcomeLabel, 10)} {formatCents(odds.yes)}</span>
-              <span className="text-muted-foreground mx-1">/</span>
-              <span className="text-red-400">{compactOutcomeLabel(noOutcomeLabel, 10)} {formatCents(odds.no)}</span>
-            </div>
-          </div>
-        </div>
-
-        <p className="text-sm font-medium text-foreground line-clamp-2 mb-2">{finding.market_question}</p>
-        {marketLinks.length > 0 && (
-          <div className="mb-2 flex items-center gap-1.5 flex-wrap">
-            {marketLinks.map((link) => (
-              <a
-                key={`${link.label}-${link.url}`}
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 rounded-md border border-border/50 bg-muted/20 px-2 py-0.5 text-[10px] text-muted-foreground hover:text-foreground hover:border-border transition-colors"
-              >
-                {link.label}
-                <ExternalLink className="w-2.5 h-2.5" />
-              </a>
-            ))}
-          </div>
+      <Card
+        className={cn(
+          'overflow-hidden border-border/40 transition-all group',
+          !isModalView && 'hover:border-border/80 hover:shadow-lg hover:shadow-black/20',
+          isModalView &&
+            'w-[min(1100px,calc(100vw-2rem))] max-h-[90vh] overflow-y-auto rounded-2xl border-border/70 bg-background shadow-[0_40px_120px_rgba(0,0,0,0.55)] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden',
         )}
-
-        <div className="mb-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Newspaper className="w-3.5 h-3.5 text-orange-400 shrink-0" />
-              <span className="text-[10px] text-muted-foreground">
-                {articleCount > 1
-                  ? t('newsIntelligencePanel.linkedArticles', { n: articleCount })
-                  : t('newsIntelligencePanel.linkedArticle')}
-              </span>
-            </div>
-            {dedupedSupportingArticles.length > 2 && (
-              <button
-                type="button"
-                onClick={() => setExpandedArticles((v) => !v)}
-                className="text-[10px] text-blue-400 hover:text-blue-300 transition-colors"
+      >
+        <div
+          className={cn(
+            'h-0.5',
+            finding.actionable
+              ? finding.edge_percent >= 15
+                ? 'bg-green-400'
+                : 'bg-yellow-400'
+              : 'bg-muted',
+          )}
+        />
+        <div className="p-4">
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge
+                variant="outline"
+                className={cn(
+                  'text-[10px] font-semibold',
+                  isBuyYes
+                    ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                    : 'bg-red-500/10 text-red-400 border-red-500/20',
+                )}
               >
-                {expandedArticles ? t('newsIntelligencePanel.hide') : t('newsIntelligencePanel.showAllCount', { n: articleCount })}
-              </button>
-            )}
+                {t('newsIntelligencePanel.buyOutcome', {
+                  outcome: compactOutcomeLabel(directionLabel, 18).toUpperCase(),
+                })}
+              </Badge>
+              {finding.actionable && (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] bg-green-500/10 text-green-400 border-green-500/20"
+                >
+                  {t('newsIntelligencePanel.actionable')}
+                </Badge>
+              )}
+              {articleCount > 1 && (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] bg-blue-500/10 text-blue-400 border-blue-500/20"
+                >
+                  {t('newsIntelligencePanel.articleCount', { n: articleCount })}
+                </Badge>
+              )}
+              <Badge
+                variant="outline"
+                className="max-w-[170px] truncate text-[9px] font-mono border-border/50 bg-muted/25 text-muted-foreground"
+                title={t('newsIntelligencePanel.sdkTooltip', { sdk: strategySdk })}
+              >
+                {t('newsIntelligencePanel.sdkLabel', { sdk: strategySdk })}
+              </Badge>
+            </div>
+            <div className="text-right shrink-0">
+              <span className={cn('text-lg font-bold font-data', edgeColor(finding.edge_percent))}>
+                {finding.edge_percent.toFixed(1)}%
+              </span>
+              <span className="text-[10px] text-muted-foreground block">
+                {t('newsIntelligencePanel.edgeLabel')}
+              </span>
+              <div className="text-[10px] font-data mt-0.5">
+                <span className="text-green-400">
+                  {compactOutcomeLabel(yesOutcomeLabel, 10)} {formatCents(odds.yes)}
+                </span>
+                <span className="text-muted-foreground mx-1">/</span>
+                <span className="text-red-400">
+                  {compactOutcomeLabel(noOutcomeLabel, 10)} {formatCents(odds.no)}
+                </span>
+              </div>
+            </div>
           </div>
-          <div className="mt-1.5 space-y-1">
-            {visibleSupportingArticles.map((article) => (
-              article.url ? (
+
+          <p className="text-sm font-medium text-foreground line-clamp-2 mb-2">
+            {finding.market_question}
+          </p>
+          {marketLinks.length > 0 && (
+            <div className="mb-2 flex items-center gap-1.5 flex-wrap">
+              {marketLinks.map((link) => (
                 <a
-                  key={`${article.article_id}-${article.url}-${article.title}`}
-                  href={article.url}
+                  key={`${link.label}-${link.url}`}
+                  href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block text-xs text-muted-foreground hover:text-orange-400 transition-colors line-clamp-1"
+                  className="inline-flex items-center gap-1 rounded-md border border-border/50 bg-muted/20 px-2 py-0.5 text-[10px] text-muted-foreground hover:text-foreground hover:border-border transition-colors"
                 >
-                  {article.title}
-                  <ExternalLink className="w-3 h-3 inline ml-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  {link.label}
+                  <ExternalLink className="w-2.5 h-2.5" />
                 </a>
-              ) : (
-                <p
-                  key={`${article.article_id}-${article.title}`}
-                  className="text-xs text-muted-foreground line-clamp-1"
-                >
-                  {article.title}
-                </p>
-              )
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-1.5 mb-3">
-          {hasSparkline && primaryLivelineData.length >= 2 && (
-            <div className="w-full">
-              <Liveline
-                data={primaryLivelineData}
-                value={primaryLivelineValue}
-                series={livelineSeries.length > 1 ? livelineSeries : undefined}
-                color={SPARKLINE_COLORS[0]}
-                theme={themeMode}
-                window={livelineWindow}
-                paused={livelineSeries.length <= 1}
-                grid={isModalView}
-                badge={false}
-                fill={livelineSeries.length <= 1}
-                pulse={false}
-                momentum={isModalView}
-                scrub={isModalView}
-                seriesToggleCompact
-                lerpSpeed={0.15}
-                padding={isModalView
-                  ? { top: 6, right: 6, bottom: 6, left: 6 }
-                  : { top: 4, right: 4, bottom: 4, left: 4 }}
-                formatValue={(v) => v.toFixed(2)}
-                style={{ height: isModalView ? 120 : 56 }}
-              />
-              <div className="mt-0 flex flex-wrap gap-x-1.5 gap-y-0.5 px-0.5 text-[9px] font-data">
-                {sparkSeries.map((row, index) => (
-                  <span
-                    key={`${finding.id}-spark-${row.key}`}
-                    className={cn('whitespace-nowrap', SPARKLINE_TEXT_CLASSES[index % SPARKLINE_TEXT_CLASSES.length])}
-                  >
-                    {compactOutcomeLabel(row.label, 9)} {row.latest != null ? row.latest.toFixed(2) : '—'}
-                  </span>
-                ))}
-              </div>
+              ))}
             </div>
           )}
-          <div className="grid grid-cols-2 gap-1.5">
-            <div className="bg-muted/30 rounded-lg p-1.5 text-center">
-              <div className="text-[8px] text-muted-foreground uppercase tracking-wider">{t('newsIntelligencePanel.metrics.current')}</div>
-              <div className={cn("text-xs font-data font-semibold", edgeColor(finding.edge_percent))}>
-                {formatCents(odds.signal)}
+
+          <div className="mb-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Newspaper className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                <span className="text-[10px] text-muted-foreground">
+                  {articleCount > 1
+                    ? t('newsIntelligencePanel.linkedArticles', { n: articleCount })
+                    : t('newsIntelligencePanel.linkedArticle')}
+                </span>
+              </div>
+              {dedupedSupportingArticles.length > 2 && (
+                <button
+                  type="button"
+                  onClick={() => setExpandedArticles((v) => !v)}
+                  className="text-[10px] text-blue-400 hover:text-blue-300 transition-colors"
+                >
+                  {expandedArticles
+                    ? t('newsIntelligencePanel.hide')
+                    : t('newsIntelligencePanel.showAllCount', { n: articleCount })}
+                </button>
+              )}
+            </div>
+            <div className="mt-1.5 space-y-1">
+              {visibleSupportingArticles.map((article) =>
+                article.url ? (
+                  <a
+                    key={`${article.article_id}-${article.url}-${article.title}`}
+                    href={article.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block text-xs text-muted-foreground hover:text-orange-400 transition-colors line-clamp-1"
+                  >
+                    {article.title}
+                    <ExternalLink className="w-3 h-3 inline ml-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </a>
+                ) : (
+                  <p
+                    key={`${article.article_id}-${article.title}`}
+                    className="text-xs text-muted-foreground line-clamp-1"
+                  >
+                    {article.title}
+                  </p>
+                ),
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-1.5 mb-3">
+            {hasSparkline && primaryLivelineData.length >= 2 && (
+              <div className="w-full">
+                <Liveline
+                  data={primaryLivelineData}
+                  value={primaryLivelineValue}
+                  series={livelineSeries.length > 1 ? livelineSeries : undefined}
+                  color={SPARKLINE_COLORS[0]}
+                  theme={themeMode}
+                  window={livelineWindow}
+                  paused={livelineSeries.length <= 1}
+                  grid={isModalView}
+                  badge={false}
+                  fill={livelineSeries.length <= 1}
+                  pulse={false}
+                  momentum={isModalView}
+                  scrub={isModalView}
+                  seriesToggleCompact
+                  lerpSpeed={0.15}
+                  padding={
+                    isModalView
+                      ? { top: 6, right: 6, bottom: 6, left: 6 }
+                      : { top: 4, right: 4, bottom: 4, left: 4 }
+                  }
+                  formatValue={(v) => v.toFixed(2)}
+                  style={{ height: isModalView ? 120 : 56 }}
+                />
+                <div className="mt-0 flex flex-wrap gap-x-1.5 gap-y-0.5 px-0.5 text-[9px] font-data">
+                  {sparkSeries.map((row, index) => (
+                    <span
+                      key={`${finding.id}-spark-${row.key}`}
+                      className={cn(
+                        'whitespace-nowrap',
+                        SPARKLINE_TEXT_CLASSES[index % SPARKLINE_TEXT_CLASSES.length],
+                      )}
+                    >
+                      {compactOutcomeLabel(row.label, 9)}{' '}
+                      {row.latest != null ? row.latest.toFixed(2) : '—'}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-1.5">
+              <div className="bg-muted/30 rounded-lg p-1.5 text-center">
+                <div className="text-[8px] text-muted-foreground uppercase tracking-wider">
+                  {t('newsIntelligencePanel.metrics.current')}
+                </div>
+                <div
+                  className={cn('text-xs font-data font-semibold', edgeColor(finding.edge_percent))}
+                >
+                  {formatCents(odds.signal)}
+                </div>
+              </div>
+              <div className="bg-muted/30 rounded-lg p-1.5 text-center">
+                <div className="text-[8px] text-muted-foreground uppercase tracking-wider">
+                  {t('newsIntelligencePanel.metrics.model')}
+                </div>
+                <div
+                  className={cn('text-xs font-data font-semibold', edgeColor(finding.edge_percent))}
+                >
+                  {formatCents(finding.model_probability)}
+                </div>
+              </div>
+              <div className="bg-muted/30 rounded-lg p-1.5 text-center">
+                <div className="text-[8px] text-muted-foreground uppercase tracking-wider">
+                  {t('newsIntelligencePanel.metrics.conf')}
+                </div>
+                <div
+                  className={cn(
+                    'text-xs font-data font-semibold',
+                    confidenceColor(finding.confidence),
+                  )}
+                >
+                  {(finding.confidence * 100).toFixed(0)}%
+                </div>
+              </div>
+              <div className="bg-muted/30 rounded-lg p-1.5 text-center">
+                <div className="text-[8px] text-muted-foreground uppercase tracking-wider">
+                  {t('newsIntelligencePanel.metrics.rerank')}
+                </div>
+                <div className="text-xs font-data font-semibold text-blue-400">
+                  {(finding.rerank_score * 100).toFixed(0)}%
+                </div>
               </div>
             </div>
-            <div className="bg-muted/30 rounded-lg p-1.5 text-center">
-              <div className="text-[8px] text-muted-foreground uppercase tracking-wider">{t('newsIntelligencePanel.metrics.model')}</div>
-              <div className={cn("text-xs font-data font-semibold", edgeColor(finding.edge_percent))}>{formatCents(finding.model_probability)}</div>
-            </div>
-            <div className="bg-muted/30 rounded-lg p-1.5 text-center">
-              <div className="text-[8px] text-muted-foreground uppercase tracking-wider">{t('newsIntelligencePanel.metrics.conf')}</div>
-              <div className={cn("text-xs font-data font-semibold", confidenceColor(finding.confidence))}>{(finding.confidence * 100).toFixed(0)}%</div>
-            </div>
-            <div className="bg-muted/30 rounded-lg p-1.5 text-center">
-              <div className="text-[8px] text-muted-foreground uppercase tracking-wider">{t('newsIntelligencePanel.metrics.rerank')}</div>
-              <div className="text-xs font-data font-semibold text-blue-400">{(finding.rerank_score * 100).toFixed(0)}%</div>
-            </div>
           </div>
-        </div>
 
-        <div className={cn(
-          "text-[10px] text-muted-foreground mb-2",
-          !isModalView && "line-clamp-2",
-        )}>
-          {finding.reasoning}
-        </div>
+          <div
+            className={cn('text-[10px] text-muted-foreground mb-2', !isModalView && 'line-clamp-2')}
+          >
+            {finding.reasoning}
+          </div>
 
-        <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-          <div className="flex items-center gap-2">
-            {clusterSources.slice(0, 2).map((source) => (
-              <Badge key={source} variant="outline" className="text-[9px] h-4 px-1.5 bg-muted/30 border-border/40">
-                {source}
-              </Badge>
-            ))}
-          </div>
-          <div className="flex items-center gap-2">
-            {!isModalView ? (
-              <button
-                type="button"
-                onClick={() => setModalOpen(true)}
-                className="inline-flex items-center gap-1 h-6 px-2 text-[10px] rounded border bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/20 hover:bg-violet-500/20 transition-colors font-medium"
-                title={t('newsIntelligencePanel.expandCardTooltip')}
-              >
-                <Maximize2 className="w-2.5 h-2.5" />
-                {t('newsIntelligencePanel.expand')}
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => onCloseModal?.()}
-                className="inline-flex items-center gap-1 h-6 px-2 text-[10px] rounded border bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/20 hover:bg-violet-500/20 transition-colors font-medium"
-                title={t('newsIntelligencePanel.returnToGridTooltip')}
-              >
-                <Minimize2 className="w-2.5 h-2.5" />
-                {t('newsIntelligencePanel.popIn')}
-              </button>
-            )}
-            <span className="font-data">{timeAgo(finding.created_at)}</span>
+          <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+            <div className="flex items-center gap-2">
+              {clusterSources.slice(0, 2).map((source) => (
+                <Badge
+                  key={source}
+                  variant="outline"
+                  className="text-[9px] h-4 px-1.5 bg-muted/30 border-border/40"
+                >
+                  {source}
+                </Badge>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              {!isModalView ? (
+                <button
+                  type="button"
+                  onClick={() => setModalOpen(true)}
+                  className="inline-flex items-center gap-1 h-6 px-2 text-[10px] rounded border bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/20 hover:bg-violet-500/20 transition-colors font-medium"
+                  title={t('newsIntelligencePanel.expandCardTooltip')}
+                >
+                  <Maximize2 className="w-2.5 h-2.5" />
+                  {t('newsIntelligencePanel.expand')}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onCloseModal?.()}
+                  className="inline-flex items-center gap-1 h-6 px-2 text-[10px] rounded border bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/20 hover:bg-violet-500/20 transition-colors font-medium"
+                  title={t('newsIntelligencePanel.returnToGridTooltip')}
+                >
+                  <Minimize2 className="w-2.5 h-2.5" />
+                  {t('newsIntelligencePanel.popIn')}
+                </button>
+              )}
+              <span className="font-data">{timeAgo(finding.created_at)}</span>
+            </div>
           </div>
         </div>
-      </div>
-    </Card>
-      {!isModalView && typeof document !== 'undefined' && createPortal(
-        <AnimatePresence>
-          {modalOpen && (
-            <motion.div
-              key={`news-finding-modal-${finding.id}`}
-              className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
+      </Card>
+      {!isModalView &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <AnimatePresence>
+            {modalOpen && (
               <motion.div
-                className="absolute inset-0 bg-black/70 backdrop-blur-[2px]"
+                key={`news-finding-modal-${finding.id}`}
+                className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                onClick={closeModal}
-                aria-hidden
-              />
-              <motion.div
-                className="relative z-10"
-                role="dialog"
-                aria-modal="true"
-                aria-label={t('newsIntelligencePanel.expandedFindingAria', { question: finding.market_question })}
-                initial={{ scale: 0.94, opacity: 0, y: 22 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.97, opacity: 0, y: 14 }}
-                transition={{ type: 'spring', stiffness: 260, damping: 28, mass: 0.9 }}
               >
-                <FindingCard
-                  finding={finding}
-                  isModalView
-                  onCloseModal={closeModal}
+                <motion.div
+                  className="absolute inset-0 bg-black/70 backdrop-blur-[2px]"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={closeModal}
+                  aria-hidden
                 />
+                <motion.div
+                  className="relative z-10"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label={t('newsIntelligencePanel.expandedFindingAria', {
+                    question: finding.market_question,
+                  })}
+                  initial={{ scale: 0.94, opacity: 0, y: 22 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  exit={{ scale: 0.97, opacity: 0, y: 14 }}
+                  transition={{ type: 'spring', stiffness: 260, damping: 28, mass: 0.9 }}
+                >
+                  <FindingCard finding={finding} isModalView onCloseModal={closeModal} />
+                </motion.div>
               </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>,
-        document.body
-      )}
+            )}
+          </AnimatePresence>,
+          document.body,
+        )}
     </>
   )
 }
 
 function SourceBreakdownBar({ sources }: { sources: Record<string, number> }) {
-  const entries = useMemo(
-    () => Object.entries(sources).sort((a, b) => b[1] - a[1]),
-    [sources],
-  )
+  const entries = useMemo(() => Object.entries(sources).sort((a, b) => b[1] - a[1]), [sources])
   if (entries.length === 0) return null
 
   return (
@@ -960,7 +1043,10 @@ function SourceBreakdownBar({ sources }: { sources: Record<string, number> }) {
         <Badge
           key={src}
           variant="outline"
-          className={cn('text-[9px] h-5 px-1.5 font-data', SOURCE_COLORS[src] || 'bg-muted/50 text-muted-foreground border-border')}
+          className={cn(
+            'text-[9px] h-5 px-1.5 font-data',
+            SOURCE_COLORS[src] || 'bg-muted/50 text-muted-foreground border-border',
+          )}
         >
           {src.replace('_', ' ')} {count}
         </Badge>
@@ -1013,12 +1099,13 @@ export default function NewsIntelligencePanel({
 
   const { data: workflowFindingsData, isLoading: findingsLoading } = useQuery({
     queryKey: ['news-workflow-findings', showFilteredWorkflow],
-    queryFn: () => getNewsWorkflowFindings({
-      actionable_only: !showFilteredWorkflow,
-      include_debug_rejections: showFilteredWorkflow,
-      max_age_hours: 24,
-      limit: 150,
-    }),
+    queryFn: () =>
+      getNewsWorkflowFindings({
+        actionable_only: !showFilteredWorkflow,
+        include_debug_rejections: showFilteredWorkflow,
+        max_age_hours: 24,
+        limit: 150,
+      }),
     refetchInterval: isConnected ? false : 30000,
     enabled: mode !== 'feed' && subView === 'workflow',
   })
@@ -1097,7 +1184,7 @@ export default function NewsIntelligencePanel({
   })
 
   const unsortedArticles = useMemo(
-    () => articlesPages?.pages.flatMap(page => page.articles) || [],
+    () => articlesPages?.pages.flatMap((page) => page.articles) || [],
     [articlesPages],
   )
   const articles = useMemo(
@@ -1113,40 +1200,44 @@ export default function NewsIntelligencePanel({
     return groupedFindings.sort((a, b) => {
       if (a.actionable !== b.actionable) return a.actionable ? -1 : 1
       if (b.edge_percent !== a.edge_percent) return b.edge_percent - a.edge_percent
-      return (parseUtcDate(b.created_at)?.getTime() || 0) - (parseUtcDate(a.created_at)?.getTime() || 0)
+      return (
+        (parseUtcDate(b.created_at)?.getTime() || 0) - (parseUtcDate(a.created_at)?.getTime() || 0)
+      )
     })
   }, [workflowFindingsData])
 
   const actionableFindingsCount = useMemo(
-    () => workflowFindings.filter(f => f.actionable).length,
+    () => workflowFindings.filter((f) => f.actionable).length,
     [workflowFindings],
   )
 
   const filteredArticles = useMemo(() => {
     if (!searchFilter) return articles
     const q = searchFilter.toLowerCase()
-    return articles.filter(a =>
-      a.title.toLowerCase().includes(q)
-      || a.source.toLowerCase().includes(q)
-      || a.category.toLowerCase().includes(q)
+    return articles.filter(
+      (a) =>
+        a.title.toLowerCase().includes(q) ||
+        a.source.toLowerCase().includes(q) ||
+        a.category.toLowerCase().includes(q),
     )
   }, [articles, searchFilter])
 
   const filteredFindings = useMemo(() => {
     if (!searchFilter) return workflowFindings
     const q = searchFilter.toLowerCase()
-    return workflowFindings.filter(f =>
-      f.market_question.toLowerCase().includes(q)
-      || f.article_title.toLowerCase().includes(q)
-      || f.article_source.toLowerCase().includes(q)
-      || collectSupportingArticlesFromFinding(f).some((article) =>
-        article.title.toLowerCase().includes(q)
-        || article.source.toLowerCase().includes(q)
-      )
+    return workflowFindings.filter(
+      (f) =>
+        f.market_question.toLowerCase().includes(q) ||
+        f.article_title.toLowerCase().includes(q) ||
+        f.article_source.toLowerCase().includes(q) ||
+        collectSupportingArticlesFromFinding(f).some(
+          (article) =>
+            article.title.toLowerCase().includes(q) || article.source.toLowerCase().includes(q),
+        ),
     )
   }, [workflowFindings, searchFilter])
 
-  const sourceBreakdown = feedStatus?.sources || {}
+  const sourceBreakdown = useMemo(() => feedStatus?.sources || {}, [feedStatus?.sources])
   const sourceKeys = useMemo(() => Object.keys(sourceBreakdown), [sourceBreakdown])
 
   const handleLoadMore = useCallback(() => {
@@ -1162,10 +1253,10 @@ export default function NewsIntelligencePanel({
             size="sm"
             onClick={() => setSubView('workflow')}
             className={cn(
-              "gap-1.5 text-xs h-8",
+              'gap-1.5 text-xs h-8',
               subView === 'workflow'
-                ? "bg-purple-500/20 text-purple-400 border-purple-500/30 hover:bg-purple-500/30 hover:text-purple-400"
-                : "bg-card text-muted-foreground hover:text-foreground border-border"
+                ? 'bg-purple-500/20 text-purple-400 border-purple-500/30 hover:bg-purple-500/30 hover:text-purple-400'
+                : 'bg-card text-muted-foreground hover:text-foreground border-border',
             )}
           >
             <Target className="w-3.5 h-3.5" />
@@ -1176,17 +1267,19 @@ export default function NewsIntelligencePanel({
             size="sm"
             onClick={() => setSubView('feed')}
             className={cn(
-              "gap-1.5 text-xs h-8",
+              'gap-1.5 text-xs h-8',
               subView === 'feed'
-                ? "bg-orange-500/20 text-orange-400 border-orange-500/30 hover:bg-orange-500/30 hover:text-orange-400"
-                : "bg-card text-muted-foreground hover:text-foreground border-border"
+                ? 'bg-orange-500/20 text-orange-400 border-orange-500/30 hover:bg-orange-500/30 hover:text-orange-400'
+                : 'bg-card text-muted-foreground hover:text-foreground border-border',
             )}
           >
             <Newspaper className="w-3.5 h-3.5" />
             {t('newsIntelligencePanel.feed')}
             {articlesTotalCount > 0 && (
               <span className="ml-1 px-1.5 py-0.5 rounded-full bg-orange-500/15 text-orange-400 text-[10px] font-data">
-                {articlesLoadedCount < articlesTotalCount ? `${articlesLoadedCount}/${articlesTotalCount}` : articlesTotalCount}
+                {articlesLoadedCount < articlesTotalCount
+                  ? `${articlesLoadedCount}/${articlesTotalCount}`
+                  : articlesTotalCount}
               </span>
             )}
           </Button>
@@ -1194,238 +1287,284 @@ export default function NewsIntelligencePanel({
       )}
 
       <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-border bg-card/50 shrink-0">
-          {feedStatus?.running && (
-            <Badge variant="outline" className="text-[10px] h-6 bg-green-500/10 text-green-400 border-green-500/20 gap-1">
-              <Radio className="w-3 h-3" />
-              {t('newsIntelligencePanel.live')}
-            </Badge>
-          )}
-
-          <Badge variant="outline" className="text-[10px] h-6 bg-card border-border/60 text-muted-foreground">
-            {t('newsIntelligencePanel.lastScan', { time: timeAgo(workflowStatus?.last_scan) })}
+        {feedStatus?.running && (
+          <Badge
+            variant="outline"
+            className="text-[10px] h-6 bg-green-500/10 text-green-400 border-green-500/20 gap-1"
+          >
+            <Radio className="w-3 h-3" />
+            {t('newsIntelligencePanel.live')}
           </Badge>
-          <span className="text-xs text-muted-foreground truncate max-w-[280px]">
-            {workflowStatus?.current_activity || t('newsIntelligencePanel.waitingForWorker')}
-          </span>
+        )}
 
-          {subView === 'feed' && sourceKeys.length > 0 && (
-            <select
-              value={feedSourceFilter ?? '_all'}
-              onChange={(e) => setFeedSourceFilter(e.target.value === '_all' ? null : e.target.value)}
-              className="h-7 min-w-[150px] rounded-md border border-border bg-card px-2 text-xs text-foreground"
-            >
-              <option value="_all">{t('newsIntelligencePanel.allSources', { n: feedStatus?.article_count ?? 0 })}</option>
-              {sourceKeys.map((src) => (
-                <option key={src} value={src}>
-                  {src.replace('_', ' ')} ({sourceBreakdown[src] as number})
-                </option>
-              ))}
-            </select>
-          )}
+        <Badge
+          variant="outline"
+          className="text-[10px] h-6 bg-card border-border/60 text-muted-foreground"
+        >
+          {t('newsIntelligencePanel.lastScan', { time: timeAgo(workflowStatus?.last_scan) })}
+        </Badge>
+        <span className="text-xs text-muted-foreground truncate max-w-[280px]">
+          {workflowStatus?.current_activity || t('newsIntelligencePanel.waitingForWorker')}
+        </span>
 
-          <div className="ml-auto flex flex-wrap items-center gap-2">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder={t('newsIntelligencePanel.filterPlaceholder')}
-                value={searchFilter}
-                onChange={(e) => setSearchFilter(e.target.value)}
-                className={cn("pl-8 h-7 text-xs bg-card border-border", searchFilter ? "w-56 pr-8" : "w-48")}
-              />
-              {searchFilter && (
-                <button
-                  onClick={() => setSearchFilter('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+        {subView === 'feed' && sourceKeys.length > 0 && (
+          <select
+            value={feedSourceFilter ?? '_all'}
+            onChange={(e) => setFeedSourceFilter(e.target.value === '_all' ? null : e.target.value)}
+            className="h-7 min-w-[150px] rounded-md border border-border bg-card px-2 text-xs text-foreground"
+          >
+            <option value="_all">
+              {t('newsIntelligencePanel.allSources', { n: feedStatus?.article_count ?? 0 })}
+            </option>
+            {sourceKeys.map((src) => (
+              <option key={src} value={src}>
+                {src.replace('_', ' ')} ({sourceBreakdown[src] as number})
+              </option>
+            ))}
+          </select>
+        )}
+
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder={t('newsIntelligencePanel.filterPlaceholder')}
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              className={cn(
+                'pl-8 h-7 text-xs bg-card border-border',
+                searchFilter ? 'w-56 pr-8' : 'w-48',
               )}
-            </div>
-
-            {subView === 'workflow' ? (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-xs gap-1"
-                  onClick={() => (workflowStatus?.paused ? startWorkflowMutation.mutate() : pauseWorkflowMutation.mutate())}
-                  disabled={startWorkflowMutation.isPending || pauseWorkflowMutation.isPending}
-                >
-                  {workflowStatus?.paused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
-                  {workflowStatus?.paused ? t('newsIntelligencePanel.resume') : t('newsIntelligencePanel.pause')}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-xs gap-1"
-                  onClick={() => refreshMutation.mutate()}
-                  disabled={refreshMutation.isPending}
-                >
-                  <RefreshCw className={cn("w-3.5 h-3.5", refreshMutation.isPending && "animate-spin")} />
-                  {t('newsIntelligencePanel.refresh')}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className={cn(
-                    "h-7 text-xs gap-1",
-                    showFilteredWorkflow
-                      ? "text-amber-300 border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20"
-                      : "",
-                  )}
-                  onClick={() => setShowFilteredWorkflow((prev) => !prev)}
-                >
-                  {showFilteredWorkflow ? t('newsIntelligencePanel.hideFiltered') : t('newsIntelligencePanel.showFiltered')}
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-xs gap-1"
-                  onClick={() => refreshMutation.mutate()}
-                  disabled={refreshMutation.isPending}
-                >
-                  <RefreshCw className={cn("w-3.5 h-3.5", refreshMutation.isPending && "animate-spin")} />
-                  {t('newsIntelligencePanel.refresh')}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs gap-1 text-red-400 hover:text-red-400 hover:bg-red-500/10"
-                  onClick={() => clearMutation.mutate()}
-                  disabled={clearMutation.isPending}
-                >
-                  <Trash2 className="w-3 h-3" />
-                  {t('newsIntelligencePanel.clear')}
-                </Button>
-              </>
+            />
+            {searchFilter && (
+              <button
+                onClick={() => setSearchFilter('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
             )}
           </div>
+
+          {subView === 'workflow' ? (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs gap-1"
+                onClick={() =>
+                  workflowStatus?.paused
+                    ? startWorkflowMutation.mutate()
+                    : pauseWorkflowMutation.mutate()
+                }
+                disabled={startWorkflowMutation.isPending || pauseWorkflowMutation.isPending}
+              >
+                {workflowStatus?.paused ? (
+                  <Play className="w-3.5 h-3.5" />
+                ) : (
+                  <Pause className="w-3.5 h-3.5" />
+                )}
+                {workflowStatus?.paused
+                  ? t('newsIntelligencePanel.resume')
+                  : t('newsIntelligencePanel.pause')}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs gap-1"
+                onClick={() => refreshMutation.mutate()}
+                disabled={refreshMutation.isPending}
+              >
+                <RefreshCw
+                  className={cn('w-3.5 h-3.5', refreshMutation.isPending && 'animate-spin')}
+                />
+                {t('newsIntelligencePanel.refresh')}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                  'h-7 text-xs gap-1',
+                  showFilteredWorkflow
+                    ? 'text-amber-300 border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20'
+                    : '',
+                )}
+                onClick={() => setShowFilteredWorkflow((prev) => !prev)}
+              >
+                {showFilteredWorkflow
+                  ? t('newsIntelligencePanel.hideFiltered')
+                  : t('newsIntelligencePanel.showFiltered')}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs gap-1"
+                onClick={() => refreshMutation.mutate()}
+                disabled={refreshMutation.isPending}
+              >
+                <RefreshCw
+                  className={cn('w-3.5 h-3.5', refreshMutation.isPending && 'animate-spin')}
+                />
+                {t('newsIntelligencePanel.refresh')}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs gap-1 text-red-400 hover:text-red-400 hover:bg-red-500/10"
+                onClick={() => clearMutation.mutate()}
+                disabled={clearMutation.isPending}
+              >
+                <Trash2 className="w-3 h-3" />
+                {t('newsIntelligencePanel.clear')}
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto p-4">
-      {subView === 'workflow' && (
-        <>
-          {findingsLoading || refreshMutation.isPending ? (
-            <div className="flex flex-col items-center justify-center py-16">
-              <RefreshCw className="w-8 h-8 animate-spin text-purple-400 mb-3" />
-              <p className="text-sm text-muted-foreground">
-                {refreshMutation.isPending ? t('newsIntelligencePanel.refreshingWorkflow') : t('newsIntelligencePanel.loadingFindings')}
-              </p>
-            </div>
-          ) : filteredFindings.length === 0 ? (
-            <OpportunityEmptyState
-              title={
-                searchFilter
-                  ? t('newsIntelligencePanel.empty.noMatchTitle')
-                  : showFilteredWorkflow
-                    ? t('newsIntelligencePanel.empty.scannedTitle')
-                    : t('newsIntelligencePanel.empty.executableTitle')
-              }
-              description={
-                searchFilter
-                  ? t('newsIntelligencePanel.empty.noMatchDescription')
-                  : showFilteredWorkflow
-                    ? t('newsIntelligencePanel.empty.scannedDescription')
-                    : t('newsIntelligencePanel.empty.executableDescription')
-              }
-            />
-          ) : (
-            <>
-              <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <Zap className="w-3 h-3 text-green-400" />
-                {t('newsIntelligencePanel.findingsCount', { n: workflowFindings.length })}
-                {actionableFindingsCount ? ` ${t('newsIntelligencePanel.actionableSuffix', { n: actionableFindingsCount })}` : ''}
+        {subView === 'workflow' && (
+          <>
+            {findingsLoading || refreshMutation.isPending ? (
+              <div className="flex flex-col items-center justify-center py-16">
+                <RefreshCw className="w-8 h-8 animate-spin text-purple-400 mb-3" />
+                <p className="text-sm text-muted-foreground">
+                  {refreshMutation.isPending
+                    ? t('newsIntelligencePanel.refreshingWorkflow')
+                    : t('newsIntelligencePanel.loadingFindings')}
+                </p>
               </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3 card-stagger">
-                {filteredFindings.map((finding) => (
-                  <FindingCard key={finding.id} finding={finding} />
-                ))}
-              </div>
-            </>
-          )}
-        </>
-      )}
+            ) : filteredFindings.length === 0 ? (
+              <OpportunityEmptyState
+                title={
+                  searchFilter
+                    ? t('newsIntelligencePanel.empty.noMatchTitle')
+                    : showFilteredWorkflow
+                      ? t('newsIntelligencePanel.empty.scannedTitle')
+                      : t('newsIntelligencePanel.empty.executableTitle')
+                }
+                description={
+                  searchFilter
+                    ? t('newsIntelligencePanel.empty.noMatchDescription')
+                    : showFilteredWorkflow
+                      ? t('newsIntelligencePanel.empty.scannedDescription')
+                      : t('newsIntelligencePanel.empty.executableDescription')
+                }
+              />
+            ) : (
+              <>
+                <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Zap className="w-3 h-3 text-green-400" />
+                  {t('newsIntelligencePanel.findingsCount', { n: workflowFindings.length })}
+                  {actionableFindingsCount
+                    ? ` ${t('newsIntelligencePanel.actionableSuffix', { n: actionableFindingsCount })}`
+                    : ''}
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3 card-stagger">
+                  {filteredFindings.map((finding) => (
+                    <FindingCard key={finding.id} finding={finding} />
+                  ))}
+                </div>
+              </>
+            )}
+          </>
+        )}
 
-      {subView === 'feed' && (
-        <>
-          {articlesLoading ? (
-            <div className="flex items-center justify-center py-16">
-              <RefreshCw className="w-8 h-8 animate-spin text-orange-400" />
-            </div>
-          ) : filteredArticles.length === 0 ? (
-            <div className="text-center py-16">
-              <Newspaper className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-              <p className="text-muted-foreground">
-                {searchFilter ? t('newsIntelligencePanel.empty.noArticlesMatch') : t('newsIntelligencePanel.empty.noArticles')}
-              </p>
-              {!searchFilter && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs h-8 gap-1.5 mt-3"
-                  onClick={() => refreshMutation.mutate()}
-                  disabled={refreshMutation.isPending}
-                >
-                  <RefreshCw className={cn("w-3.5 h-3.5", refreshMutation.isPending && "animate-spin")} />
-                  {t('newsIntelligencePanel.refresh')}
-                </Button>
-              )}
-            </div>
-          ) : (
-            <>
-              <div className="flex items-center justify-between mb-2 text-xs text-muted-foreground">
-                <span>
+        {subView === 'feed' && (
+          <>
+            {articlesLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <RefreshCw className="w-8 h-8 animate-spin text-orange-400" />
+              </div>
+            ) : filteredArticles.length === 0 ? (
+              <div className="text-center py-16">
+                <Newspaper className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+                <p className="text-muted-foreground">
                   {searchFilter
-                    ? (articlesTotalCount > articlesLoadedCount
-                      ? t('newsIntelligencePanel.showingFilterTotal', { n: filteredArticles.length, loaded: articlesLoadedCount, total: articlesTotalCount })
-                      : t('newsIntelligencePanel.showingFilter', { n: filteredArticles.length, loaded: articlesLoadedCount }))
-                    : (articlesTotalCount > articlesLoadedCount
-                      ? t('newsIntelligencePanel.showingTotal', { n: filteredArticles.length, total: articlesTotalCount })
-                      : t('newsIntelligencePanel.showing', { n: filteredArticles.length }))}
-                </span>
-              </div>
-
-              <SourceBreakdownBar sources={sourceBreakdown} />
-
-              <div className="bg-card/40 rounded-xl border border-border/30 divide-y divide-border/20">
-                {filteredArticles.map((article) => (
-                  <ArticleRow key={article.article_id} article={article} />
-                ))}
-              </div>
-
-              {hasNextPage && !searchFilter && (
-                <div className="flex justify-center mt-4">
+                    ? t('newsIntelligencePanel.empty.noArticlesMatch')
+                    : t('newsIntelligencePanel.empty.noArticles')}
+                </p>
+                {!searchFilter && (
                   <Button
                     variant="outline"
                     size="sm"
-                    className="text-xs h-8 gap-1.5 px-6"
-                    onClick={handleLoadMore}
-                    disabled={isFetchingNextPage}
+                    className="text-xs h-8 gap-1.5 mt-3"
+                    onClick={() => refreshMutation.mutate()}
+                    disabled={refreshMutation.isPending}
                   >
-                    {isFetchingNextPage ? (
-                      <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        {t('newsIntelligencePanel.loadingEllipsis')}
-                      </>
-                    ) : (
-                      <>
-                        <ChevronRight className="w-3.5 h-3.5" />
-                        {t('newsIntelligencePanel.loadMoreRemaining', { n: articlesTotalCount - articlesLoadedCount })}
-                      </>
-                    )}
+                    <RefreshCw
+                      className={cn('w-3.5 h-3.5', refreshMutation.isPending && 'animate-spin')}
+                    />
+                    {t('newsIntelligencePanel.refresh')}
                   </Button>
+                )}
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-2 text-xs text-muted-foreground">
+                  <span>
+                    {searchFilter
+                      ? articlesTotalCount > articlesLoadedCount
+                        ? t('newsIntelligencePanel.showingFilterTotal', {
+                            n: filteredArticles.length,
+                            loaded: articlesLoadedCount,
+                            total: articlesTotalCount,
+                          })
+                        : t('newsIntelligencePanel.showingFilter', {
+                            n: filteredArticles.length,
+                            loaded: articlesLoadedCount,
+                          })
+                      : articlesTotalCount > articlesLoadedCount
+                        ? t('newsIntelligencePanel.showingTotal', {
+                            n: filteredArticles.length,
+                            total: articlesTotalCount,
+                          })
+                        : t('newsIntelligencePanel.showing', { n: filteredArticles.length })}
+                  </span>
                 </div>
-              )}
-            </>
-          )}
-        </>
-      )}
-      </div>
 
+                <SourceBreakdownBar sources={sourceBreakdown} />
+
+                <div className="bg-card/40 rounded-xl border border-border/30 divide-y divide-border/20">
+                  {filteredArticles.map((article) => (
+                    <ArticleRow key={article.article_id} article={article} />
+                  ))}
+                </div>
+
+                {hasNextPage && !searchFilter && (
+                  <div className="flex justify-center mt-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs h-8 gap-1.5 px-6"
+                      onClick={handleLoadMore}
+                      disabled={isFetchingNextPage}
+                    >
+                      {isFetchingNextPage ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          {t('newsIntelligencePanel.loadingEllipsis')}
+                        </>
+                      ) : (
+                        <>
+                          <ChevronRight className="w-3.5 h-3.5" />
+                          {t('newsIntelligencePanel.loadMoreRemaining', {
+                            n: articlesTotalCount - articlesLoadedCount,
+                          })}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
+          </>
+        )}
+      </div>
     </div>
   )
 }

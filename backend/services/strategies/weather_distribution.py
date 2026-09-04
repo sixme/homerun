@@ -415,8 +415,22 @@ class WeatherDistributionStrategy(BaseStrategy):
             normalized_probs = [1.0 / n for _ in range(n)]
 
         for i, bucket in enumerate(all_buckets):
-            bucket["model_prob"] = normalized_probs[i]
-            bucket["edge"] = normalized_probs[i] - bucket["yes_price"]
+            prob = normalized_probs[i]
+            bucket["model_prob"] = prob
+            yes_p = bucket["yes_price"]
+            no_p = bucket["no_price"]
+            yes_edge = prob - yes_p
+            no_edge = (1.0 - prob) - no_p
+            if yes_edge >= no_edge:
+                bucket["edge"] = yes_edge
+                bucket["direction"] = "buy_yes"
+                bucket["entry_price"] = yes_p
+                bucket["target_price"] = prob
+            else:
+                bucket["edge"] = no_edge
+                bucket["direction"] = "buy_no"
+                bucket["entry_price"] = no_p
+                bucket["target_price"] = 1.0 - prob
 
         # -----------------------------------------------------------
         # 4. Rank buckets by edge (descending)
@@ -438,22 +452,12 @@ class WeatherDistributionStrategy(BaseStrategy):
         model_prob = current_data["model_prob"]
         edge = current_data["edge"]
         edge_percent = edge * 100.0
+        direction = current_data["direction"]
+        entry_price = current_data["entry_price"]
+        target_price = current_data["target_price"]
 
         # -----------------------------------------------------------
-        # 5. Direction: compare normalized model_prob to yes_price
-        # -----------------------------------------------------------
-        if model_prob > yes_price:
-            direction = "buy_yes"
-            entry_price = yes_price
-            target_price = model_prob
-        else:
-            direction = "buy_no"
-            entry_price = no_price
-            target_price = 1.0 - model_prob
-            edge_percent = ((1.0 - model_prob) - no_price) * 100.0
-
-        # -----------------------------------------------------------
-        # 6. Apply filters
+        # 5. Apply filters
         # -----------------------------------------------------------
         if edge_percent < cfg["min_edge_percent"]:
             return None
@@ -540,6 +544,8 @@ class WeatherDistributionStrategy(BaseStrategy):
                     "model_prob": round(bucket["model_prob"], 4),
                     "yes_price": bucket["yes_price"],
                     "edge": round(bucket["edge"], 4),
+                    "direction": bucket.get("direction", "buy_yes"),
+                    "entry_price": bucket.get("entry_price", bucket["yes_price"]),
                     "market_id": bucket.get("market_id"),
                 }
             )

@@ -150,7 +150,8 @@ function jsonPreview(value: unknown, max = 60): string {
 function statusTone(status: string): 'good' | 'bad' | 'warn' | 'neutral' {
   const s = String(status || '').toLowerCase()
   if (s.includes('win') || s === 'ok' || s === 'closed_win' || s === 'resolved_win') return 'good'
-  if (s.includes('loss') || s === 'failed' || s === 'closed_loss' || s === 'resolved_loss') return 'bad'
+  if (s.includes('loss') || s === 'failed' || s === 'closed_loss' || s === 'resolved_loss')
+    return 'bad'
   if (s === 'partial' || s === 'pending' || s === 'submitted') return 'warn'
   return 'neutral'
 }
@@ -223,13 +224,10 @@ function RecordedTokenPicker({
   const q = draft.trim().toLowerCase()
   const filtered = q
     ? options.filter(
-        (o) =>
-          o.token_id.toLowerCase().includes(q) ||
-          (o.label ?? '').toLowerCase().includes(q),
+        (o) => o.token_id.toLowerCase().includes(q) || (o.label ?? '').toLowerCase().includes(q),
       )
     : options
-  const shortId = (id: string) =>
-    id.length > 22 ? `${id.slice(0, 14)}…${id.slice(-6)}` : id
+  const shortId = (id: string) => (id.length > 22 ? `${id.slice(0, 14)}…${id.slice(-6)}` : id)
   const display = selected?.label || (value ? shortId(value) : '')
   const rawIdTyped = /^\d{12,}$/.test(draft.trim())
   return (
@@ -357,7 +355,9 @@ function FilterBar({
       {/* Time presets */}
       {hasTimeStart || hasTimeEnd ? (
         <div className="flex items-center gap-1">
-          <Label className="text-[9px] uppercase tracking-wide text-muted-foreground">{t('dataLab.window')}</Label>
+          <Label className="text-[9px] uppercase tracking-wide text-muted-foreground">
+            {t('dataLab.window')}
+          </Label>
           {TIME_PRESETS.map((p) => {
             const isActive = timePreset === p.label
             const displayLabel = p.label === 'All' ? t('dataLab.presetAll') : p.label
@@ -406,7 +406,11 @@ function FilterBar({
                   <Input
                     value={typeof v === 'string' ? v : ''}
                     onChange={(e) => onChange(f.key, e.target.value || undefined)}
-                    placeholder={f.kind === 'contains' ? t('dataLab.containsPlaceholder') : t('dataLab.eqPlaceholder')}
+                    placeholder={
+                      f.kind === 'contains'
+                        ? t('dataLab.containsPlaceholder')
+                        : t('dataLab.eqPlaceholder')
+                    }
                     className="h-7 w-40 pl-6 text-[11px]"
                   />
                 </div>
@@ -435,12 +439,7 @@ function FilterBar({
         })}
 
       <div className="ml-auto flex items-center gap-1.5">
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-7 gap-1 text-[10px]"
-          onClick={onReset}
-        >
+        <Button size="sm" variant="outline" className="h-7 gap-1 text-[10px]" onClick={onReset}>
           <X className="h-3 w-3" />
           {t('dataLab.reset')}
         </Button>
@@ -495,13 +494,7 @@ function EnumFilter({
 
 // ─── Cell renderer ──────────────────────────────────────────────────────
 
-function Cell({
-  column,
-  value,
-}: {
-  column: DatasetColumn
-  value: unknown
-}) {
+function Cell({ column, value }: { column: DatasetColumn; value: unknown }) {
   if (value == null) {
     return <span className="text-muted-foreground/50">—</span>
   }
@@ -577,7 +570,10 @@ function RowDrawer({
           <span className="text-xs font-semibold">{datasetLabel}</span>
           <span className="text-[10px] text-muted-foreground">{t('dataLab.rowDetail')}</span>
         </div>
-        <button onClick={onClose} className="rounded-sm p-1 text-muted-foreground hover:bg-muted/40 hover:text-foreground">
+        <button
+          onClick={onClose}
+          className="rounded-sm p-1 text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+        >
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
@@ -592,8 +588,8 @@ function RowDrawer({
                   ? v
                   : JSON.stringify(v, null, 2)
                 : c.type === 'datetime'
-                ? fmtDateTime(String(v))
-                : String(v)
+                  ? fmtDateTime(String(v))
+                  : String(v)
             return (
               <div key={c.key} className="space-y-0.5">
                 <div className="flex items-center justify-between">
@@ -747,7 +743,9 @@ function StorageOverviewSection() {
         <div className="flex items-center gap-2">
           <HardDrive className="h-3.5 w-3.5 text-violet-700 dark:text-violet-300" />
           <span className="text-xs font-semibold">{t('dataLab.storageOverview')}</span>
-          <span className="text-[10px] text-muted-foreground">{t('dataLab.storageOverviewSub')}</span>
+          <span className="text-[10px] text-muted-foreground">
+            {t('dataLab.storageOverviewSub')}
+          </span>
           {storageQuery.isFetching && data ? (
             // Subtle "still working" indicator on background refetches
             // that DOES NOT wipe the existing data.
@@ -787,17 +785,23 @@ function StorageOverviewSection() {
         ) : (
           <>
             <div className="rounded-md border border-border/30 bg-background/40 px-3 py-2">
-              <div className="text-[9px] uppercase tracking-wide text-muted-foreground">{t('dataLab.totalRows')}</div>
+              <div className="text-[9px] uppercase tracking-wide text-muted-foreground">
+                {t('dataLab.totalRows')}
+              </div>
               <div className="font-mono text-sm tabular-nums">
                 {data?.total_rows != null ? data.total_rows.toLocaleString() : '—'}
               </div>
             </div>
             <div className="rounded-md border border-border/30 bg-background/40 px-3 py-2">
-              <div className="text-[9px] uppercase tracking-wide text-muted-foreground">{t('dataLab.onDisk')}</div>
+              <div className="text-[9px] uppercase tracking-wide text-muted-foreground">
+                {t('dataLab.onDisk')}
+              </div>
               <div className="font-mono text-sm tabular-nums">{fmtBytes(data?.total_bytes)}</div>
             </div>
             <div className="rounded-md border border-border/30 bg-background/40 px-3 py-2">
-              <div className="text-[9px] uppercase tracking-wide text-muted-foreground">{t('dataLab.tables')}</div>
+              <div className="text-[9px] uppercase tracking-wide text-muted-foreground">
+                {t('dataLab.tables')}
+              </div>
               <div className="font-mono text-sm tabular-nums">{data?.tables.length ?? 0}</div>
             </div>
           </>
@@ -820,71 +824,69 @@ function StorageOverviewSection() {
             </tr>
           </thead>
           <tbody>
-            {showSkeleton ? (
-              [0, 1, 2, 3, 4, 5].map((i) => (
-                <tr key={i} className="border-t border-border/20">
-                  <td className="py-1.5 pr-3">
-                    <div className="flex items-center gap-2">
+            {showSkeleton
+              ? [0, 1, 2, 3, 4, 5].map((i) => (
+                  <tr key={i} className="border-t border-border/20">
+                    <td className="py-1.5 pr-3">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="h-2.5 w-32 animate-pulse rounded bg-muted/70"
+                          style={{ animationDelay: `${i * 80}ms` }}
+                        />
+                        <div
+                          className="h-2 w-20 animate-pulse rounded bg-muted/40"
+                          style={{ animationDelay: `${i * 80}ms` }}
+                        />
+                      </div>
+                    </td>
+                    <td className="py-1.5 pr-3">
                       <div
-                        className="h-2.5 w-32 animate-pulse rounded bg-muted/70"
+                        className="ml-auto h-2.5 w-16 animate-pulse rounded bg-muted/70"
                         style={{ animationDelay: `${i * 80}ms` }}
                       />
+                    </td>
+                    <td className="py-1.5 pr-3">
                       <div
-                        className="h-2 w-20 animate-pulse rounded bg-muted/40"
+                        className="ml-auto h-2.5 w-14 animate-pulse rounded bg-muted/70"
                         style={{ animationDelay: `${i * 80}ms` }}
                       />
-                    </div>
-                  </td>
-                  <td className="py-1.5 pr-3">
-                    <div
-                      className="ml-auto h-2.5 w-16 animate-pulse rounded bg-muted/70"
-                      style={{ animationDelay: `${i * 80}ms` }}
-                    />
-                  </td>
-                  <td className="py-1.5 pr-3">
-                    <div
-                      className="ml-auto h-2.5 w-14 animate-pulse rounded bg-muted/70"
-                      style={{ animationDelay: `${i * 80}ms` }}
-                    />
-                  </td>
-                  <td className="py-1.5 pr-3">
-                    <div
-                      className="h-2 w-12 animate-pulse rounded bg-muted/50"
-                      style={{ animationDelay: `${i * 80}ms` }}
-                    />
-                  </td>
-                  <td className="py-1.5 pr-3">
-                    <div
-                      className="h-2 w-12 animate-pulse rounded bg-muted/50"
-                      style={{ animationDelay: `${i * 80}ms` }}
-                    />
-                  </td>
-                </tr>
-              ))
-            ) : (
-              (data?.tables ?? []).map((row) => (
-                <tr key={row.name} className="border-t border-border/20">
-                  <td className="py-1 pr-3">
-                    <span className="font-medium">{row.label}</span>
-                    <span className="ml-1.5 font-mono text-[10px] text-muted-foreground/60">
-                      {row.table_name}
-                    </span>
-                  </td>
-                  <td className="py-1 pr-3 text-right font-mono tabular-nums">
-                    {row.row_count.toLocaleString()}
-                  </td>
-                  <td className="py-1 pr-3 text-right font-mono tabular-nums">
-                    {fmtBytes(row.size_bytes)}
-                  </td>
-                  <td className="py-1 pr-3 text-[10px] text-muted-foreground">
-                    {fmtAge(row.oldest_at)}
-                  </td>
-                  <td className="py-1 pr-3 text-[10px] text-muted-foreground">
-                    {fmtAge(row.newest_at)}
-                  </td>
-                </tr>
-              ))
-            )}
+                    </td>
+                    <td className="py-1.5 pr-3">
+                      <div
+                        className="h-2 w-12 animate-pulse rounded bg-muted/50"
+                        style={{ animationDelay: `${i * 80}ms` }}
+                      />
+                    </td>
+                    <td className="py-1.5 pr-3">
+                      <div
+                        className="h-2 w-12 animate-pulse rounded bg-muted/50"
+                        style={{ animationDelay: `${i * 80}ms` }}
+                      />
+                    </td>
+                  </tr>
+                ))
+              : (data?.tables ?? []).map((row) => (
+                  <tr key={row.name} className="border-t border-border/20">
+                    <td className="py-1 pr-3">
+                      <span className="font-medium">{row.label}</span>
+                      <span className="ml-1.5 font-mono text-[10px] text-muted-foreground/60">
+                        {row.table_name}
+                      </span>
+                    </td>
+                    <td className="py-1 pr-3 text-right font-mono tabular-nums">
+                      {row.row_count.toLocaleString()}
+                    </td>
+                    <td className="py-1 pr-3 text-right font-mono tabular-nums">
+                      {fmtBytes(row.size_bytes)}
+                    </td>
+                    <td className="py-1 pr-3 text-[10px] text-muted-foreground">
+                      {fmtAge(row.oldest_at)}
+                    </td>
+                    <td className="py-1 pr-3 text-[10px] text-muted-foreground">
+                      {fmtAge(row.newest_at)}
+                    </td>
+                  </tr>
+                ))}
           </tbody>
         </table>
       </div>
@@ -896,7 +898,10 @@ function StorageOverviewSection() {
         <div className="border-t border-border/30 px-3 py-1.5 text-[10px] text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
             <Loader2 className="h-3 w-3 animate-spin" />
-            {t('dataLab.storageLoading', { defaultValue: 'Computing per-table row counts and on-disk sizes — this query inspects every dataset table and can take a few seconds.' })}
+            {t('dataLab.storageLoading', {
+              defaultValue:
+                'Computing per-table row counts and on-disk sizes — this query inspects every dataset table and can take a few seconds.',
+            })}
           </span>
         </div>
       ) : null}
@@ -928,12 +933,8 @@ function MicrostructureRecorderSection() {
   })
   const s = statusQuery.data
   const running = Boolean(s?.running)
-  const acceptPct =
-    s?.accept_rate != null ? `${(s.accept_rate * 100).toFixed(1)}%` : '—'
-  const rejectsTotal = Object.values(s?.rejects_by_reason || {}).reduce(
-    (a, b) => a + (b ?? 0),
-    0,
-  )
+  const acceptPct = s?.accept_rate != null ? `${(s.accept_rate * 100).toFixed(1)}%` : '—'
+  const rejectsTotal = Object.values(s?.rejects_by_reason || {}).reduce((a, b) => a + (b ?? 0), 0)
   const visibleRejects = Object.entries(s?.rejects_by_reason || {})
     .filter(([, n]) => (n ?? 0) > 0)
     .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))
@@ -944,9 +945,7 @@ function MicrostructureRecorderSection() {
         <div className="flex items-center gap-2 flex-wrap">
           <Layers3 className="h-3.5 w-3.5 text-violet-700 dark:text-violet-300" />
           <span className="text-xs font-semibold">{t('dataLab.ingestorTitle')}</span>
-          <span className="text-[10px] text-muted-foreground">
-            {t('dataLab.ingestorSub')}
-          </span>
+          <span className="text-[10px] text-muted-foreground">{t('dataLab.ingestorSub')}</span>
           <Badge
             variant="outline"
             className={cn(
@@ -963,8 +962,8 @@ function MicrostructureRecorderSection() {
               {actual.actively_recording
                 ? `${actual.distinct_tokens} tokens · ${actual.book_rows.toLocaleString()} books / ${actual.trade_rows.toLocaleString()} deltas (last ${actual.window_minutes}m, ${actual.source})`
                 : recordingEnabled
-                ? 'no recent parquet activity'
-                : 'recording OFF'}
+                  ? 'no recent parquet activity'
+                  : 'recording OFF'}
             </span>
           ) : null}
         </div>
@@ -1020,14 +1019,15 @@ function MicrostructureRecorderSection() {
               (s?.accept_rate ?? 1) >= 0.99
                 ? 'text-emerald-300'
                 : (s?.accept_rate ?? 1) >= 0.95
-                ? 'text-amber-300'
-                : 'text-rose-300',
+                  ? 'text-amber-300'
+                  : 'text-rose-300',
             )}
           >
             {acceptPct}
           </div>
           <div className="text-[9px] text-muted-foreground">
-            {(s?.accepted_books ?? 0).toLocaleString()} / {(s?.total_attempts ?? 0).toLocaleString()}
+            {(s?.accepted_books ?? 0).toLocaleString()} /{' '}
+            {(s?.total_attempts ?? 0).toLocaleString()}
           </div>
         </div>
         <div className="rounded-md border border-border/30 bg-background/40 px-3 py-2">
@@ -1035,9 +1035,7 @@ function MicrostructureRecorderSection() {
             {t('dataLab.sequenceGaps')}
           </div>
           <div className="font-mono text-sm tabular-nums">
-            {s?.sequence_gaps_observed != null
-              ? s.sequence_gaps_observed.toLocaleString()
-              : '—'}
+            {s?.sequence_gaps_observed != null ? s.sequence_gaps_observed.toLocaleString() : '—'}
           </div>
         </div>
         <div className="rounded-md border border-border/30 bg-background/40 px-3 py-2">
@@ -1049,22 +1047,16 @@ function MicrostructureRecorderSection() {
             <span className="text-muted-foreground"> / </span>
             {(s?.delta_queue_dropped ?? 0).toLocaleString()}
           </div>
-          <div className="text-[9px] text-muted-foreground">
-            {t('dataLab.queueDropsSub')}
-          </div>
+          <div className="text-[9px] text-muted-foreground">{t('dataLab.queueDropsSub')}</div>
         </div>
         <div className="rounded-md border border-border/30 bg-background/40 px-3 py-2">
           <div className="text-[9px] uppercase tracking-wide text-muted-foreground">
             {t('dataLab.flushP50')}
           </div>
           <div className="font-mono text-sm tabular-nums">
-            {s?.flush_latency_ms_p50 != null
-              ? `${s.flush_latency_ms_p50.toFixed(1)} ms`
-              : '—'}
+            {s?.flush_latency_ms_p50 != null ? `${s.flush_latency_ms_p50.toFixed(1)} ms` : '—'}
           </div>
-          <div className="text-[9px] text-muted-foreground">
-            {t('dataLab.flushP50Sub')}
-          </div>
+          <div className="text-[9px] text-muted-foreground">{t('dataLab.flushP50Sub')}</div>
         </div>
         <div className="rounded-md border border-border/30 bg-background/40 px-3 py-2">
           <div className="text-[9px] uppercase tracking-wide text-muted-foreground">
@@ -1076,17 +1068,13 @@ function MicrostructureRecorderSection() {
               (s?.flush_latency_ms_p95 ?? 0) > 500
                 ? 'text-rose-300'
                 : (s?.flush_latency_ms_p95 ?? 0) > 100
-                ? 'text-amber-300'
-                : '',
+                  ? 'text-amber-300'
+                  : '',
             )}
           >
-            {s?.flush_latency_ms_p95 != null
-              ? `${s.flush_latency_ms_p95.toFixed(1)} ms`
-              : '—'}
+            {s?.flush_latency_ms_p95 != null ? `${s.flush_latency_ms_p95.toFixed(1)} ms` : '—'}
           </div>
-          <div className="text-[9px] text-muted-foreground">
-            {t('dataLab.flushP95Sub')}
-          </div>
+          <div className="text-[9px] text-muted-foreground">{t('dataLab.flushP95Sub')}</div>
         </div>
       </div>
       {rejectsTotal > 0 ? (
@@ -1112,7 +1100,6 @@ function MicrostructureRecorderSection() {
     </div>
   )
 }
-
 
 /**
  * Recording Configuration — tunable capture settings for the background
@@ -1214,7 +1201,10 @@ function RecordingConfigSection() {
   const showSkeleton = configQuery.isLoading && !draft
   const saving = saveMutation.isPending
 
-  const PLANE_TOGGLES: { key: 'capture_books' | 'capture_trades' | 'capture_catalog'; label: string }[] = [
+  const PLANE_TOGGLES: {
+    key: 'capture_books' | 'capture_trades' | 'capture_catalog'
+    label: string
+  }[] = [
     { key: 'capture_books', label: t('dataLab.captureBooks', { defaultValue: 'Books' }) },
     { key: 'capture_trades', label: t('dataLab.captureTrades', { defaultValue: 'Trades' }) },
     { key: 'capture_catalog', label: t('dataLab.captureCatalog', { defaultValue: 'Catalog' }) },
@@ -1241,7 +1231,9 @@ function RecordingConfigSection() {
           size="sm"
           variant="outline"
           className="h-6 gap-1 text-[10px]"
-          onClick={() => queryClient.invalidateQueries({ queryKey: ['data-lab', 'recorder-config'] })}
+          onClick={() =>
+            queryClient.invalidateQueries({ queryKey: ['data-lab', 'recorder-config'] })
+          }
           disabled={configQuery.isFetching || saving}
         >
           <RefreshCw className={cn('h-3 w-3', configQuery.isFetching && 'animate-spin')} />
@@ -1462,7 +1454,6 @@ function RecordingConfigSection() {
   )
 }
 
-
 function ProactiveCoverageSection() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
@@ -1475,8 +1466,7 @@ function ProactiveCoverageSection() {
   const hasRun = s != null && s.total_runs > 0
   const subscribed = s?.last_run_subscribed_count ?? 0
   const target = s?.last_run_target_count ?? 0
-  const coveragePct =
-    target > 0 ? Math.min(100, (subscribed / target) * 100) : 0
+  const coveragePct = target > 0 ? Math.min(100, (subscribed / target) * 100) : 0
   const ageSec = s?.last_run_age_seconds ?? null
 
   return (
@@ -1492,14 +1482,18 @@ function ProactiveCoverageSection() {
             variant="outline"
             className={cn(
               'text-[9px]',
-              hasRun && (s?.last_error == null)
+              hasRun && s?.last_error == null
                 ? 'border-emerald-500/40 text-emerald-300'
                 : hasRun && s?.last_error != null
-                ? 'border-rose-500/40 text-rose-300'
-                : 'border-border/40 text-muted-foreground',
+                  ? 'border-rose-500/40 text-rose-300'
+                  : 'border-border/40 text-muted-foreground',
             )}
           >
-            {hasRun ? (s?.last_error ? t('dataLab.errorBadge') : t('dataLab.active')) : t('dataLab.idle')}
+            {hasRun
+              ? s?.last_error
+                ? t('dataLab.errorBadge')
+                : t('dataLab.active')
+              : t('dataLab.idle')}
           </Badge>
         </div>
         <Button
@@ -1523,11 +1517,12 @@ function ProactiveCoverageSection() {
           <div className="text-[9px] uppercase tracking-wide text-muted-foreground">
             {t('dataLab.subscribed')}
           </div>
-          <div className="font-mono text-sm tabular-nums">
-            {subscribed.toLocaleString()}
-          </div>
+          <div className="font-mono text-sm tabular-nums">{subscribed.toLocaleString()}</div>
           <div className="text-[9px] text-muted-foreground">
-            {t('dataLab.subscribedSub', { target: target.toLocaleString(), pct: coveragePct.toFixed(0) })}
+            {t('dataLab.subscribedSub', {
+              target: target.toLocaleString(),
+              pct: coveragePct.toFixed(0),
+            })}
           </div>
         </div>
         <div className="rounded-md border border-border/30 bg-background/40 px-3 py-2">
@@ -1538,7 +1533,9 @@ function ProactiveCoverageSection() {
             {(s?.last_run_catalog_market_count ?? 0).toLocaleString()}
           </div>
           <div className="text-[9px] text-muted-foreground">
-            {t('dataLab.catalogMarketsSub', { n: (s?.last_run_catalog_token_count ?? 0).toLocaleString() })}
+            {t('dataLab.catalogMarketsSub', {
+              n: (s?.last_run_catalog_token_count ?? 0).toLocaleString(),
+            })}
           </div>
         </div>
         <div className="rounded-md border border-border/30 bg-background/40 px-3 py-2">
@@ -1560,23 +1557,34 @@ function ProactiveCoverageSection() {
             {ageSec != null ? t('dataLab.lastRunAgo', { n: Math.round(ageSec) }) : '—'}
           </div>
           <div className="text-[9px] text-muted-foreground">
-            {t('dataLab.lastRunSub', { ms: (s?.last_run_duration_ms ?? 0).toFixed(0), n: s?.total_runs ?? 0 })}
+            {t('dataLab.lastRunSub', {
+              ms: (s?.last_run_duration_ms ?? 0).toFixed(0),
+              n: s?.total_runs ?? 0,
+            })}
           </div>
         </div>
       </div>
 
       {hasRun ? (
         <div className="border-t border-border/30 px-3 py-2 text-[10px]">
-          <div className="mb-1 uppercase tracking-wide text-muted-foreground">{t('dataLab.funnel')}</div>
+          <div className="mb-1 uppercase tracking-wide text-muted-foreground">
+            {t('dataLab.funnel')}
+          </div>
           <div className="flex flex-wrap gap-1">
             <span className="rounded-sm bg-muted/40 px-2 py-0.5 font-mono">
-              {t('dataLab.funnelCatalog', { n: (s?.last_run_catalog_token_count ?? 0).toLocaleString() })}
+              {t('dataLab.funnelCatalog', {
+                n: (s?.last_run_catalog_token_count ?? 0).toLocaleString(),
+              })}
             </span>
             <span className="rounded-sm bg-muted/40 px-2 py-0.5 font-mono">
-              {t('dataLab.funnelDroppedLowLiq', { n: (s?.last_run_dropped_low_liquidity ?? 0).toLocaleString() })}
+              {t('dataLab.funnelDroppedLowLiq', {
+                n: (s?.last_run_dropped_low_liquidity ?? 0).toLocaleString(),
+              })}
             </span>
             <span className="rounded-sm bg-muted/40 px-2 py-0.5 font-mono">
-              {t('dataLab.funnelDroppedOverCap', { n: (s?.last_run_dropped_over_cap ?? 0).toLocaleString() })}
+              {t('dataLab.funnelDroppedOverCap', {
+                n: (s?.last_run_dropped_over_cap ?? 0).toLocaleString(),
+              })}
             </span>
             <span className="rounded-sm bg-violet-500/15 px-2 py-0.5 font-mono text-violet-700 dark:text-violet-200">
               {t('dataLab.funnelTarget', { n: target.toLocaleString() })}
@@ -1594,7 +1602,16 @@ function ProactiveCoverageSection() {
         </div>
       ) : null}
 
-      <div className="border-t border-border/30 px-3 py-2 text-[10px] text-muted-foreground" dangerouslySetInnerHTML={{ __html: t('dataLab.proactiveFootnote', { interval: s?.loop_interval_seconds ?? 60, cap: s?.max_tokens ?? 8000, floor: s?.min_liquidity_usd ?? 10 }) }} />
+      <div
+        className="border-t border-border/30 px-3 py-2 text-[10px] text-muted-foreground"
+        dangerouslySetInnerHTML={{
+          __html: t('dataLab.proactiveFootnote', {
+            interval: s?.loop_interval_seconds ?? 60,
+            cap: s?.max_tokens ?? 8000,
+            floor: s?.min_liquidity_usd ?? 10,
+          }),
+        }}
+      />
     </div>
   )
 }
@@ -1686,9 +1703,7 @@ function NewSessionFlyout({ open, onClose }: { open: boolean; onClose: () => voi
     }
     const tick = Math.max(50, Math.min(60_000, parseInt(tickIntervalMs, 10) || 500))
     const maxDurationSeconds =
-      maxDurationMin && parseInt(maxDurationMin, 10) > 0
-        ? parseInt(maxDurationMin, 10) * 60
-        : null
+      maxDurationMin && parseInt(maxDurationMin, 10) > 0 ? parseInt(maxDurationMin, 10) * 60 : null
     const payload: CreateRecordingSessionPayload = {
       name: name.trim(),
       description: description.trim() || undefined,
@@ -1724,7 +1739,9 @@ function NewSessionFlyout({ open, onClose }: { open: boolean; onClose: () => voi
           <div className="flex items-center gap-2">
             <PlayCircle className="h-4 w-4 text-violet-700 dark:text-violet-300" />
             <div>
-              <div className="text-sm font-semibold leading-tight">{t('dataLab.newSessionTitle')}</div>
+              <div className="text-sm font-semibold leading-tight">
+                {t('dataLab.newSessionTitle')}
+              </div>
               <div className="text-[10px] text-muted-foreground leading-tight">
                 {t('dataLab.newSessionSub')}
               </div>
@@ -1775,8 +1792,18 @@ function NewSessionFlyout({ open, onClose }: { open: boolean; onClose: () => voi
                 <div className="grid grid-cols-3 gap-1">
                   {TARGET_KIND_OPTIONS.map((o) => {
                     const active = targetKind === o.value
-                    const labelKey = o.value === 'token' ? 'targetKindToken' : o.value === 'condition' ? 'targetKindCondition' : 'targetKindEvent'
-                    const hintKey = o.value === 'token' ? 'targetKindTokenHint' : o.value === 'condition' ? 'targetKindConditionHint' : 'targetKindEventHint'
+                    const labelKey =
+                      o.value === 'token'
+                        ? 'targetKindToken'
+                        : o.value === 'condition'
+                          ? 'targetKindCondition'
+                          : 'targetKindEvent'
+                    const hintKey =
+                      o.value === 'token'
+                        ? 'targetKindTokenHint'
+                        : o.value === 'condition'
+                          ? 'targetKindConditionHint'
+                          : 'targetKindEventHint'
                     return (
                       <button
                         key={o.value}
@@ -1789,7 +1816,9 @@ function NewSessionFlyout({ open, onClose }: { open: boolean; onClose: () => voi
                         )}
                       >
                         <div className="text-[11px] font-medium">{t(`dataLab.${labelKey}`)}</div>
-                        <div className="text-[9px] text-muted-foreground/80">{t(`dataLab.${hintKey}`)}</div>
+                        <div className="text-[9px] text-muted-foreground/80">
+                          {t(`dataLab.${hintKey}`)}
+                        </div>
                       </button>
                     )
                   })}
@@ -1797,7 +1826,8 @@ function NewSessionFlyout({ open, onClose }: { open: boolean; onClose: () => voi
               </div>
               <div className="space-y-1">
                 <Label className="text-[10px]">
-                  {t('dataLab.targets')} <span className="text-muted-foreground">{t('dataLab.targetsHint')}</span>
+                  {t('dataLab.targets')}{' '}
+                  <span className="text-muted-foreground">{t('dataLab.targetsHint')}</span>
                 </Label>
                 <textarea
                   value={targetText}
@@ -1806,8 +1836,8 @@ function NewSessionFlyout({ open, onClose }: { open: boolean; onClose: () => voi
                     targetKind === 'token'
                       ? t('dataLab.targetsTokenPlaceholder')
                       : targetKind === 'condition'
-                      ? t('dataLab.targetsConditionPlaceholder')
-                      : t('dataLab.targetsEventPlaceholder')
+                        ? t('dataLab.targetsConditionPlaceholder')
+                        : t('dataLab.targetsEventPlaceholder')
                   }
                   className="min-h-[80px] w-full rounded-sm border border-border/40 bg-background/60 px-2 py-1.5 font-mono text-[11px]"
                 />
@@ -1942,19 +1972,23 @@ function SessionRow({ s }: { s: RecordingSession }) {
   const queryClient = useQueryClient()
   const startMutation = useMutation({
     mutationFn: () => startRecordingSession(s.id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['data-lab', 'recording-sessions'] }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ['data-lab', 'recording-sessions'] }),
   })
   const stopMutation = useMutation({
     mutationFn: () => stopRecordingSession(s.id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['data-lab', 'recording-sessions'] }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ['data-lab', 'recording-sessions'] }),
   })
   const cancelMutation = useMutation({
     mutationFn: () => cancelRecordingSession(s.id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['data-lab', 'recording-sessions'] }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ['data-lab', 'recording-sessions'] }),
   })
   const deleteMutation = useMutation({
     mutationFn: () => deleteRecordingSession(s.id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['data-lab', 'recording-sessions'] }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ['data-lab', 'recording-sessions'] }),
   })
 
   const tone = statusToTone(s.status)
@@ -1997,18 +2031,26 @@ function SessionRow({ s }: { s: RecordingSession }) {
       </td>
       <td className="px-2 py-1.5 text-[10px]">
         <div className="text-muted-foreground">
-          {s.target_kind} · {s.target_values.length === 1 ? t('dataLab.targetCount', { n: s.target_values.length }) : t('dataLab.targetCountPlural', { n: s.target_values.length })}
+          {s.target_kind} ·{' '}
+          {s.target_values.length === 1
+            ? t('dataLab.targetCount', { n: s.target_values.length })
+            : t('dataLab.targetCountPlural', { n: s.target_values.length })}
         </div>
         {s.target_token_ids.length > 0 ? (
           <div className="font-mono text-[9px] text-muted-foreground/70">
-            {s.target_token_ids.length === 1 ? t('dataLab.tokenResolved', { n: s.target_token_ids.length }) : t('dataLab.tokensResolved', { n: s.target_token_ids.length })}
+            {s.target_token_ids.length === 1
+              ? t('dataLab.tokenResolved', { n: s.target_token_ids.length })
+              : t('dataLab.tokensResolved', { n: s.target_token_ids.length })}
           </div>
         ) : null}
       </td>
       <td className="px-2 py-1.5 text-[10px]">
         <div className="flex flex-wrap gap-0.5">
           {s.capture_types.map((c) => (
-            <span key={c} className="rounded-sm bg-violet-500/10 px-1 py-0 text-[9px] text-violet-700 dark:text-violet-200">
+            <span
+              key={c}
+              className="rounded-sm bg-violet-500/10 px-1 py-0 text-[9px] text-violet-700 dark:text-violet-200"
+            >
               {c}
             </span>
           ))}
@@ -2090,7 +2132,9 @@ function OnDemandSessionsSection() {
               {t('dataLab.onDemandSessionsSub')}
             </span>
             <Badge variant="outline" className="text-[9px]">
-              {sessions.length === 1 ? t('dataLab.sessionCount', { n: sessions.length }) : t('dataLab.sessionCountPlural', { n: sessions.length })}
+              {sessions.length === 1
+                ? t('dataLab.sessionCount', { n: sessions.length })
+                : t('dataLab.sessionCountPlural', { n: sessions.length })}
             </Badge>
           </div>
           <Button
@@ -2120,7 +2164,10 @@ function OnDemandSessionsSection() {
             <tbody>
               {sessions.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-2 py-6 text-center text-[11px] text-muted-foreground">
+                  <td
+                    colSpan={7}
+                    className="px-2 py-6 text-center text-[11px] text-muted-foreground"
+                  >
                     <PlayCircle className="mx-auto mb-1 h-4 w-4 opacity-40" />
                     <span dangerouslySetInnerHTML={{ __html: t('dataLab.noSessionsYet') }} />
                   </td>
@@ -2132,7 +2179,10 @@ function OnDemandSessionsSection() {
           </table>
         </div>
 
-        <div className="border-t border-border/30 px-3 py-2 text-[10px] text-muted-foreground" dangerouslySetInnerHTML={{ __html: t('dataLab.sessionsFootnote') }} />
+        <div
+          className="border-t border-border/30 px-3 py-2 text-[10px] text-muted-foreground"
+          dangerouslySetInnerHTML={{ __html: t('dataLab.sessionsFootnote') }}
+        />
       </div>
 
       <NewSessionFlyout open={flyoutOpen} onClose={() => setFlyoutOpen(false)} />
@@ -2162,10 +2212,11 @@ function RecordView() {
           coverage" coexist (one is the worker, the other is the
           subscription manager that feeds it). */}
       <div className="rounded-md border border-border/40 bg-card/30 px-3 py-2 text-[11px] text-muted-foreground">
-        <div className="font-medium text-foreground">
-          {t('dataLab.architectureBanner')}
-        </div>
-        <div className="mt-1 leading-relaxed" dangerouslySetInnerHTML={{ __html: t('dataLab.architectureBody') }} />
+        <div className="font-medium text-foreground">{t('dataLab.architectureBanner')}</div>
+        <div
+          className="mt-1 leading-relaxed"
+          dangerouslySetInnerHTML={{ __html: t('dataLab.architectureBody') }}
+        />
       </div>
       {/* Sub-tabs — one per data source so each section gets the
           full vertical real estate instead of stacking. */}
@@ -2254,7 +2305,8 @@ function BookRetentionSection() {
         </span>
         <span className="text-[10px] text-muted-foreground">
           {t('dataLab.bookRetentionSub', {
-            defaultValue: 'Disk budget for the live_ingestor L2 book parquet — the backtest replay source',
+            defaultValue:
+              'Disk budget for the live_ingestor L2 book parquet — the backtest replay source',
           })}
         </span>
       </div>
@@ -2273,7 +2325,9 @@ function BookRetentionSection() {
             className="mt-1 h-7 text-[12px]"
           />
           <div className="mt-1 text-[9px] text-muted-foreground">
-            {t('dataLab.bookRetentionDaysHint', { defaultValue: 'Days of recorded book parquet to keep' })}
+            {t('dataLab.bookRetentionDaysHint', {
+              defaultValue: 'Days of recorded book parquet to keep',
+            })}
           </div>
         </div>
         <div className="rounded-md border border-border/30 bg-background/40 px-3 py-2">
@@ -2462,7 +2516,9 @@ function StorageLocationSection() {
           </div>
         </div>
         {saveError ? (
-          <div className="text-[10px] font-semibold text-red-600 dark:text-red-400">{saveError}</div>
+          <div className="text-[10px] font-semibold text-red-600 dark:text-red-400">
+            {saveError}
+          </div>
         ) : null}
         {applyNote ? <div className="text-[10px] text-muted-foreground">{applyNote}</div> : null}
         {server ? (
@@ -2507,7 +2563,6 @@ function StorageView() {
   )
 }
 
-
 type DataLabMode = 'browse' | 'record' | 'storage' | 'providers'
 
 export default function DataLab() {
@@ -2526,7 +2581,7 @@ export default function DataLab() {
     refetchInterval: 5 * 60_000,
     staleTime: 60_000,
   })
-  const datasets = datasetsQuery.data ?? []
+  const datasets = useMemo(() => datasetsQuery.data ?? [], [datasetsQuery.data])
 
   // Active dataset
   const [active, setActive] = useState<string | null>(null)
@@ -2553,7 +2608,7 @@ export default function DataLab() {
     setOrderBy(activeSpec.default_sort)
     setOrderDir(activeSpec.default_sort_dir)
     setOffset(0)
-  }, [activeSpec?.name])
+  }, [activeSpec])
 
   // Apply time preset to filters before sending to API
   const filtersWithTime = useMemo(() => {
@@ -2573,27 +2628,18 @@ export default function DataLab() {
       }
     }
     return out
-  }, [filters, timePreset, activeSpec?.name])
+  }, [filters, timePreset, activeSpec])
 
   // Visible columns
   const [visibleCols, setVisibleCols] = useState<Set<string>>(new Set())
   useEffect(() => {
     if (!activeSpec) return
     setVisibleCols(new Set(activeSpec.columns.filter((c) => c.default_visible).map((c) => c.key)))
-  }, [activeSpec?.name])
+  }, [activeSpec])
 
   // Query
   const query = useQuery({
-    queryKey: [
-      'data-lab',
-      'query',
-      active,
-      filtersWithTime,
-      orderBy,
-      orderDir,
-      perPage,
-      offset,
-    ],
+    queryKey: ['data-lab', 'query', active, filtersWithTime, orderBy, orderDir, perPage, offset],
     queryFn: () => {
       if (!active) return Promise.resolve(null)
       return queryDataset(active, {
@@ -2641,7 +2687,7 @@ export default function DataLab() {
 
   // Selected row drawer
   const [selectedRowIdx, setSelectedRowIdx] = useState<number | null>(null)
-  const selectedRow = selectedRowIdx != null ? rows[selectedRowIdx] ?? null : null
+  const selectedRow = selectedRowIdx != null ? (rows[selectedRowIdx] ?? null) : null
 
   // CSV download
   const csvHref = useMemo(() => {
@@ -2653,7 +2699,7 @@ export default function DataLab() {
       columns: renderedCols.map((c) => c.key),
       max_rows: 50_000,
     })
-  }, [active, filtersWithTime, orderBy, orderDir, renderedCols.map((c) => c.key).join(',')])
+  }, [active, filtersWithTime, orderBy, orderDir, renderedCols])
 
   return (
     <div className="relative flex h-full min-h-0 flex-col gap-2 p-3">
@@ -2673,13 +2719,12 @@ export default function DataLab() {
           </div>
           <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
             {mode === 'browse'
-              ? (activeSpec?.description
-                ?? t('dataLab.subtitleBrowse'))
+              ? (activeSpec?.description ?? t('dataLab.subtitleBrowse'))
               : mode === 'record'
-              ? t('dataLab.subtitleRecord')
-              : mode === 'storage'
-              ? t('dataLab.subtitleStorage')
-              : t('dataLab.subtitleProviders')}
+                ? t('dataLab.subtitleRecord')
+                : mode === 'storage'
+                  ? t('dataLab.subtitleStorage')
+                  : t('dataLab.subtitleProviders')}
           </p>
         </div>
         <div className="flex items-center gap-1.5">
@@ -2806,250 +2851,253 @@ export default function DataLab() {
       ) : null}
 
       {mode === 'browse' ? (
-      <>
-      {/* TOOLBAR */}
-      <div className="flex flex-wrap items-center gap-2 text-[10px]">
-        <span className="flex items-center gap-1 text-muted-foreground">
-          {total > 0 ? (
-            t('dataLab.showing', { start: pageStart.toLocaleString(), end: pageEnd.toLocaleString(), total: total.toLocaleString() })
-          ) : isLoadingRows ? (
-            <>
-              <Loader2 className="h-3 w-3 animate-spin" />
-              {t('dataLab.loading')}
-            </>
-          ) : (
-            t('dataLab.noRowsMatchShort')
-          )}
-        </span>
-        <span className="text-muted-foreground">·</span>
-        <span className="font-mono text-muted-foreground">
-          {t('dataLab.sortLabel', { by: orderBy, dir: orderDir })}
-        </span>
-        <div className="ml-auto flex items-center gap-1.5">
-          <Label className="text-[9px] uppercase tracking-wide text-muted-foreground">{t('dataLab.perPage')}</Label>
-          <select
-            value={perPage}
-            onChange={(e) => {
-              setPerPage(parseInt(e.target.value, 10))
-              setOffset(0)
-            }}
-            className="h-7 rounded-sm border border-border/40 bg-background/60 px-1.5 text-[10px]"
-          >
-            {PER_PAGE_OPTIONS.map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-          <ColumnMenu
-            columns={allCols}
-            visible={visibleCols}
-            onToggle={(key) => {
-              setVisibleCols((prev) => {
-                const next = new Set(prev)
-                if (next.has(key)) next.delete(key)
-                else next.add(key)
-                return next
-              })
-            }}
-          />
-          <a
-            href={csvHref}
-            download
-            target="_blank"
-            rel="noreferrer"
-            className={cn(
-              'flex h-7 items-center gap-1 rounded-md border border-border/40 bg-background/40 px-2 text-[10px] hover:bg-muted/40',
-              !active && 'pointer-events-none opacity-50',
-            )}
-          >
-            <Download className="h-3 w-3" />
-            {t('dataLab.csv')}
-          </a>
-        </div>
-      </div>
-
-      {/* TABLE */}
-      <div className="relative flex-1 min-h-0 overflow-hidden rounded-md border border-border/40 bg-card/30">
-        <ScrollArea className="h-full">
-          <table className="w-full text-[11px]">
-            <thead className="sticky top-0 z-10 border-b border-border/40 bg-background/95 backdrop-blur">
-              <tr>
-                {renderedCols.map((c) => {
-                  const isSorted = orderBy === c.key
-                  return (
-                    <th
-                      key={c.key}
-                      className={cn(
-                        'select-none border-b border-border/30 px-2 py-1.5 text-left text-[10px] font-medium uppercase tracking-wide',
-                        c.type === 'int' || c.type === 'float'
-                          ? 'text-right'
-                          : '',
-                        c.sortable
-                          ? 'cursor-pointer text-muted-foreground hover:text-foreground'
-                          : 'text-muted-foreground/60',
-                      )}
-                      onClick={() => {
-                        if (!c.sortable) return
-                        if (orderBy === c.key) {
-                          setOrderDir(orderDir === 'desc' ? 'asc' : 'desc')
-                        } else {
-                          setOrderBy(c.key)
-                          setOrderDir('desc')
-                        }
-                        setOffset(0)
-                      }}
-                    >
-                      <span
-                        className={cn(
-                          'inline-flex items-center gap-1',
-                          isSorted && 'text-violet-700 dark:text-violet-300',
-                        )}
-                      >
-                        {c.label}
-                        {isSorted ? (
-                          orderDir === 'desc' ? (
-                            <ArrowDown className="h-2.5 w-2.5" />
-                          ) : (
-                            <ArrowUp className="h-2.5 w-2.5" />
-                          )
-                        ) : null}
-                      </span>
-                    </th>
-                  )
-                })}
-              </tr>
-            </thead>
-            <tbody>
-              {isLoadingRows ? (
-                <tr>
-                  <td
-                    colSpan={renderedCols.length || 1}
-                    className="px-2 py-10 text-center text-[11px] text-muted-foreground"
-                  >
-                    <Loader2 className="mx-auto mb-1.5 h-4 w-4 animate-spin opacity-60" />
-                    {t('dataLab.loading')}
-                  </td>
-                </tr>
-              ) : query.isError ? (
-                <tr>
-                  <td
-                    colSpan={renderedCols.length || 1}
-                    className="px-2 py-6 text-center text-[11px] text-rose-300"
-                  >
-                    {(query.error as Error).message || t('dataLab.queryFailed')}
-                  </td>
-                </tr>
-              ) : rows.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={renderedCols.length || 1}
-                    className="px-2 py-6 text-center text-[11px] text-muted-foreground"
-                  >
-                    <Filter className="mx-auto mb-1 h-4 w-4 opacity-40" />
-                    {isParquet && !filtersWithTime.token_id
-                      ? t('dataLab.pickTokenToLoad', {
-                          defaultValue:
-                            'Pick a recorded token above to load its book history.',
-                        })
-                      : result?.note || t('dataLab.noRowsMatch')}
-                  </td>
-                </tr>
+        <>
+          {/* TOOLBAR */}
+          <div className="flex flex-wrap items-center gap-2 text-[10px]">
+            <span className="flex items-center gap-1 text-muted-foreground">
+              {total > 0 ? (
+                t('dataLab.showing', {
+                  start: pageStart.toLocaleString(),
+                  end: pageEnd.toLocaleString(),
+                  total: total.toLocaleString(),
+                })
+              ) : isLoadingRows ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  {t('dataLab.loading')}
+                </>
               ) : (
-                rows.map((row, i) => {
-                  const isActiveRow = selectedRowIdx === i
-                  return (
-                    <tr
-                      key={i}
-                      onClick={() => setSelectedRowIdx(isActiveRow ? null : i)}
-                      className={cn(
-                        'cursor-pointer border-b border-border/20 transition-colors',
-                        isActiveRow
-                          ? 'bg-violet-500/10'
-                          : 'hover:bg-muted/30',
-                      )}
-                    >
-                      {renderedCols.map((c) => (
-                        <td
+                t('dataLab.noRowsMatchShort')
+              )}
+            </span>
+            <span className="text-muted-foreground">·</span>
+            <span className="font-mono text-muted-foreground">
+              {t('dataLab.sortLabel', { by: orderBy, dir: orderDir })}
+            </span>
+            <div className="ml-auto flex items-center gap-1.5">
+              <Label className="text-[9px] uppercase tracking-wide text-muted-foreground">
+                {t('dataLab.perPage')}
+              </Label>
+              <select
+                value={perPage}
+                onChange={(e) => {
+                  setPerPage(parseInt(e.target.value, 10))
+                  setOffset(0)
+                }}
+                className="h-7 rounded-sm border border-border/40 bg-background/60 px-1.5 text-[10px]"
+              >
+                {PER_PAGE_OPTIONS.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+              <ColumnMenu
+                columns={allCols}
+                visible={visibleCols}
+                onToggle={(key) => {
+                  setVisibleCols((prev) => {
+                    const next = new Set(prev)
+                    if (next.has(key)) next.delete(key)
+                    else next.add(key)
+                    return next
+                  })
+                }}
+              />
+              <a
+                href={csvHref}
+                download
+                target="_blank"
+                rel="noreferrer"
+                className={cn(
+                  'flex h-7 items-center gap-1 rounded-md border border-border/40 bg-background/40 px-2 text-[10px] hover:bg-muted/40',
+                  !active && 'pointer-events-none opacity-50',
+                )}
+              >
+                <Download className="h-3 w-3" />
+                {t('dataLab.csv')}
+              </a>
+            </div>
+          </div>
+
+          {/* TABLE */}
+          <div className="relative flex-1 min-h-0 overflow-hidden rounded-md border border-border/40 bg-card/30">
+            <ScrollArea className="h-full">
+              <table className="w-full text-[11px]">
+                <thead className="sticky top-0 z-10 border-b border-border/40 bg-background/95 backdrop-blur">
+                  <tr>
+                    {renderedCols.map((c) => {
+                      const isSorted = orderBy === c.key
+                      return (
+                        <th
                           key={c.key}
                           className={cn(
-                            'whitespace-nowrap px-2 py-1',
+                            'select-none border-b border-border/30 px-2 py-1.5 text-left text-[10px] font-medium uppercase tracking-wide',
                             c.type === 'int' || c.type === 'float' ? 'text-right' : '',
-                            c.type === 'string' && 'max-w-[260px] truncate',
-                            c.type === 'json' && 'max-w-[200px] truncate',
+                            c.sortable
+                              ? 'cursor-pointer text-muted-foreground hover:text-foreground'
+                              : 'text-muted-foreground/60',
+                          )}
+                          onClick={() => {
+                            if (!c.sortable) return
+                            if (orderBy === c.key) {
+                              setOrderDir(orderDir === 'desc' ? 'asc' : 'desc')
+                            } else {
+                              setOrderBy(c.key)
+                              setOrderDir('desc')
+                            }
+                            setOffset(0)
+                          }}
+                        >
+                          <span
+                            className={cn(
+                              'inline-flex items-center gap-1',
+                              isSorted && 'text-violet-700 dark:text-violet-300',
+                            )}
+                          >
+                            {c.label}
+                            {isSorted ? (
+                              orderDir === 'desc' ? (
+                                <ArrowDown className="h-2.5 w-2.5" />
+                              ) : (
+                                <ArrowUp className="h-2.5 w-2.5" />
+                              )
+                            ) : null}
+                          </span>
+                        </th>
+                      )
+                    })}
+                  </tr>
+                </thead>
+                <tbody>
+                  {isLoadingRows ? (
+                    <tr>
+                      <td
+                        colSpan={renderedCols.length || 1}
+                        className="px-2 py-10 text-center text-[11px] text-muted-foreground"
+                      >
+                        <Loader2 className="mx-auto mb-1.5 h-4 w-4 animate-spin opacity-60" />
+                        {t('dataLab.loading')}
+                      </td>
+                    </tr>
+                  ) : query.isError ? (
+                    <tr>
+                      <td
+                        colSpan={renderedCols.length || 1}
+                        className="px-2 py-6 text-center text-[11px] text-rose-300"
+                      >
+                        {(query.error as Error).message || t('dataLab.queryFailed')}
+                      </td>
+                    </tr>
+                  ) : rows.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={renderedCols.length || 1}
+                        className="px-2 py-6 text-center text-[11px] text-muted-foreground"
+                      >
+                        <Filter className="mx-auto mb-1 h-4 w-4 opacity-40" />
+                        {isParquet && !filtersWithTime.token_id
+                          ? t('dataLab.pickTokenToLoad', {
+                              defaultValue: 'Pick a recorded token above to load its book history.',
+                            })
+                          : result?.note || t('dataLab.noRowsMatch')}
+                      </td>
+                    </tr>
+                  ) : (
+                    rows.map((row, i) => {
+                      const isActiveRow = selectedRowIdx === i
+                      return (
+                        <tr
+                          key={i}
+                          onClick={() => setSelectedRowIdx(isActiveRow ? null : i)}
+                          className={cn(
+                            'cursor-pointer border-b border-border/20 transition-colors',
+                            isActiveRow ? 'bg-violet-500/10' : 'hover:bg-muted/30',
                           )}
                         >
-                          <Cell column={c} value={row[c.key]} />
-                        </td>
-                      ))}
-                    </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
-        </ScrollArea>
+                          {renderedCols.map((c) => (
+                            <td
+                              key={c.key}
+                              className={cn(
+                                'whitespace-nowrap px-2 py-1',
+                                c.type === 'int' || c.type === 'float' ? 'text-right' : '',
+                                c.type === 'string' && 'max-w-[260px] truncate',
+                                c.type === 'json' && 'max-w-[200px] truncate',
+                              )}
+                            >
+                              <Cell column={c} value={row[c.key]} />
+                            </td>
+                          ))}
+                        </tr>
+                      )
+                    })
+                  )}
+                </tbody>
+              </table>
+            </ScrollArea>
 
-        {/* Drawer for selected row */}
-        {selectedRow ? (
-          <RowDrawer
-            row={selectedRow}
-            columns={allCols}
-            datasetLabel={activeSpec?.label ?? ''}
-            onClose={() => setSelectedRowIdx(null)}
-          />
-        ) : null}
-      </div>
+            {/* Drawer for selected row */}
+            {selectedRow ? (
+              <RowDrawer
+                row={selectedRow}
+                columns={allCols}
+                datasetLabel={activeSpec?.label ?? ''}
+                onClose={() => setSelectedRowIdx(null)}
+              />
+            ) : null}
+          </div>
 
-      {/* PAGINATOR */}
-      <div className="flex items-center justify-between gap-2 text-[10px]">
-        <div className="text-muted-foreground">
-          {total === 0
-            ? '—'
-            : t('dataLab.page', { cur: Math.floor(offset / perPage) + 1, total: Math.floor(lastOffset / perPage) + 1 })}
-        </div>
-        <div className="flex items-center gap-1">
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-6 px-1.5 text-[10px]"
-            onClick={() => setOffset(0)}
-            disabled={offset === 0 || query.isFetching}
-          >
-            <ChevronsLeft className="h-3 w-3" />
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-6 px-1.5 text-[10px]"
-            onClick={() => setOffset(Math.max(0, offset - perPage))}
-            disabled={offset === 0 || query.isFetching}
-          >
-            <ChevronLeft className="h-3 w-3" />
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-6 px-1.5 text-[10px]"
-            onClick={() => setOffset(Math.min(lastOffset, offset + perPage))}
-            disabled={offset >= lastOffset || query.isFetching}
-          >
-            <ChevronRight className="h-3 w-3" />
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-6 px-1.5 text-[10px]"
-            onClick={() => setOffset(lastOffset)}
-            disabled={offset >= lastOffset || query.isFetching}
-          >
-            <ChevronsRight className="h-3 w-3" />
-          </Button>
-        </div>
-      </div>
-      </>
+          {/* PAGINATOR */}
+          <div className="flex items-center justify-between gap-2 text-[10px]">
+            <div className="text-muted-foreground">
+              {total === 0
+                ? '—'
+                : t('dataLab.page', {
+                    cur: Math.floor(offset / perPage) + 1,
+                    total: Math.floor(lastOffset / perPage) + 1,
+                  })}
+            </div>
+            <div className="flex items-center gap-1">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-6 px-1.5 text-[10px]"
+                onClick={() => setOffset(0)}
+                disabled={offset === 0 || query.isFetching}
+              >
+                <ChevronsLeft className="h-3 w-3" />
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-6 px-1.5 text-[10px]"
+                onClick={() => setOffset(Math.max(0, offset - perPage))}
+                disabled={offset === 0 || query.isFetching}
+              >
+                <ChevronLeft className="h-3 w-3" />
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-6 px-1.5 text-[10px]"
+                onClick={() => setOffset(Math.min(lastOffset, offset + perPage))}
+                disabled={offset >= lastOffset || query.isFetching}
+              >
+                <ChevronRight className="h-3 w-3" />
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-6 px-1.5 text-[10px]"
+                onClick={() => setOffset(lastOffset)}
+                disabled={offset >= lastOffset || query.isFetching}
+              >
+                <ChevronsRight className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
+        </>
       ) : null}
     </div>
   )
 }
-

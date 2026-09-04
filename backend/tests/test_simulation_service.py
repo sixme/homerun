@@ -65,8 +65,8 @@ def test_create_account_retries_transient_db_error_and_succeeds(monkeypatch):
         return _SessionContext(_Session())
 
     sleep_mock = AsyncMock()
-    monkeypatch.setattr("services.simulation._legacy.AsyncSessionLocal", _session_factory)
-    monkeypatch.setattr("services.simulation._legacy.asyncio.sleep", sleep_mock)
+    monkeypatch.setattr("services.simulation.service.AsyncSessionLocal", _session_factory)
+    monkeypatch.setattr("services.simulation.service.asyncio.sleep", sleep_mock)
 
     service = SimulationService()
     account = asyncio.run(
@@ -115,8 +115,8 @@ def test_create_account_raises_after_retry_budget(monkeypatch):
         return _SessionContext(_Session())
 
     sleep_mock = AsyncMock()
-    monkeypatch.setattr("services.simulation._legacy.AsyncSessionLocal", _session_factory)
-    monkeypatch.setattr("services.simulation._legacy.asyncio.sleep", sleep_mock)
+    monkeypatch.setattr("services.simulation.service.AsyncSessionLocal", _session_factory)
+    monkeypatch.setattr("services.simulation.service.asyncio.sleep", sleep_mock)
 
     service = SimulationService()
     service.DB_RETRY_ATTEMPTS = 3

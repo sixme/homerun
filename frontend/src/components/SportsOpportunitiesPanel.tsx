@@ -75,9 +75,20 @@ function resolveGameTime(isoStr: string | null | undefined): GameTimeResult {
     if (diffMs < 0) return { kind: 'inProgress' }
     if (diffMs < 3600_000) return { kind: 'minutes', minutes: Math.ceil(diffMs / 60_000) }
     if (diffMs < 86400_000) {
-      return { kind: 'time', text: d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) }
+      return {
+        kind: 'time',
+        text: d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+      }
     }
-    return { kind: 'date', text: d.toLocaleDateString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) }
+    return {
+      kind: 'date',
+      text: d.toLocaleDateString([], {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      }),
+    }
   } catch {
     return { kind: 'empty' }
   }
@@ -88,8 +99,10 @@ function useTimeAgo() {
   return (dateStr: string): string => {
     const diff = Date.now() - new Date(dateStr).getTime()
     if (diff < 60_000) return t('sportsOpportunitiesPanel.time.justNow')
-    if (diff < 3_600_000) return t('sportsOpportunitiesPanel.time.minutesAgo', { n: Math.floor(diff / 60_000) })
-    if (diff < 86_400_000) return t('sportsOpportunitiesPanel.time.hoursAgo', { n: Math.floor(diff / 3_600_000) })
+    if (diff < 3_600_000)
+      return t('sportsOpportunitiesPanel.time.minutesAgo', { n: Math.floor(diff / 60_000) })
+    if (diff < 86_400_000)
+      return t('sportsOpportunitiesPanel.time.hoursAgo', { n: Math.floor(diff / 3_600_000) })
     return t('sportsOpportunitiesPanel.time.daysAgo', { n: Math.floor(diff / 86_400_000) })
   }
 }
@@ -102,9 +115,11 @@ function useSportLabel() {
     if (q.includes('nfl') || q.includes('football')) return 'NFL'
     if (q.includes('mlb') || q.includes('baseball')) return 'MLB'
     if (q.includes('nhl') || q.includes('hockey')) return 'NHL'
-    if (q.includes('soccer') || q.includes('fifa') || q.includes('premier league')) return t('sportsOpportunitiesPanel.sport.soccer')
+    if (q.includes('soccer') || q.includes('fifa') || q.includes('premier league'))
+      return t('sportsOpportunitiesPanel.sport.soccer')
     if (q.includes('ufc') || q.includes('mma')) return 'UFC'
-    if (q.includes('tennis') || q.includes('atp') || q.includes('wta')) return t('sportsOpportunitiesPanel.sport.tennis')
+    if (q.includes('tennis') || q.includes('atp') || q.includes('wta'))
+      return t('sportsOpportunitiesPanel.sport.tennis')
     if (q.includes('f1') || q.includes('formula')) return 'F1'
     if (q.includes('golf') || q.includes('pga')) return t('sportsOpportunitiesPanel.sport.golf')
     if (q.includes('boxing')) return t('sportsOpportunitiesPanel.sport.boxing')
@@ -120,10 +135,8 @@ function extractSportsLivelinePoints(opportunity: Opportunity): LivelinePoint[] 
     if (!entry) continue
     const obj = (Array.isArray(entry) ? null : entry) as Record<string, unknown> | null
     const arr = Array.isArray(entry) ? (entry as unknown[]) : null
-    const tRaw = obj ? (obj.t ?? obj.time ?? obj.timestamp) : (arr ? arr[0] : null)
-    const pRaw = obj
-      ? (obj.yes ?? obj.y ?? obj.p ?? obj.price)
-      : (arr ? arr[1] : null)
+    const tRaw = obj ? (obj.t ?? obj.time ?? obj.timestamp) : arr ? arr[0] : null
+    const pRaw = obj ? (obj.yes ?? obj.y ?? obj.p ?? obj.price) : arr ? arr[1] : null
     const t = typeof tRaw === 'number' ? tRaw : Number(tRaw)
     const p = typeof pRaw === 'number' ? pRaw : Number(pRaw)
     if (!Number.isFinite(t) || !Number.isFinite(p)) continue
@@ -137,23 +150,19 @@ function extractSportsLivelinePoints(opportunity: Opportunity): LivelinePoint[] 
 
 // ─── Sport Game Card ──────────────────────────────────────
 
-function SportsGameCard({
-  opportunity,
-}: {
-  opportunity: Opportunity
-}) {
+function SportsGameCard({ opportunity }: { opportunity: Opportunity }) {
   const { t } = useTranslation()
   const sportLabelOf = useSportLabel()
   const timeAgo = useTimeAgo()
   const themeMode = useAtomValue(themeAtom)
   const isDarkTheme = themeMode === 'dark'
   const livelinePoints = useMemo(() => extractSportsLivelinePoints(opportunity), [opportunity])
-  const livelineValue = livelinePoints.length > 0
-    ? livelinePoints[livelinePoints.length - 1].value
-    : null
-  const livelineWindow = livelinePoints.length >= 2
-    ? Math.max(60, livelinePoints[livelinePoints.length - 1].time - livelinePoints[0].time)
-    : 0
+  const livelineValue =
+    livelinePoints.length > 0 ? livelinePoints[livelinePoints.length - 1].value : null
+  const livelineWindow =
+    livelinePoints.length >= 2
+      ? Math.max(60, livelinePoints[livelinePoints.length - 1].time - livelinePoints[0].time)
+      : 0
   const ctx = (opportunity.strategy_context || {}) as Record<string, unknown>
   const entryPrice = Number(ctx.entry_price || 0)
   const baselinePrice = Number(ctx.baseline_price || 0)
@@ -176,8 +185,11 @@ function SportsGameCard({
   const marketTypeKey = MARKET_TYPE_KEYS[sportsMarketType]
   const marketTypeLabel = marketTypeKey
     ? t(`sportsOpportunitiesPanel.marketType.${marketTypeKey}`)
-    : (sportsMarketType ? sportsMarketType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : null)
-  const marketTypeColor = MARKET_TYPE_COLORS[sportsMarketType] || 'bg-zinc-500/15 text-zinc-400 border-zinc-500/25'
+    : sportsMarketType
+      ? sportsMarketType.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+      : null
+  const marketTypeColor =
+    MARKET_TYPE_COLORS[sportsMarketType] || 'bg-zinc-500/15 text-zinc-400 border-zinc-500/25'
 
   const moveBarWidth = Math.min(Math.abs(movePct) * 2.5, 100)
 
@@ -195,7 +207,12 @@ function SportsGameCard({
               {sport}
             </span>
             {marketTypeLabel && (
-              <span className={cn('rounded-md border px-1.5 py-0.5 text-[10px] font-medium', marketTypeColor)}>
+              <span
+                className={cn(
+                  'rounded-md border px-1.5 py-0.5 text-[10px] font-medium',
+                  marketTypeColor,
+                )}
+              >
                 {marketTypeLabel}
                 {line != null && ` ${line > 0 ? '+' : ''}${line}`}
               </span>
@@ -203,10 +220,12 @@ function SportsGameCard({
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {gameTime.kind !== 'empty' && (
-              <span className={cn(
-                'inline-flex items-center gap-1 text-[10px] font-medium',
-                gameTime.kind === 'inProgress' ? 'text-red-400' : 'text-muted-foreground',
-              )}>
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1 text-[10px] font-medium',
+                  gameTime.kind === 'inProgress' ? 'text-red-400' : 'text-muted-foreground',
+                )}
+              >
                 <Clock className="w-3 h-3" />
                 {gameTime.kind === 'inProgress' ? (
                   <span className="flex items-center gap-1">
@@ -259,10 +278,12 @@ function SportsGameCard({
             <span className="text-muted-foreground">
               {t('sportsOpportunitiesPanel.priceMovement', { outcome: fadeOutcome })}
             </span>
-            <span className={cn(
-              'font-mono font-semibold',
-              movePct < 0 ? 'text-red-400' : 'text-green-400',
-            )}>
+            <span
+              className={cn(
+                'font-mono font-semibold',
+                movePct < 0 ? 'text-red-400' : 'text-green-400',
+              )}
+            >
               {formatPct(movePct)}
             </span>
           </div>
@@ -292,7 +313,9 @@ function SportsGameCard({
             <div className="flex items-center gap-1 font-mono">
               <span className="text-foreground">{formatPrice(reversionTarget)}</span>
               <span className="text-emerald-400">
-                {t('sportsOpportunitiesPanel.edgeCents', { value: (reversionEdge * 100).toFixed(1) })}
+                {t('sportsOpportunitiesPanel.edgeCents', {
+                  value: (reversionEdge * 100).toFixed(1),
+                })}
               </span>
             </div>
           </div>
@@ -301,36 +324,60 @@ function SportsGameCard({
         {/* Metrics Row */}
         <div className="grid grid-cols-4 gap-2">
           <div className="text-center">
-            <div className="text-[10px] text-muted-foreground mb-0.5">{t('sportsOpportunitiesPanel.metrics.confidence')}</div>
-            <div className={cn(
-              'text-sm font-semibold font-mono',
-              confidence >= 0.7 ? 'text-green-400' : confidence >= 0.5 ? 'text-yellow-400' : 'text-muted-foreground',
-            )}>
+            <div className="text-[10px] text-muted-foreground mb-0.5">
+              {t('sportsOpportunitiesPanel.metrics.confidence')}
+            </div>
+            <div
+              className={cn(
+                'text-sm font-semibold font-mono',
+                confidence >= 0.7
+                  ? 'text-green-400'
+                  : confidence >= 0.5
+                    ? 'text-yellow-400'
+                    : 'text-muted-foreground',
+              )}
+            >
               {(confidence * 100).toFixed(0)}%
             </div>
           </div>
           <div className="text-center">
-            <div className="text-[10px] text-muted-foreground mb-0.5">{t('sportsOpportunitiesPanel.metrics.risk')}</div>
-            <div className={cn(
-              'text-sm font-semibold font-mono',
-              riskScore <= 0.4 ? 'text-green-400' : riskScore <= 0.65 ? 'text-yellow-400' : 'text-red-400',
-            )}>
+            <div className="text-[10px] text-muted-foreground mb-0.5">
+              {t('sportsOpportunitiesPanel.metrics.risk')}
+            </div>
+            <div
+              className={cn(
+                'text-sm font-semibold font-mono',
+                riskScore <= 0.4
+                  ? 'text-green-400'
+                  : riskScore <= 0.65
+                    ? 'text-yellow-400'
+                    : 'text-red-400',
+              )}
+            >
               {riskScore.toFixed(2)}
             </div>
           </div>
           <div className="text-center">
-            <div className="text-[10px] text-muted-foreground mb-0.5">{t('sportsOpportunitiesPanel.metrics.roi')}</div>
-            <div className={cn(
-              'text-sm font-semibold font-mono',
-              opportunity.roi_percent > 0 ? 'text-green-400' : 'text-red-400',
-            )}>
+            <div className="text-[10px] text-muted-foreground mb-0.5">
+              {t('sportsOpportunitiesPanel.metrics.roi')}
+            </div>
+            <div
+              className={cn(
+                'text-sm font-semibold font-mono',
+                opportunity.roi_percent > 0 ? 'text-green-400' : 'text-red-400',
+              )}
+            >
               {opportunity.roi_percent.toFixed(1)}%
             </div>
           </div>
           <div className="text-center">
-            <div className="text-[10px] text-muted-foreground mb-0.5">{t('sportsOpportunitiesPanel.metrics.resolves')}</div>
+            <div className="text-[10px] text-muted-foreground mb-0.5">
+              {t('sportsOpportunitiesPanel.metrics.resolves')}
+            </div>
             <div className="text-sm font-semibold font-mono text-foreground/80">
-              {hoursToResolution < 1 ? `${(hoursToResolution * 60).toFixed(0)}m` : `${hoursToResolution.toFixed(1)}h`}
+              {hoursToResolution < 1
+                ? `${(hoursToResolution * 60).toFixed(0)}m`
+                : `${hoursToResolution.toFixed(1)}h`}
             </div>
           </div>
         </div>
@@ -390,14 +437,11 @@ export default function SportsOpportunitiesPanel({
     refetchInterval: isConnected ? false : 15000,
   })
 
-  const opportunities = oppData?.opportunities || []
+  const opportunities = useMemo(() => oppData?.opportunities || [], [oppData?.opportunities])
   const total = oppData?.total || 0
   const totalPages = Math.max(1, Math.ceil(total / ITEMS_PER_PAGE))
 
-  const visibleIds = useMemo(
-    () => opportunities.map(o => o.id),
-    [opportunities],
-  )
+  const visibleIds = useMemo(() => opportunities.map((o) => o.id), [opportunities])
 
   useEffect(() => {
     onAnalyzeTargetsChange?.({ visibleIds, allIds: visibleIds })
@@ -430,7 +474,9 @@ export default function SportsOpportunitiesPanel({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Trophy className="w-4 h-4 text-emerald-400" />
-            <span className="text-xs font-medium text-foreground/80">{t('sportsOpportunitiesPanel.title')}</span>
+            <span className="text-xs font-medium text-foreground/80">
+              {t('sportsOpportunitiesPanel.title')}
+            </span>
             <span className="inline-flex items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400 text-[10px] font-medium min-w-[20px] h-4 px-1.5">
               {total}
             </span>
@@ -455,26 +501,20 @@ export default function SportsOpportunitiesPanel({
           totalCount={total}
         />
       ) : viewMode === 'list' ? (
-        <OpportunityTable
-          opportunities={opportunities}
-          onOpenCopilot={onOpenCopilot}
-        />
+        <OpportunityTable opportunities={opportunities} onOpenCopilot={onOpenCopilot} />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3 card-stagger">
-          {opportunities.map((opp) => (
+          {opportunities.map((opp) =>
             opp.strategy === SPORTS_OVERREACTION_FADER_STRATEGY ? (
-              <SportsGameCard
-                key={opp.stable_id || opp.id}
-                opportunity={opp}
-              />
+              <SportsGameCard key={opp.stable_id || opp.id} opportunity={opp} />
             ) : (
               <OpportunityCard
                 key={opp.stable_id || opp.id}
                 opportunity={opp}
                 onOpenCopilot={onOpenCopilot}
               />
-            )
-          ))}
+            ),
+          )}
         </div>
       )}
 
@@ -484,14 +524,15 @@ export default function SportsOpportunitiesPanel({
           <Separator />
           <div className="flex items-center justify-between pt-4">
             <div className="text-xs text-muted-foreground">
-              {currentPage * ITEMS_PER_PAGE + 1} - {Math.min((currentPage + 1) * ITEMS_PER_PAGE, total)} of {total}
+              {currentPage * ITEMS_PER_PAGE + 1} -{' '}
+              {Math.min((currentPage + 1) * ITEMS_PER_PAGE, total)} of {total}
             </div>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 className="h-7 text-xs"
-                onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
                 disabled={currentPage === 0}
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
@@ -504,7 +545,7 @@ export default function SportsOpportunitiesPanel({
                 variant="outline"
                 size="sm"
                 className="h-7 text-xs"
-                onClick={() => setCurrentPage(p => p + 1)}
+                onClick={() => setCurrentPage((p) => p + 1)}
                 disabled={currentPage >= totalPages - 1}
               >
                 {t('sportsOpportunitiesPanel.pagination.next')}

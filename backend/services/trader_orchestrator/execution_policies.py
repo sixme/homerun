@@ -95,9 +95,7 @@ def bundle_minimum_executable_notional_usd(
     if not legs:
         return None
 
-    weights: list[float] = [
-        max(0.0001, safe_float(leg.get("notional_weight"), 1.0)) for leg in legs
-    ]
+    weights: list[float] = [max(0.0001, safe_float(leg.get("notional_weight"), 1.0)) for leg in legs]
     total_weight = sum(weights)
     if total_weight <= 0:
         return None
@@ -113,9 +111,7 @@ def bundle_minimum_executable_notional_usd(
         if min_order > 0.0:
             minimum_total = max(minimum_total, min_order * total_weight / weight)
         if floor_shares > 0.0:
-            minimum_total = max(
-                minimum_total, floor_shares * limit_price * total_weight / weight
-            )
+            minimum_total = max(minimum_total, floor_shares * limit_price * total_weight / weight)
     return minimum_total if minimum_total > 0.0 else None
 
 
@@ -169,6 +165,24 @@ def execution_waves(policy: str, legs: list[dict[str, Any]]) -> list[list[dict[s
     normalized = normalize_execution_policy(policy, legs_count=len(legs))
     if normalized == "SEQUENTIAL_HEDGE":
         return [[leg] for leg in legs]
+
+    has_explicit_waves = any(
+        (isinstance(leg.get("metadata"), dict) and leg["metadata"].get("wave") is not None)
+        or leg.get("wave") is not None
+        for leg in legs
+    )
+    if has_explicit_waves:
+        wave_map: dict[int, list[dict[str, Any]]] = {}
+        for leg in legs:
+            meta = leg.get("metadata") if isinstance(leg.get("metadata"), dict) else {}
+            raw_w = meta.get("wave") if meta.get("wave") is not None else leg.get("wave", 0)
+            try:
+                w_idx = int(raw_w)
+            except (ValueError, TypeError):
+                w_idx = 0
+            wave_map.setdefault(w_idx, []).append(leg)
+        return [wave_map[k] for k in sorted(wave_map.keys())]
+
     return [list(legs)]
 
 

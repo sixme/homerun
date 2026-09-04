@@ -17,6 +17,7 @@ This module owns:
     tables get registered on first import so the bus is usable
     without a manual setup step.
 """
+
 from __future__ import annotations
 
 import json
@@ -172,9 +173,7 @@ async def _persist_touch_published_batch(batch: Mapping[str, Mapping[str, Any]])
         # gate).  These stats are non-critical, so failing fast and retrying
         # beats blocking every other plane on a pinned row.
         await session.execute(_sa_text("SET LOCAL lock_timeout = '2000ms'"))
-        await session.execute(
-            _sa_text("SET LOCAL idle_in_transaction_session_timeout = '5000ms'")
-        )
+        await session.execute(_sa_text("SET LOCAL idle_in_transaction_session_timeout = '5000ms'"))
         # Telemetry durability class: publish stats are best-effort bookkeeping
         # (the comment in the flush loop says nothing critical depends on them)
         # — async commit keeps these batches out of the WAL group-commit queue
@@ -260,24 +259,17 @@ async def register_topic(
     # replayable backing; everything else needs a storage_uri.
     if storage_kind not in {"parquet", "external_parquet", "sql_table", "memory"}:
         raise ValueError(
-            f"unknown storage_kind {storage_kind!r}; "
-            "must be 'parquet' | 'external_parquet' | 'sql_table' | 'memory'"
+            f"unknown storage_kind {storage_kind!r}; must be 'parquet' | 'external_parquet' | 'sql_table' | 'memory'"
         )
     if storage_kind != "memory" and not storage_uri:
-        raise ValueError(
-            f"storage_kind={storage_kind!r} requires a storage_uri"
-        )
+        raise ValueError(f"storage_kind={storage_kind!r} requires a storage_uri")
 
     publishers_list = list(publishers)
     subscribers_list = list(subscribers)
     payload_schema_dict = dict(payload_schema) if payload_schema else None
 
     async with AsyncSessionLocal() as session:
-        existing = (
-            await session.execute(
-                select(TopicCatalog).where(TopicCatalog.slug == slug)
-            )
-        ).scalar_one_or_none()
+        existing = (await session.execute(select(TopicCatalog).where(TopicCatalog.slug == slug))).scalar_one_or_none()
         if existing is None:
             row = TopicCatalog(
                 slug=slug,
@@ -298,9 +290,7 @@ async def register_topic(
             logger.info("topic_catalog: registered new topic %s (storage=%s)", slug, storage_kind)
         else:
             if not upsert:
-                raise ValueError(
-                    f"topic {slug!r} already registered; pass upsert=True to merge"
-                )
+                raise ValueError(f"topic {slug!r} already registered; pass upsert=True to merge")
             # Merge — see docstring rules.
             existing.title = title or existing.title
             if description is not None:
@@ -349,11 +339,7 @@ async def get_topic(slug: str) -> Optional[TopicSpec]:
         if entry is not None and entry.expires_at > now:
             return entry.spec
     async with AsyncSessionLocal() as session:
-        row = (
-            await session.execute(
-                select(TopicCatalog).where(TopicCatalog.slug == slug)
-            )
-        ).scalar_one_or_none()
+        row = (await session.execute(select(TopicCatalog).where(TopicCatalog.slug == slug))).scalar_one_or_none()
     spec = TopicSpec.from_row(row) if row is not None else None
     if spec is not None:
         with _cache_lock:
@@ -406,9 +392,7 @@ async def delete_topic(slug: str) -> bool:
     do that explicitly — accidental data loss is exactly what
     this fail-safe prevents)."""
     async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            delete(TopicCatalog).where(TopicCatalog.slug == slug)
-        )
+        result = await session.execute(delete(TopicCatalog).where(TopicCatalog.slug == slug))
         await session.commit()
     _invalidate_cache(slug)
     return result.rowcount > 0
@@ -525,9 +509,12 @@ async def _flush_scheduled_touch_published() -> None:
                 if not _touch_published_pending:
                     return
     finally:
-        current_task = asyncio.current_task()
+        try:
+            current_task = asyncio.current_task()
+        except RuntimeError:
+            current_task = None
         with _touch_published_lock:
-            if _touch_published_task is current_task:
+            if current_task is None or _touch_published_task is current_task:
                 _touch_published_task = None
 
 
@@ -554,6 +541,7 @@ async def touch_replayed(slug: str) -> None:
 # the SQL adapter reads ``{"adapter": "...", "table": "..."}`` from
 # storage_uri to know which table to query and which adapter class to
 # instantiate.
+
 
 def _sources(*entries: dict[str, Any]) -> str:
     """Helper: serialise a sources list to JSON for ``storage_uri``.
@@ -641,11 +629,13 @@ SEED_TOPICS: tuple[dict[str, Any], ...] = (
             "replays from this topic."
         ),
         "storage_kind": "sql_table",
-        "storage_uri": _sources({
-            "kind": "sql_table",
-            "adapter": "WalletMonitorEvent",
-            "table": "wallet_monitor_events",
-        }),
+        "storage_uri": _sources(
+            {
+                "kind": "sql_table",
+                "adapter": "WalletMonitorEvent",
+                "table": "wallet_monitor_events",
+            }
+        ),
         "publishers": ("ws_monitor",),
         "subscribers": ("traders_copy_trade",),
     },
@@ -658,11 +648,13 @@ SEED_TOPICS: tuple[dict[str, Any], ...] = (
             "is tracked by opportunity_recorder."
         ),
         "storage_kind": "sql_table",
-        "storage_uri": _sources({
-            "kind": "sql_table",
-            "adapter": "OpportunityHistory",
-            "table": "opportunity_history",
-        }),
+        "storage_uri": _sources(
+            {
+                "kind": "sql_table",
+                "adapter": "OpportunityHistory",
+                "table": "opportunity_history",
+            }
+        ),
         "publishers": ("scanner", "opportunity_recorder"),
     },
 )

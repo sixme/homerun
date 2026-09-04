@@ -1,14 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation } from '@tanstack/react-query'
-import {
-  ChevronDown,
-  ChevronRight,
-  Eye,
-  Loader2,
-  MapPin,
-  AlertTriangle,
-} from 'lucide-react'
+import { ChevronDown, ChevronRight, Eye, Loader2, MapPin, AlertTriangle } from 'lucide-react'
 
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
@@ -95,15 +88,19 @@ function RecordRow({ record, index }: { record: PreviewRecord; index: number }) 
           </span>
         )}
         {severity != null && (
-          <span className={cn(
-            severity >= 0.7 ? 'text-red-400' : severity >= 0.4 ? 'text-amber-400' : 'text-emerald-400'
-          )}>
+          <span
+            className={cn(
+              severity >= 0.7
+                ? 'text-red-400'
+                : severity >= 0.4
+                  ? 'text-amber-400'
+                  : 'text-emerald-400',
+            )}
+          >
             sev={typeof severity === 'number' ? severity.toFixed(2) : severity}
           </span>
         )}
-        {record.observed_at && (
-          <span>{new Date(record.observed_at).toLocaleString()}</span>
-        )}
+        {record.observed_at && <span>{new Date(record.observed_at).toLocaleString()}</span>}
       </div>
       <PayloadViewer data={record.payload} label="payload" />
     </div>
@@ -136,7 +133,7 @@ export default function DataSourcePreviewFlyout({
     if (open && sourceId) {
       previewMutation.mutate()
     }
-  }, [sourceId, open])
+  }, [sourceId, open, previewMutation])
 
   const handleOpenChange = (isOpen: boolean) => {
     onOpenChange(isOpen)
@@ -164,7 +161,10 @@ export default function DataSourcePreviewFlyout({
             <div className="flex items-center gap-2">
               {data && (
                 <span className="text-[10px] text-muted-foreground">
-                  {t('dataSourcePreviewFlyout.recordSummary', { shown: data.records.length, total: data.total })}
+                  {t('dataSourcePreviewFlyout.recordSummary', {
+                    shown: data.records.length,
+                    total: data.total,
+                  })}
                 </span>
               )}
               <Button
@@ -190,7 +190,9 @@ export default function DataSourcePreviewFlyout({
             <div className="flex items-center justify-center py-16">
               <div className="flex flex-col items-center gap-3">
                 <Loader2 className="w-6 h-6 animate-spin text-cyan-400" />
-                <span className="text-[11px] text-muted-foreground">{t('dataSourcePreviewFlyout.fetchingPreview')}</span>
+                <span className="text-[11px] text-muted-foreground">
+                  {t('dataSourcePreviewFlyout.fetchingPreview')}
+                </span>
               </div>
             </div>
           )}
@@ -199,7 +201,10 @@ export default function DataSourcePreviewFlyout({
             <div className="mx-4 mt-4 p-3 rounded-md bg-red-500/10 border border-red-500/30">
               <div className="flex items-center gap-2 text-red-400 text-[11px]">
                 <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                <span>{(previewMutation.error as Error)?.message || t('dataSourcePreviewFlyout.previewFailed')}</span>
+                <span>
+                  {(previewMutation.error as Error)?.message ||
+                    t('dataSourcePreviewFlyout.previewFailed')}
+                </span>
               </div>
             </div>
           )}

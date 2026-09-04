@@ -1,5 +1,5 @@
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -67,7 +67,7 @@ async def test_get_traders_overview_uses_strategy_filtered_rows(monkeypatch):
             "outcome": "YES",
             "yes_price": 0.6,
             "no_price": 0.4,
-            "detected_at": datetime.utcnow().isoformat(),
+            "detected_at": datetime.now(timezone.utc).isoformat(),
         }
     ]
     monkeypatch.setattr(routes_discovery.wallet_tracker, "get_all_wallets", AsyncMock(return_value=[]))

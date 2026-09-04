@@ -61,13 +61,11 @@ import { listProviderDatasets, type ProviderDataset } from '../services/apiProvi
 import { listRecordingSessions, type RecordingSession } from '../services/apiDataset'
 import { getLLMModels, type LLMModelOption } from '../services/apiSettings'
 
-
 export interface StrategyReverseEngineerProps {
   /** When set the picker is preloaded with this wallet — used by the
    *  WalletAnalysisPanel deep-link. */
   initialWalletAddress?: string | null
 }
-
 
 // localStorage key for the currently-viewed reverse-engineer job.  The
 // jobs themselves live server-side so navigation only needs to remember
@@ -99,9 +97,7 @@ export default function StrategyReverseEngineer({
   // Initialise from localStorage so navigating back to this tab restores
   // the previously-viewed job without flicker.  The job's own data is
   // refetched by jobsQuery on mount; we just need the pointer.
-  const [selectedJobId, setSelectedJobIdState] = useState<string | null>(
-    () => readSelectedJobId(),
-  )
+  const [selectedJobId, setSelectedJobIdState] = useState<string | null>(() => readSelectedJobId())
   // Wrap setter so every selection write persists.  Survives tab
   // navigation, page reload, and browser restart (the server-side
   // job_id stays valid for the run's full retention window).
@@ -145,11 +141,7 @@ export default function StrategyReverseEngineer({
             <Brain className="h-4 w-4 text-violet-400" />
             <span className="text-sm font-semibold">{t('strategyReverseEngineer.title')}</span>
           </div>
-          <Button
-            size="sm"
-            className="h-7 gap-1 text-[11px]"
-            onClick={() => setShowCreate(true)}
-          >
+          <Button size="sm" className="h-7 gap-1 text-[11px]" onClick={() => setShowCreate(true)}>
             <Plus className="h-3 w-3" /> {t('strategyReverseEngineer.newJob')}
           </Button>
         </div>
@@ -157,7 +149,8 @@ export default function StrategyReverseEngineer({
         <ScrollArea className="flex-1 min-h-0">
           {jobsQuery.isLoading ? (
             <div className="flex h-32 items-center justify-center text-[11px] text-muted-foreground">
-              <Loader2 className="mr-2 h-3 w-3 animate-spin" /> {t('strategyReverseEngineer.loading')}
+              <Loader2 className="mr-2 h-3 w-3 animate-spin" />{' '}
+              {t('strategyReverseEngineer.loading')}
             </div>
           ) : jobs.length === 0 ? (
             <div className="px-3 py-4 text-[11px] text-muted-foreground">
@@ -202,7 +195,6 @@ export default function StrategyReverseEngineer({
   )
 }
 
-
 function statusBadgeClass(status: ReverseEngineerJobStatus): string {
   switch (status) {
     case 'completed':
@@ -219,7 +211,6 @@ function statusBadgeClass(status: ReverseEngineerJobStatus): string {
       return 'border-amber-500/40 text-amber-700 dark:text-amber-300'
   }
 }
-
 
 function JobListRow({
   job,
@@ -249,7 +240,10 @@ function JobListRow({
         </Badge>
       </div>
       <div className="mt-0.5 truncate text-[11px] font-medium">
-        {job.label || t('strategyReverseEngineer.walletShort', { addr: `${job.wallet_address.slice(0, 6)}…${job.wallet_address.slice(-4)}` })}
+        {job.label ||
+          t('strategyReverseEngineer.walletShort', {
+            addr: `${job.wallet_address.slice(0, 6)}…${job.wallet_address.slice(-4)}`,
+          })}
       </div>
       <div className="mt-0.5 flex items-center justify-between text-[10px] text-muted-foreground">
         {job.report_mode === 'report' ? (
@@ -259,8 +253,19 @@ function JobListRow({
           </>
         ) : (
           <>
-            <span>{t('strategyReverseEngineer.iterShort', { c: job.current_iteration, m: job.max_iterations })}</span>
-            <span>{job.best_score != null ? t('strategyReverseEngineer.scoreShort', { value: (job.best_score * 100).toFixed(1) }) : '—'}</span>
+            <span>
+              {t('strategyReverseEngineer.iterShort', {
+                c: job.current_iteration,
+                m: job.max_iterations,
+              })}
+            </span>
+            <span>
+              {job.best_score != null
+                ? t('strategyReverseEngineer.scoreShort', {
+                    value: (job.best_score * 100).toFixed(1),
+                  })
+                : '—'}
+            </span>
           </>
         )}
       </div>
@@ -276,9 +281,7 @@ function JobListRow({
   )
 }
 
-
 // ─── Create job ──────────────────────────────────────────────────────
-
 
 function CreateJobView({
   initialWalletAddress,
@@ -352,7 +355,8 @@ function CreateJobView({
       report_mode: reportMode,
       data_source_kind: dataSourceKind,
       provider_dataset_ids: dataSourceKind === 'provider_dataset' ? providerDatasetIds : undefined,
-      recording_session_ids: dataSourceKind === 'recording_session' ? recordingSessionIds : undefined,
+      recording_session_ids:
+        dataSourceKind === 'recording_session' ? recordingSessionIds : undefined,
       llm_model: llmModel.trim() || undefined,
       max_iterations: maxIterations ? parseInt(maxIterations, 10) : undefined,
       target_score: targetScore ? parseFloat(targetScore) : undefined,
@@ -382,7 +386,9 @@ function CreateJobView({
 
         <div className="rounded-md border border-border/40 bg-card/40 p-3 space-y-2">
           <div>
-            <Label className="text-[10px] uppercase text-muted-foreground">{t('strategyReverseEngineer.walletAddress')}</Label>
+            <Label className="text-[10px] uppercase text-muted-foreground">
+              {t('strategyReverseEngineer.walletAddress')}
+            </Label>
             <Input
               value={walletAddress}
               onChange={(e) => setWalletAddress(e.target.value)}
@@ -391,7 +397,9 @@ function CreateJobView({
             />
           </div>
           <div>
-            <Label className="text-[10px] uppercase text-muted-foreground">{t('strategyReverseEngineer.labelOptional')}</Label>
+            <Label className="text-[10px] uppercase text-muted-foreground">
+              {t('strategyReverseEngineer.labelOptional')}
+            </Label>
             <Input
               value={label}
               onChange={(e) => setLabel(e.target.value)}
@@ -456,7 +464,9 @@ function CreateJobView({
                     </span>
                   ) : null}
                 </div>
-                <div className="mt-0.5 text-[9.5px] text-muted-foreground leading-tight">{opt.hint}</div>
+                <div className="mt-0.5 text-[9.5px] text-muted-foreground leading-tight">
+                  {opt.hint}
+                </div>
                 <div className="mt-1 font-mono text-[9px] text-muted-foreground/80">{opt.eta}</div>
               </button>
             ))}
@@ -480,9 +490,21 @@ function CreateJobView({
           <div className="grid grid-cols-3 gap-1">
             {(
               [
-                { key: 'auto', label: t('strategyReverseEngineer.dsAuto'), hint: t('strategyReverseEngineer.dsAutoHint') },
-                { key: 'provider_dataset', label: t('strategyReverseEngineer.dsProviderDataset'), hint: t('strategyReverseEngineer.dsProviderHint') },
-                { key: 'recording_session', label: t('strategyReverseEngineer.dsRecordingSession'), hint: t('strategyReverseEngineer.dsRecordingHint') },
+                {
+                  key: 'auto',
+                  label: t('strategyReverseEngineer.dsAuto'),
+                  hint: t('strategyReverseEngineer.dsAutoHint'),
+                },
+                {
+                  key: 'provider_dataset',
+                  label: t('strategyReverseEngineer.dsProviderDataset'),
+                  hint: t('strategyReverseEngineer.dsProviderHint'),
+                },
+                {
+                  key: 'recording_session',
+                  label: t('strategyReverseEngineer.dsRecordingSession'),
+                  hint: t('strategyReverseEngineer.dsRecordingHint'),
+                },
               ] as const
             ).map((opt) => (
               <button
@@ -554,9 +576,7 @@ function CreateJobView({
                           if (e.target.checked) {
                             setRecordingSessionIds([...recordingSessionIds, s.id])
                           } else {
-                            setRecordingSessionIds(
-                              recordingSessionIds.filter((x) => x !== s.id),
-                            )
+                            setRecordingSessionIds(recordingSessionIds.filter((x) => x !== s.id))
                           }
                         }}
                         className="h-3 w-3 accent-violet-500"
@@ -578,7 +598,9 @@ function CreateJobView({
 
         <div className="rounded-md border border-border/40 bg-card/40 p-3 grid grid-cols-2 gap-3">
           <div>
-            <Label className="text-[10px] uppercase text-muted-foreground">{t('strategyReverseEngineer.maxIterations')}</Label>
+            <Label className="text-[10px] uppercase text-muted-foreground">
+              {t('strategyReverseEngineer.maxIterations')}
+            </Label>
             <Input
               value={maxIterations}
               onChange={(e) => setMaxIterations(e.target.value)}
@@ -587,7 +609,9 @@ function CreateJobView({
             />
           </div>
           <div>
-            <Label className="text-[10px] uppercase text-muted-foreground">{t('strategyReverseEngineer.targetScore')}</Label>
+            <Label className="text-[10px] uppercase text-muted-foreground">
+              {t('strategyReverseEngineer.targetScore')}
+            </Label>
             <Input
               value={targetScore}
               onChange={(e) => setTargetScore(e.target.value)}
@@ -596,7 +620,9 @@ function CreateJobView({
             />
           </div>
           <div>
-            <Label className="text-[10px] uppercase text-muted-foreground">{t('strategyReverseEngineer.maxCostUsd')}</Label>
+            <Label className="text-[10px] uppercase text-muted-foreground">
+              {t('strategyReverseEngineer.maxCostUsd')}
+            </Label>
             <Input
               value={maxCostUsd}
               onChange={(e) => setMaxCostUsd(e.target.value)}
@@ -605,7 +631,9 @@ function CreateJobView({
             />
           </div>
           <div>
-            <Label className="text-[10px] uppercase text-muted-foreground">{t('strategyReverseEngineer.maxWalletTrades')}</Label>
+            <Label className="text-[10px] uppercase text-muted-foreground">
+              {t('strategyReverseEngineer.maxWalletTrades')}
+            </Label>
             <Input
               value={maxWalletTrades}
               onChange={(e) => setMaxWalletTrades(e.target.value)}
@@ -667,9 +695,7 @@ function CreateJobView({
   )
 }
 
-
 // ─── Job detail ─────────────────────────────────────────────────────
-
 
 function JobDetailView({ jobId }: { jobId: string }) {
   const { t } = useTranslation()
@@ -679,7 +705,8 @@ function JobDetailView({ jobId }: { jobId: string }) {
     queryFn: () => getReverseEngineerJob(jobId),
     refetchInterval: (q) => {
       const data = q.state.data as ReverseEngineerJob | undefined
-      const active = data && ['queued', 'profiling', 'importing_data', 'running'].includes(data.status)
+      const active =
+        data && ['queued', 'profiling', 'importing_data', 'running'].includes(data.status)
       return active ? 1_500 : 30_000
     },
   })
@@ -708,7 +735,10 @@ function JobDetailView({ jobId }: { jobId: string }) {
   }
 
   const job = jobQuery.data ?? null
-  const iterations: ReverseEngineerIteration[] = iterationsQuery.data ?? []
+  const iterations: ReverseEngineerIteration[] = useMemo(
+    () => iterationsQuery.data ?? [],
+    [iterationsQuery.data],
+  )
   const [selectedIterationId, setSelectedIterationId] = useState<string | null>(null)
 
   // Auto-select the best iteration when one becomes available.
@@ -741,7 +771,10 @@ function JobDetailView({ jobId }: { jobId: string }) {
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h2 className="truncate text-base font-semibold">
-                {job.label || t('strategyReverseEngineer.walletShort', { addr: `${job.wallet_address.slice(0, 8)}…` })}
+                {job.label ||
+                  t('strategyReverseEngineer.walletShort', {
+                    addr: `${job.wallet_address.slice(0, 8)}…`,
+                  })}
               </h2>
               <Badge variant="outline" className={cn('text-[10px]', statusBadgeClass(job.status))}>
                 {job.status}
@@ -768,16 +801,15 @@ function JobDetailView({ jobId }: { jobId: string }) {
             ) : null}
             {job.status === 'completed' && job.best_strategy_code ? (
               <>
-                <a
-                  href={reverseEngineerPdfUrl(job.id)}
-                  target="_blank"
-                  rel="noreferrer"
-                >
+                <a href={reverseEngineerPdfUrl(job.id)} target="_blank" rel="noreferrer">
                   <Button size="sm" variant="outline" className="h-7 gap-1 text-[11px]">
                     <FileDown className="h-3 w-3" /> {t('strategyReverseEngineer.pdfReport')}
                   </Button>
                 </a>
-                <PromoteButton jobId={job.id} suggestedSlug={(job.best_strategy_class || '').toLowerCase()} />
+                <PromoteButton
+                  jobId={job.id}
+                  suggestedSlug={(job.best_strategy_class || '').toLowerCase()}
+                />
               </>
             ) : null}
             {/* Delete — allowed in any status.  Confirms first, then
@@ -801,7 +833,9 @@ function JobDetailView({ jobId }: { jobId: string }) {
           <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5">
             <div className="flex items-center gap-2 text-[11px]">
               <Loader2 className="h-3 w-3 animate-spin text-blue-700 dark:text-blue-300" />
-              <span className="font-medium">{job.activity || t('strategyReverseEngineer.working')}</span>
+              <span className="font-medium">
+                {job.activity || t('strategyReverseEngineer.working')}
+              </span>
               <span className="ml-auto text-muted-foreground">
                 {(job.progress * 100).toFixed(0)}%
               </span>
@@ -830,14 +864,27 @@ function JobDetailView({ jobId }: { jobId: string }) {
           <div className="rounded-md border border-border/40 bg-card/40 p-3">
             <div className="flex items-end justify-between">
               <div>
-                <div className="text-[10px] uppercase text-muted-foreground">{t('strategyReverseEngineer.analyticalReport')}</div>
+                <div className="text-[10px] uppercase text-muted-foreground">
+                  {t('strategyReverseEngineer.analyticalReport')}
+                </div>
                 <div className="text-lg font-semibold">
-                  {job.status === 'completed' ? t('strategyReverseEngineer.sectionsDrafted') : t('strategyReverseEngineer.pipelineRunning')}
+                  {job.status === 'completed'
+                    ? t('strategyReverseEngineer.sectionsDrafted')
+                    : t('strategyReverseEngineer.pipelineRunning')}
                 </div>
               </div>
               <div className="text-right text-[10.5px] text-muted-foreground">
-                <div>{t('strategyReverseEngineer.tokensInOut', { in: (job.total_input_tokens ?? 0).toLocaleString(), out: (job.total_output_tokens ?? 0).toLocaleString() })}</div>
-                <div>{t('strategyReverseEngineer.spent', { value: (job.total_cost_usd ?? 0).toFixed(4) })}</div>
+                <div>
+                  {t('strategyReverseEngineer.tokensInOut', {
+                    in: (job.total_input_tokens ?? 0).toLocaleString(),
+                    out: (job.total_output_tokens ?? 0).toLocaleString(),
+                  })}
+                </div>
+                <div>
+                  {t('strategyReverseEngineer.spent', {
+                    value: (job.total_cost_usd ?? 0).toFixed(4),
+                  })}
+                </div>
               </div>
             </div>
           </div>
@@ -845,15 +892,28 @@ function JobDetailView({ jobId }: { jobId: string }) {
           <div className="rounded-md border border-border/40 bg-card/40 p-3">
             <div className="flex items-end justify-between">
               <div>
-                <div className="text-[10px] uppercase text-muted-foreground">{t('strategyReverseEngineer.compositeScore')}</div>
+                <div className="text-[10px] uppercase text-muted-foreground">
+                  {t('strategyReverseEngineer.compositeScore')}
+                </div>
                 <div className="text-2xl font-bold">
                   {job.best_score != null ? `${(job.best_score * 100).toFixed(1)}%` : '—'}
                 </div>
               </div>
               <div className="text-right text-[10.5px] text-muted-foreground">
-                <div>{t('strategyReverseEngineer.iterShort', { c: job.current_iteration, m: job.max_iterations })}</div>
-                <div>{t('strategyReverseEngineer.targetPct', { value: (job.target_score * 100).toFixed(0) })}</div>
-                <div>{t('strategyReverseEngineer.spent', { value: job.total_cost_usd.toFixed(4) })}</div>
+                <div>
+                  {t('strategyReverseEngineer.iterShort', {
+                    c: job.current_iteration,
+                    m: job.max_iterations,
+                  })}
+                </div>
+                <div>
+                  {t('strategyReverseEngineer.targetPct', {
+                    value: (job.target_score * 100).toFixed(0),
+                  })}
+                </div>
+                <div>
+                  {t('strategyReverseEngineer.spent', { value: job.total_cost_usd.toFixed(4) })}
+                </div>
               </div>
             </div>
           </div>
@@ -862,18 +922,24 @@ function JobDetailView({ jobId }: { jobId: string }) {
         {/* Wallet profile summary */}
         {job.wallet_profile?.summary ? (
           <div className="rounded-md border border-border/40 bg-card/40 p-3">
-            <div className="text-xs font-semibold mb-1">{t('strategyReverseEngineer.walletProfile')}</div>
+            <div className="text-xs font-semibold mb-1">
+              {t('strategyReverseEngineer.walletProfile')}
+            </div>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t('strategyReverseEngineer.trades')}</span>
                 <span>{job.wallet_profile.summary.trade_count}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">{t('strategyReverseEngineer.markets')}</span>
+                <span className="text-muted-foreground">
+                  {t('strategyReverseEngineer.markets')}
+                </span>
                 <span>{job.wallet_profile.summary.unique_markets}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">{t('strategyReverseEngineer.avgNotional')}</span>
+                <span className="text-muted-foreground">
+                  {t('strategyReverseEngineer.avgNotional')}
+                </span>
                 <span>
                   {job.wallet_profile.summary.notional?.mean != null
                     ? `$${job.wallet_profile.summary.notional.mean.toFixed(2)}`
@@ -881,7 +947,9 @@ function JobDetailView({ jobId }: { jobId: string }) {
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">{t('strategyReverseEngineer.medianGap')}</span>
+                <span className="text-muted-foreground">
+                  {t('strategyReverseEngineer.medianGap')}
+                </span>
                 <span>
                   {job.wallet_profile.summary.inter_trade_seconds?.median != null
                     ? job.wallet_profile.summary.inter_trade_seconds.median.toFixed(0)
@@ -936,9 +1004,7 @@ function JobDetailView({ jobId }: { jobId: string }) {
   )
 }
 
-
 // ─── Run metadata ──────────────────────────────────────────────────
-
 
 function fmtDate(s: string | null): string {
   if (!s) return '—'
@@ -977,8 +1043,15 @@ function RunMetadata({ job }: { job: ReverseEngineerJob }) {
       <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] md:grid-cols-3">
         <MetaRow label={t('strategyReverseEngineer.mode')} value={job.report_mode} mono />
         <MetaRow label={t('strategyReverseEngineer.model')} value={job.llm_model || '—'} mono />
-        <MetaRow label={t('strategyReverseEngineer.bestClass')} value={job.best_strategy_class || '—'} mono />
-        <MetaRow label={t('strategyReverseEngineer.cost')} value={`$${(job.total_cost_usd || 0).toFixed(4)}`} />
+        <MetaRow
+          label={t('strategyReverseEngineer.bestClass')}
+          value={job.best_strategy_class || '—'}
+          mono
+        />
+        <MetaRow
+          label={t('strategyReverseEngineer.cost')}
+          value={`$${(job.total_cost_usd || 0).toFixed(4)}`}
+        />
         <MetaRow label={t('strategyReverseEngineer.tokens')} value={totalTokens.toLocaleString()} />
         <MetaRow
           label={t('strategyReverseEngineer.inOutTokens')}
@@ -989,10 +1062,16 @@ function RunMetadata({ job }: { job: ReverseEngineerJob }) {
             section drafters in parallel, so showing "1/10" or "70%
             target" is misleading. */}
         {!isReport && (
-          <MetaRow label={t('strategyReverseEngineer.iterations')} value={`${job.current_iteration} / ${job.max_iterations}`} />
+          <MetaRow
+            label={t('strategyReverseEngineer.iterations')}
+            value={`${job.current_iteration} / ${job.max_iterations}`}
+          />
         )}
         {!isReport && (
-          <MetaRow label={t('strategyReverseEngineer.targetScore')} value={`${(job.target_score * 100).toFixed(0)}%`} />
+          <MetaRow
+            label={t('strategyReverseEngineer.targetScore')}
+            value={`${(job.target_score * 100).toFixed(0)}%`}
+          />
         )}
         {!isReport && (
           <MetaRow
@@ -1033,9 +1112,7 @@ function MetaRow({ label, value, mono }: { label: string; value: string; mono?: 
   )
 }
 
-
 // ─── Analytical report renderer ────────────────────────────────────
-
 
 interface ReportSections {
   headline_oneliner?: string
@@ -1115,9 +1192,18 @@ function AnalyticalReportView({ job }: { job: ReverseEngineerJob }) {
 
         <ReportSection title={t('strategyReverseEngineer.atAGlance')} body={s.at_a_glance} />
         <ReportSection title={t('strategyReverseEngineer.analysis')} body={s.analysis_narrative} />
-        <ReportSection title={t('strategyReverseEngineer.twoLegDecomp')} body={s.two_leg_explainer} />
-        <ReportSection title={t('strategyReverseEngineer.dominanceBuckets')} body={s.dominance_explainer} />
-        <ReportSection title={t('strategyReverseEngineer.filterRecommendation')} body={s.filter_recommendation} />
+        <ReportSection
+          title={t('strategyReverseEngineer.twoLegDecomp')}
+          body={s.two_leg_explainer}
+        />
+        <ReportSection
+          title={t('strategyReverseEngineer.dominanceBuckets')}
+          body={s.dominance_explainer}
+        />
+        <ReportSection
+          title={t('strategyReverseEngineer.filterRecommendation')}
+          body={s.filter_recommendation}
+        />
         <ReportSection title={t('strategyReverseEngineer.playbookBrief')} body={s.playbook_brief} />
         <ReportSection title={t('strategyReverseEngineer.bankroll')} body={s.bankroll_paragraph} />
 
@@ -1196,10 +1282,7 @@ function BulletSection({
   tone: 'positive' | 'negative'
 }) {
   if (!items || items.length === 0) return null
-  const dotClass =
-    tone === 'positive'
-      ? 'bg-emerald-500/70'
-      : 'bg-rose-500/70'
+  const dotClass = tone === 'positive' ? 'bg-emerald-500/70' : 'bg-rose-500/70'
   return (
     <div className="mb-3">
       <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -1217,9 +1300,7 @@ function BulletSection({
   )
 }
 
-
 // ─── Strategy-seed (Python) view ───────────────────────────────────
-
 
 function StrategySeedView({ job }: { job: ReverseEngineerJob }) {
   const { t } = useTranslation()
@@ -1274,7 +1355,6 @@ function StrategySeedView({ job }: { job: ReverseEngineerJob }) {
   )
 }
 
-
 function IterationRow({
   iteration,
   active,
@@ -1293,9 +1373,7 @@ function IterationRow({
       onClick={onSelect}
       className={cn(
         'block w-full rounded-sm border px-2 py-1.5 text-left text-[11px] transition-colors',
-        active
-          ? 'border-violet-500/40 bg-violet-500/10'
-          : 'border-border/30 hover:bg-card/40',
+        active ? 'border-violet-500/40 bg-violet-500/10' : 'border-border/30 hover:bg-card/40',
       )}
     >
       <div className="flex items-center gap-2">
@@ -1303,11 +1381,20 @@ function IterationRow({
         <code className="font-mono text-[10px] text-muted-foreground truncate flex-1">
           {iteration.strategy_class || '—'}
         </code>
-        <Badge variant="outline" className={cn('text-[9px]', statusBadgeClass(iteration.status as ReverseEngineerJobStatus))}>
+        <Badge
+          variant="outline"
+          className={cn(
+            'text-[9px]',
+            statusBadgeClass(iteration.status as ReverseEngineerJobStatus),
+          )}
+        >
           {iteration.status}
         </Badge>
         {isBest ? (
-          <Badge variant="outline" className="text-[9px] border-emerald-500/40 text-emerald-700 dark:text-emerald-300">
+          <Badge
+            variant="outline"
+            className="text-[9px] border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
+          >
             {t('strategyReverseEngineer.best')}
           </Badge>
         ) : null}
@@ -1323,7 +1410,6 @@ function IterationRow({
     </button>
   )
 }
-
 
 function IterationDetail({ iteration }: { iteration: ReverseEngineerIteration }) {
   const { t } = useTranslation()
@@ -1341,15 +1427,33 @@ function IterationDetail({ iteration }: { iteration: ReverseEngineerIteration })
       ) : null}
       {breakdown ? (
         <div className="grid grid-cols-4 gap-2">
-          <ScoreTile label={t('strategyReverseEngineer.tradeOverlap')} value={breakdown.trade_overlap_pct * 100} suffix="%" />
-          <ScoreTile label={t('strategyReverseEngineer.sideAgreement')} value={breakdown.side_agreement_pct * 100} suffix="%" />
-          <ScoreTile label={t('strategyReverseEngineer.pnlCorr')} value={breakdown.pnl_correlation} suffix="" digits={3} />
-          <ScoreTile label={t('strategyReverseEngineer.frequency')} value={breakdown.frequency_match * 100} suffix="%" />
+          <ScoreTile
+            label={t('strategyReverseEngineer.tradeOverlap')}
+            value={breakdown.trade_overlap_pct * 100}
+            suffix="%"
+          />
+          <ScoreTile
+            label={t('strategyReverseEngineer.sideAgreement')}
+            value={breakdown.side_agreement_pct * 100}
+            suffix="%"
+          />
+          <ScoreTile
+            label={t('strategyReverseEngineer.pnlCorr')}
+            value={breakdown.pnl_correlation}
+            suffix=""
+            digits={3}
+          />
+          <ScoreTile
+            label={t('strategyReverseEngineer.frequency')}
+            value={breakdown.frequency_match * 100}
+            suffix="%"
+          />
         </div>
       ) : null}
       {iteration.notes ? (
         <div className="text-[10.5px] text-muted-foreground">
-          <span className="font-semibold">{t('strategyReverseEngineer.notesPrefix')}</span> {iteration.notes}
+          <span className="font-semibold">{t('strategyReverseEngineer.notesPrefix')}</span>{' '}
+          {iteration.notes}
         </div>
       ) : null}
       {iteration.strategy_code ? (
@@ -1365,7 +1469,6 @@ function IterationDetail({ iteration }: { iteration: ReverseEngineerIteration })
     </div>
   )
 }
-
 
 function ScoreTile({
   label,
@@ -1388,9 +1491,7 @@ function ScoreTile({
   )
 }
 
-
 // ─── Promote ────────────────────────────────────────────────────────
-
 
 function PromoteButton({ jobId, suggestedSlug }: { jobId: string; suggestedSlug: string }) {
   const { t } = useTranslation()
@@ -1415,11 +1516,7 @@ function PromoteButton({ jobId, suggestedSlug }: { jobId: string; suggestedSlug:
 
   if (!open) {
     return (
-      <Button
-        size="sm"
-        className="h-7 gap-1 text-[11px]"
-        onClick={() => setOpen(true)}
-      >
+      <Button size="sm" className="h-7 gap-1 text-[11px]" onClick={() => setOpen(true)}>
         <Rocket className="h-3 w-3" /> {t('strategyReverseEngineer.promoteToLibrary')}
       </Button>
     )
@@ -1431,7 +1528,9 @@ function PromoteButton({ jobId, suggestedSlug }: { jobId: string; suggestedSlug:
 
   return (
     <div className="rounded-md border border-violet-500/40 bg-card p-2 absolute right-4 z-10 mt-8 w-72 shadow-lg">
-      <div className="mb-2 text-xs font-semibold">{t('strategyReverseEngineer.promoteToStrategyLibrary')}</div>
+      <div className="mb-2 text-xs font-semibold">
+        {t('strategyReverseEngineer.promoteToStrategyLibrary')}
+      </div>
       <div className="space-y-1.5">
         <Input
           value={name}
@@ -1469,7 +1568,11 @@ function PromoteButton({ jobId, suggestedSlug }: { jobId: string; suggestedSlug:
           onClick={() => mutation.mutate()}
           disabled={!name.trim() || !slug.trim() || mutation.isPending}
         >
-          {mutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : t('strategyReverseEngineer.promote')}
+          {mutation.isPending ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            t('strategyReverseEngineer.promote')
+          )}
         </Button>
       </div>
     </div>

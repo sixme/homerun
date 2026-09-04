@@ -5,10 +5,10 @@ the dimensions that distinguish a winning configuration from a bleeding one:
 strategy_version, close_reason/trigger, direction, entry-price band, market
 category, and resolution-held vs stopped-out.
 """
+
 from __future__ import annotations
 
 import json
-import re
 import urllib.request
 from collections import defaultdict
 
@@ -30,15 +30,64 @@ def fetch_all():
 
 def category(q: str) -> str:
     q = (q or "").lower()
-    if any(k in q for k in ["btc", "bitcoin", "ethereum", "eth", "solana", "xrp", "doge", "crypto"]):
+    if any(
+        k in q
+        for k in [
+            "btc",
+            "bitcoin",
+            "ethereum",
+            "eth",
+            "solana",
+            "xrp",
+            "doge",
+            "crypto",
+        ]
+    ):
         return "crypto"
-    if any(k in q for k in ["temperature", "°c", "°f", "celsius", "fahrenheit", "weather", "highest temp", "lowest temp"]):
+    if any(
+        k in q
+        for k in [
+            "temperature",
+            "°c",
+            "°f",
+            "celsius",
+            "fahrenheit",
+            "weather",
+            "highest temp",
+            "lowest temp",
+        ]
+    ):
         return "weather"
     if any(k in q for k in ["tweets", "mrbeast", "video", "youtube"]):
         return "social"
-    if any(k in q for k in [" vs ", " vs.", "ufc", "nba", "nfl", "mlb", "goals", "pole", "t20", "handicap",
-                            "set ", "match", "fight", "tennis", "soccer", "league", "counter-strike", "esports",
-                            "grand prix", "o/u", "over/under", "corner", "score"]):
+    if any(
+        k in q
+        for k in [
+            " vs ",
+            " vs.",
+            "ufc",
+            "nba",
+            "nfl",
+            "mlb",
+            "goals",
+            "pole",
+            "t20",
+            "handicap",
+            "set ",
+            "match",
+            "fight",
+            "tennis",
+            "soccer",
+            "league",
+            "counter-strike",
+            "esports",
+            "grand prix",
+            "o/u",
+            "over/under",
+            "corner",
+            "score",
+        ]
+    ):
         return "sports"
     return "other"
 
@@ -64,9 +113,11 @@ def add(d, key, p):
     a["n"] += 1
     a["pnl"] += p
     if p > 0:
-        a["w"] += 1; a["win_sum"] += p
+        a["w"] += 1
+        a["win_sum"] += p
     elif p < 0:
-        a["l"] += 1; a["loss_sum"] += p
+        a["l"] += 1
+        a["loss_sum"] += p
 
 
 def show(title, d, top=None):
@@ -89,8 +140,7 @@ def main():
     total = sum(float(o["actual_profit"]) for o in tec)
     print(f"tail_end_carry realized trades: {len(tec)}  total realized PnL: {total:.2f}")
 
-    by_ver, by_reason, by_trig, by_dir, by_band, by_cat, by_resmode = (
-        defaultdict(agg) for _ in range(7))
+    by_ver, by_reason, by_trig, by_dir, by_band, by_cat, by_resmode = (defaultdict(agg) for _ in range(7))
     for o in tec:
         p = float(o["actual_profit"])
         add(by_ver, o.get("strategy_version"), p)

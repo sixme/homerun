@@ -1,5 +1,5 @@
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -65,7 +65,7 @@ async def test_get_gross_exposure_floors_live_exposure_from_wallet_positions(tmp
     engine, session_factory = await _build_session_factory(tmp_path)
     try:
         async with session_factory() as session:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc).replace(tzinfo=None)
             session.add(
                 LiveTradingPosition(
                     id="0xwallet:token-1",
@@ -99,7 +99,7 @@ async def test_orchestrator_snapshot_keeps_wallet_exposure_when_disabled(tmp_pat
     engine, session_factory = await _build_session_factory(tmp_path)
     try:
         async with session_factory() as session:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc).replace(tzinfo=None)
             session.add(
                 LiveTradingPosition(
                     id="0xwallet:token-1",

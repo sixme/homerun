@@ -3,6 +3,7 @@ import {
   lazy,
   Suspense,
   type ReactNode,
+  useCallback,
   useDeferredValue,
   useEffect,
   useMemo,
@@ -4603,8 +4604,6 @@ function BotTradePositionModal({
     market,
     orders,
     scope.directionSide,
-    scope.marketId,
-    scope.marketIds,
     scope.traderId,
     scopeMarketIds,
   ])
@@ -4616,11 +4615,15 @@ function BotTradePositionModal({
     )
   }, [relatedOrders, scope.anchorOrderId])
 
-  const scopedOrders = bundleDisplayRow
-    ? relatedOrders
-    : scope.kind === 'trade' && anchorOrder
-      ? [anchorOrder]
-      : relatedOrders
+  const scopedOrders = useMemo(
+    () =>
+      bundleDisplayRow
+        ? relatedOrders
+        : scope.kind === 'trade' && anchorOrder
+          ? [anchorOrder]
+          : relatedOrders,
+    [bundleDisplayRow, relatedOrders, scope.kind, anchorOrder],
+  )
   const anchorSnapshot = useMemo(
     () => (anchorOrder ? resolveOrderModalSnapshot(anchorOrder) : null),
     [anchorOrder],
@@ -6214,81 +6217,91 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     }
     return map
   }, [cryptoMarkets])
-  const resolveCryptoMarket = (value: string | null | undefined): CryptoMarket | null => {
-    const key = String(value || '').trim()
-    if (!key) return null
-    return cryptoMarketById.get(key) || cryptoMarketById.get(key.toLowerCase()) || null
-  }
-  const resolveCryptoMarketFromAliases = (values: unknown[]): CryptoMarket | null => {
-    const aliases = collectMarketAliases(values)
-    for (const alias of aliases) {
-      const market = resolveCryptoMarket(alias)
-      if (market) return market
-    }
-    return null
-  }
-  const resolveOrderRealtimeCryptoSnapshot = (
-    order: TraderOrder,
-    side: DirectionSide | null,
-  ): { updatedAt: string | null; markPrice: number | null } => {
-    const market = resolveCryptoMarketFromAliases(collectOrderMarketAliasIds(order))
-    if (!market) {
-      return { updatedAt: null, markPrice: null }
-    }
+  const resolveCryptoMarket = useCallback(
+    (value: string | null | undefined): CryptoMarket | null => {
+      const key = String(value || '').trim()
+      if (!key) return null
+      return cryptoMarketById.get(key) || cryptoMarketById.get(key.toLowerCase()) || null
+    },
+    [cryptoMarketById],
+  )
+  const resolveCryptoMarketFromAliases = useCallback(
+    (values: unknown[]): CryptoMarket | null => {
+      const aliases = collectMarketAliases(values)
+      for (const alias of aliases) {
+        const market = resolveCryptoMarket(alias)
+        if (market) return market
+      }
+      return null
+    },
+    [resolveCryptoMarket],
+  )
+  const resolveOrderRealtimeCryptoSnapshot = useCallback(
+    (
+      order: TraderOrder,
+      side: DirectionSide | null,
+    ): { updatedAt: string | null; markPrice: number | null } => {
+      const market = resolveCryptoMarketFromAliases(collectOrderMarketAliasIds(order))
+      if (!market) {
+        return { updatedAt: null, markPrice: null }
+      }
 
-    let latestUpdateMs = toFiniteNumber(market.oracle_updated_at_ms)
-    if (latestUpdateMs !== null && latestUpdateMs > 0 && latestUpdateMs < 1_000_000_000_000) {
-      latestUpdateMs *= 1000
-    }
+      let latestUpdateMs = toFiniteNumber(market.oracle_updated_at_ms)
+      if (latestUpdateMs !== null && latestUpdateMs > 0 && latestUpdateMs < 1_000_000_000_000) {
+        latestUpdateMs *= 1000
+      }
 
-    const sourceMap = market.oracle_prices_by_source
-    if (sourceMap && typeof sourceMap === 'object') {
-      for (const rawSnapshot of Object.values(sourceMap)) {
-        if (!rawSnapshot || typeof rawSnapshot !== 'object') continue
-        let sourceUpdatedMs = toFiniteNumber((rawSnapshot as Record<string, unknown>).updated_at_ms)
-        if (
-          sourceUpdatedMs !== null &&
-          sourceUpdatedMs > 0 &&
-          sourceUpdatedMs < 1_000_000_000_000
-        ) {
-          sourceUpdatedMs *= 1000
-        }
-        if (sourceUpdatedMs !== null && sourceUpdatedMs > (latestUpdateMs || 0)) {
-          latestUpdateMs = sourceUpdatedMs
+      const sourceMap = market.oracle_prices_by_source
+      if (sourceMap && typeof sourceMap === 'object') {
+        for (const rawSnapshot of Object.values(sourceMap)) {
+          if (!rawSnapshot || typeof rawSnapshot !== 'object') continue
+          const candidateMs = toFiniteNumber(
+            (rawSnapshot as Record<string, unknown>).oracle_updated_at_ms,
+          )
+          if (candidateMs !== null && candidateMs > 0) {
+            const normalizedCandidate =
+              candidateMs < 1_000_000_000_000 ? candidateMs * 1000 : candidateMs
+            if (latestUpdateMs === null || normalizedCandidate > latestUpdateMs) {
+              latestUpdateMs = normalizedCandidate
+            }
+          }
         }
       }
-    }
 
-    const updatedAt =
-      latestUpdateMs && latestUpdateMs > 0 ? new Date(latestUpdateMs).toISOString() : null
+      const updatedAt =
+        latestUpdateMs !== null && latestUpdateMs > 0
+          ? new Date(latestUpdateMs).toISOString()
+          : null
 
-    const upPrice = toFiniteNumber(market.up_price)
-    const downPrice = toFiniteNumber(market.down_price)
-    const oraclePrice = toFiniteNumber(market.oracle_price)
-    const lastTradePrice = toFiniteNumber(market.last_trade_price)
+      const upPrice = toFiniteNumber(market.up_price)
+      const downPrice = toFiniteNumber(market.down_price)
+      const oraclePrice = toFiniteNumber(market.oracle_price)
+      const lastTradePrice = toFiniteNumber(market.last_trade_price)
 
-    let markPrice: number | null = null
-    if (side === 'YES') {
-      markPrice =
-        upPrice ??
-        (downPrice !== null ? Math.max(0, Math.min(1, 1 - downPrice)) : null) ??
-        oraclePrice ??
-        lastTradePrice
-    } else if (side === 'NO') {
-      markPrice =
-        downPrice ??
-        (upPrice !== null ? Math.max(0, Math.min(1, 1 - upPrice)) : null) ??
-        oraclePrice ??
-        lastTradePrice
-    } else {
-      markPrice = lastTradePrice ?? oraclePrice ?? upPrice ?? downPrice
-    }
+      let markPrice: number | null = null
+      if (side === 'YES') {
+        markPrice =
+          upPrice ??
+          (downPrice !== null ? Math.max(0, Math.min(1, 1 - downPrice)) : null) ??
+          oraclePrice ??
+          lastTradePrice
+      } else if (side === 'NO') {
+        markPrice =
+          downPrice ??
+          (upPrice !== null ? Math.max(0, Math.min(1, 1 - upPrice)) : null) ??
+          oraclePrice ??
+          lastTradePrice
+      } else {
+        markPrice = lastTradePrice ?? oraclePrice ?? upPrice ?? downPrice
+      }
 
-    return {
-      updatedAt,
-      markPrice,
-    }
-  }
+      return {
+        updatedAt,
+        markPrice,
+      }
+    },
+    [resolveCryptoMarketFromAliases],
+  )
   const [marketModalState, setMarketModalState] = useState<BotMarketModalState | null>(null)
   const [marketModalSellError, setMarketModalSellError] = useState<string | null>(null)
   const [marketModalSellSuccess, setMarketModalSellSuccess] = useState<string | null>(null)
@@ -6309,12 +6322,21 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
   }, [marketModalState])
 
   const traderConfigSchema: TraderConfigSchema | null = traderConfigSchemaQuery.data ?? null
-  const traders = tradersQuery.data || []
-  const allTraders = allTradersQuery.data || []
-  const simulationAccounts = simulationAccountsQuery.data || []
-  const trackedWallets = trackedWalletsQuery.data || []
-  const tradersScopePoolMembers = tradersScopePoolMembersQuery.data?.members || []
-  const tradersScopeGroups = tradersScopeGroupsQuery.data || []
+  const traders = useMemo(() => tradersQuery.data || [], [tradersQuery.data])
+  const allTraders = useMemo(() => allTradersQuery.data || [], [allTradersQuery.data])
+  const simulationAccounts = useMemo(
+    () => simulationAccountsQuery.data || [],
+    [simulationAccountsQuery.data],
+  )
+  const trackedWallets = useMemo(() => trackedWalletsQuery.data || [], [trackedWalletsQuery.data])
+  const tradersScopePoolMembers = useMemo(
+    () => tradersScopePoolMembersQuery.data?.members || [],
+    [tradersScopePoolMembersQuery.data?.members],
+  )
+  const tradersScopeGroups = useMemo(
+    () => tradersScopeGroupsQuery.data || [],
+    [tradersScopeGroupsQuery.data],
+  )
   const selectedSandboxAccount = simulationAccounts.find(
     (account) => account.id === selectedAccountId,
   )
@@ -6418,10 +6440,11 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
       return getTraderMarketHistory(marketModalMarketIds, 600)
     },
   })
+  const refetchMarketHistory = marketHistoryQuery.refetch
   useEffect(() => {
     if (!marketModalState || marketModalMarketIds.length === 0) return
-    void marketHistoryQuery.refetch()
-  }, [marketModalState, marketModalMarketIdsKey])
+    void refetchMarketHistory()
+  }, [marketModalState, marketModalMarketIds.length, marketModalMarketIdsKey, refetchMarketHistory])
 
   const sellTradeNowMutation = useMutation({
     mutationFn: async (params: { traderId: string; orderId: string }) => {
@@ -6491,7 +6514,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     }
     return bestHistory.length >= 2 ? bestHistory : []
   }, [marketHistoryQuery.data, marketModalMarketIds])
-  const allDecisions = allDecisionsQuery.data || []
+  const allDecisions = useMemo(() => allDecisionsQuery.data || [], [allDecisionsQuery.data])
   // Merge persisted/business events (allEventsQuery, filtered by
   // trader_id) with the Redis firehose Stream replay
   // (firehoseHistoryQuery, trader_id=null telemetry).  Live WS firehose
@@ -6571,7 +6594,10 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     staleTime: 15_000,
     refetchInterval: 30_000,
   })
-  const strategyHealthRowsAll: StrategyHealthRow[] = strategyHealthQuery.data || []
+  const strategyHealthRowsAll: StrategyHealthRow[] = useMemo(
+    () => strategyHealthQuery.data || [],
+    [strategyHealthQuery.data],
+  )
   const strategyHealthByType = useMemo(() => {
     const out: Record<string, StrategyHealthRow> = {}
     for (const row of strategyHealthRowsAll) {
@@ -7011,64 +7037,75 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     })
   }
 
-  const applyTraderDraftSettings = (
-    trader: Trader,
-    options: { preserveName?: boolean; preserveCopyFrom?: boolean; preserveMode?: boolean } = {},
-  ) => {
-    const traderSourceConfigs = Array.isArray(trader.source_configs) ? trader.source_configs : []
-    const primaryConfig = traderSourceConfigs[0] || null
-    const primarySourceKey = primaryConfig
-      ? normalizeSourceKey(String(primaryConfig.source_key || ''))
-      : ''
-    const primaryStrategyKey = primaryConfig
-      ? normalizeStrategyKeyForSource(
-          primarySourceKey,
-          primaryConfig.strategy_key || defaultStrategyForSource(primarySourceKey, sourceCards),
-        )
-      : DEFAULT_STRATEGY_KEY
-    const primaryStrategyDetail = primarySourceKey
-      ? sourceStrategyDetailsLookup[primarySourceKey]?.[primaryStrategyKey] || null
-      : null
-    const primaryStrategyVersion = primaryConfig
-      ? normalizeStrategyVersion(primaryConfig.strategy_version)
-      : null
-    const primaryStrategyParams = primaryConfig
-      ? buildSourceStrategyParams(
-          cloneStrategyParamsRecord(primaryConfig.strategy_params),
-          primarySourceKey,
-          primaryStrategyDetail,
-        )
-      : {}
+  const applyTraderDraftSettings = useCallback(
+    (
+      trader: Trader,
+      options: { preserveName?: boolean; preserveCopyFrom?: boolean; preserveMode?: boolean } = {},
+    ) => {
+      const traderSourceConfigs = Array.isArray(trader.source_configs) ? trader.source_configs : []
+      const primaryConfig = traderSourceConfigs[0] || null
+      const primarySourceKey = primaryConfig
+        ? normalizeSourceKey(String(primaryConfig.source_key || ''))
+        : ''
+      const primaryStrategyKey = primaryConfig
+        ? normalizeStrategyKeyForSource(
+            primarySourceKey,
+            primaryConfig.strategy_key || defaultStrategyForSource(primarySourceKey, sourceCards),
+          )
+        : DEFAULT_STRATEGY_KEY
+      const primaryStrategyDetail = primarySourceKey
+        ? sourceStrategyDetailsLookup[primarySourceKey]?.[primaryStrategyKey] || null
+        : null
+      const primaryStrategyVersion = primaryConfig
+        ? normalizeStrategyVersion(primaryConfig.strategy_version)
+        : null
+      const primaryStrategyParams = primaryConfig
+        ? buildSourceStrategyParams(
+            cloneStrategyParamsRecord(primaryConfig.strategy_params),
+            primarySourceKey,
+            primaryStrategyDetail,
+          )
+        : {}
 
-    if (!options.preserveName) {
-      setDraftName(trader.name)
-    }
-    setDraftDescription(trader.description || '')
-    if (!options.preserveMode) {
-      setDraftMode(trader.mode === 'live' ? 'live' : 'shadow')
-    }
-    setDraftLatencyClass(
-      trader.latency_class === 'fast' || trader.latency_class === 'slow'
-        ? trader.latency_class
-        : 'normal',
-    )
-    setDraftStrategyKey(normalizeStrategyKey(primaryStrategyKey))
-    setDraftStrategyVersion(primaryStrategyVersion)
-    setDraftStrategyParams(primaryStrategyParams)
-    setDraftInterval(String(trader.interval_seconds || 60))
-    const risk = trader.risk_limits || {}
-    const metadata = trader.metadata || {}
-    setDraftRiskAtom(isRecord(risk) ? (risk as Record<string, unknown>) : {})
-    setDraftMetadata(JSON.stringify(metadata, null, 2))
-    setDraftTradingScheduleAtom(
-      normalizeTradingScheduleDraft(
-        isRecord(metadata) ? (metadata as Record<string, unknown>).trading_schedule_utc : null,
-      ),
-    )
-    if (!options.preserveCopyFrom) {
-      setDraftCopyFromTraderId('')
-    }
-  }
+      if (!options.preserveName) {
+        setDraftName(trader.name)
+      }
+      setDraftDescription(trader.description || '')
+      if (!options.preserveMode) {
+        setDraftMode(trader.mode === 'live' ? 'live' : 'shadow')
+      }
+      setDraftLatencyClass(
+        trader.latency_class === 'fast' || trader.latency_class === 'slow'
+          ? trader.latency_class
+          : 'normal',
+      )
+      setDraftStrategyKey(normalizeStrategyKey(primaryStrategyKey))
+      setDraftStrategyVersion(primaryStrategyVersion)
+      setDraftStrategyParams(primaryStrategyParams)
+      setDraftInterval(String(trader.interval_seconds || 60))
+      const risk = trader.risk_limits || {}
+      const metadata = trader.metadata || {}
+      setDraftRiskAtom(isRecord(risk) ? (risk as Record<string, unknown>) : {})
+      setDraftMetadata(JSON.stringify(metadata, null, 2))
+      setDraftTradingScheduleAtom(
+        normalizeTradingScheduleDraft(
+          isRecord(metadata) ? (metadata as Record<string, unknown>).trading_schedule_utc : null,
+        ),
+      )
+      if (!options.preserveCopyFrom) {
+        setDraftCopyFromTraderId('')
+      }
+    },
+    [
+      setDraftDescription,
+      setDraftInterval,
+      setDraftName,
+      setDraftRiskAtom,
+      setDraftTradingScheduleAtom,
+      sourceCards,
+      sourceStrategyDetailsLookup,
+    ],
+  )
 
   useEffect(() => {
     if (traderFlyoutOpen) return
@@ -7088,7 +7125,15 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     setTuneSaveError(null)
     setTuneRevertError(null)
     setRiskSaveError(null)
-  }, [creatingTraderPreview, selectedTrader, traderFlyoutOpen, tuneDraftDirty, tuneDraftTraderId])
+  }, [
+    applyTraderDraftSettings,
+    creatingTraderPreview,
+    riskDraftDirty,
+    selectedTrader,
+    traderFlyoutOpen,
+    tuneDraftDirty,
+    tuneDraftTraderId,
+  ])
 
   const applyCreateCopyFromSelection = (value: string) => {
     const sourceTraderId = value === '__none__' ? '' : String(value || '').trim()
@@ -9338,175 +9383,178 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
     })
   }, [filteredDecisions])
 
-  const buildTradeTableOrderRow = (order: TraderOrder): TradeTableOrderRow => {
-    const status = normalizeStatus(order.status)
-    const lifecycleLabel = resolveOrderLifecycleLabel(status)
-    const pnl = toNumber(order.actual_profit)
-    const directionPresentation = resolveOrderDirectionPresentation(order)
-    const orderPayload = order.payload && typeof order.payload === 'object' ? order.payload : {}
-    const providerReconciliation =
-      orderPayload.provider_reconciliation &&
-      typeof orderPayload.provider_reconciliation === 'object'
-        ? orderPayload.provider_reconciliation
-        : {}
-    const providerSnapshot =
-      providerReconciliation.snapshot && typeof providerReconciliation.snapshot === 'object'
-        ? providerReconciliation.snapshot
-        : {}
-    const positionState =
-      orderPayload.position_state && typeof orderPayload.position_state === 'object'
-        ? orderPayload.position_state
-        : {}
-    const pendingExit =
-      orderPayload.pending_live_exit && typeof orderPayload.pending_live_exit === 'object'
-        ? orderPayload.pending_live_exit
-        : {}
-    const positionClose =
-      orderPayload.position_close && typeof orderPayload.position_close === 'object'
-        ? orderPayload.position_close
-        : {}
-    const pendingExitStatus = normalizeStatus(
-      String((pendingExit as Record<string, unknown>).status || ''),
-    )
-    const closeTrigger = cleanText(
-      order.close_trigger ||
-        (positionClose as Record<string, unknown>).close_trigger ||
-        (pendingExit as Record<string, unknown>).close_trigger,
-    )
-    const fillPx = toNumber(
-      order.average_fill_price ??
-        providerReconciliation.average_fill_price ??
-        providerSnapshot.average_fill_price ??
-        order.effective_price ??
-        order.entry_price,
-    )
-    const realtimeCrypto = resolveOrderRealtimeCryptoSnapshot(order, directionPresentation.side)
-    const liveMark = liveMarksByOrderId.get(String(order.id || ''))
-    const markPx = toNumber(
-      liveMark?.mark_price ??
-        realtimeCrypto.markPrice ??
-        order.current_price ??
-        positionState.last_mark_price ??
-        orderPayload.market_price ??
-        orderPayload.resolved_price,
-    )
-    const filledSize = toNumber(
-      order.filled_shares ??
-        providerReconciliation.filled_size ??
-        providerSnapshot.filled_size ??
-        orderPayload.filled_size,
-    )
-    const requestedNotional = Math.abs(toNumber(order.notional_usd))
-    const filledNotional = toNumber(
-      order.filled_notional_usd ??
-        providerReconciliation.filled_notional_usd ??
-        providerSnapshot.filled_notional_usd ??
-        order.notional_usd,
-    )
-    let unrealized = toNumber(order.unrealized_pnl)
-    if (
-      (order.unrealized_pnl === null || order.unrealized_pnl === undefined) &&
-      markPx > 0 &&
-      filledSize > 0 &&
-      filledNotional > 0
-    ) {
-      unrealized = markPx * filledSize - filledNotional
-    }
-    if (liveMark && typeof liveMark.unrealized_pnl === 'number' && liveMark.mark_price > 0) {
-      unrealized = liveMark.unrealized_pnl
-    }
-    const fillProgressPercent = computeOrderFillProgressPercent(
-      orderPayload as Record<string, unknown>,
-      {
+  const buildTradeTableOrderRow = useCallback(
+    (order: TraderOrder): TradeTableOrderRow => {
+      const status = normalizeStatus(order.status)
+      const lifecycleLabel = resolveOrderLifecycleLabel(status)
+      const pnl = toNumber(order.actual_profit)
+      const directionPresentation = resolveOrderDirectionPresentation(order)
+      const orderPayload = order.payload && typeof order.payload === 'object' ? order.payload : {}
+      const providerReconciliation =
+        orderPayload.provider_reconciliation &&
+        typeof orderPayload.provider_reconciliation === 'object'
+          ? orderPayload.provider_reconciliation
+          : {}
+      const providerSnapshot =
+        providerReconciliation.snapshot && typeof providerReconciliation.snapshot === 'object'
+          ? providerReconciliation.snapshot
+          : {}
+      const positionState =
+        orderPayload.position_state && typeof orderPayload.position_state === 'object'
+          ? orderPayload.position_state
+          : {}
+      const pendingExit =
+        orderPayload.pending_live_exit && typeof orderPayload.pending_live_exit === 'object'
+          ? orderPayload.pending_live_exit
+          : {}
+      const positionClose =
+        orderPayload.position_close && typeof orderPayload.position_close === 'object'
+          ? orderPayload.position_close
+          : {}
+      const pendingExitStatus = normalizeStatus(
+        String((pendingExit as Record<string, unknown>).status || ''),
+      )
+      const closeTrigger = cleanText(
+        order.close_trigger ||
+          (positionClose as Record<string, unknown>).close_trigger ||
+          (pendingExit as Record<string, unknown>).close_trigger,
+      )
+      const fillPx = toNumber(
+        order.average_fill_price ??
+          providerReconciliation.average_fill_price ??
+          providerSnapshot.average_fill_price ??
+          order.effective_price ??
+          order.entry_price,
+      )
+      const realtimeCrypto = resolveOrderRealtimeCryptoSnapshot(order, directionPresentation.side)
+      const liveMark = liveMarksByOrderId.get(String(order.id || ''))
+      const markPx = toNumber(
+        liveMark?.mark_price ??
+          realtimeCrypto.markPrice ??
+          order.current_price ??
+          positionState.last_mark_price ??
+          orderPayload.market_price ??
+          orderPayload.resolved_price,
+      )
+      const filledSize = toNumber(
+        order.filled_shares ??
+          providerReconciliation.filled_size ??
+          providerSnapshot.filled_size ??
+          orderPayload.filled_size,
+      )
+      const requestedNotional = Math.abs(toNumber(order.notional_usd))
+      const filledNotional = toNumber(
+        order.filled_notional_usd ??
+          providerReconciliation.filled_notional_usd ??
+          providerSnapshot.filled_notional_usd ??
+          order.notional_usd,
+      )
+      let unrealized = toNumber(order.unrealized_pnl)
+      if (
+        (order.unrealized_pnl === null || order.unrealized_pnl === undefined) &&
+        markPx > 0 &&
+        filledSize > 0 &&
+        filledNotional > 0
+      ) {
+        unrealized = markPx * filledSize - filledNotional
+      }
+      if (liveMark && typeof liveMark.unrealized_pnl === 'number' && liveMark.mark_price > 0) {
+        unrealized = liveMark.unrealized_pnl
+      }
+      const fillProgressPercent = computeOrderFillProgressPercent(
+        orderPayload as Record<string, unknown>,
+        {
+          filledSize,
+          filledNotional,
+          requestedNotionalFallback: requestedNotional,
+        },
+      )
+      const dynamicEdgePercent = computeOrderDynamicEdgePercent({
+        status,
+        edgePercent: toNumber(order.edge_percent),
+        unrealizedPnl: unrealized,
+        realizedPnl: pnl,
+        filledNotional,
+      })
+      const exitProgressPercent = computePendingExitProgressPercent(
+        pendingExit as Record<string, unknown>,
+      )
+      const liveMarkTs = liveMark?.mark_updated_at
+      const liveMarkIso =
+        typeof liveMarkTs === 'number' && liveMarkTs > 0
+          ? new Date(liveMarkTs * 1000).toISOString()
+          : null
+      const markUpdatedAt = latestTimestampValue(
+        liveMarkIso,
+        realtimeCrypto.updatedAt,
+        resolveOrderMarketUpdateTimestamp(order, orderPayload),
+      )
+      const exitEvaluatedAt = resolveOrderExitEvaluationTimestamp(order, orderPayload)
+      const markUpdatedTs = toTs(markUpdatedAt)
+      const markFresh = markUpdatedTs > 0 && Date.now() - markUpdatedTs <= 15_000
+      const providerSnapshotStatus = normalizeStatus(
+        String(
+          order.provider_snapshot_status ||
+            providerReconciliation.snapshot_status ||
+            providerSnapshot.normalized_status ||
+            providerSnapshot.status ||
+            '',
+        ),
+      )
+      const linkedDecisionId = String(order.decision_id || '').trim()
+      const signalPayload = linkedDecisionId
+        ? decisionSignalPayloadByDecisionId.get(linkedDecisionId) || null
+        : null
+      const links = buildOrderMarketLinks(order, orderPayload, signalPayload)
+      const outcome = orderOutcomeSummary(order)
+      const executionSummary = orderExecutionTypeSummary(order)
+      const venuePresentation = resolveVenueStatusPresentation(order, providerSnapshotStatus)
+      const currentValue =
+        markPx > 0 && filledSize > 0
+          ? markPx * filledSize
+          : filledNotional > 0
+            ? filledNotional
+            : requestedNotional
+
+      return {
+        order,
+        status,
+        lifecycleLabel,
+        pnl,
+        fillPx,
+        markPx,
         filledSize,
         filledNotional,
-        requestedNotionalFallback: requestedNotional,
-      },
-    )
-    const dynamicEdgePercent = computeOrderDynamicEdgePercent({
-      status,
-      edgePercent: toNumber(order.edge_percent),
-      unrealizedPnl: unrealized,
-      realizedPnl: pnl,
-      filledNotional,
-    })
-    const exitProgressPercent = computePendingExitProgressPercent(
-      pendingExit as Record<string, unknown>,
-    )
-    const liveMarkTs = liveMark?.mark_updated_at
-    const liveMarkIso =
-      typeof liveMarkTs === 'number' && liveMarkTs > 0
-        ? new Date(liveMarkTs * 1000).toISOString()
-        : null
-    const markUpdatedAt = latestTimestampValue(
-      liveMarkIso,
-      realtimeCrypto.updatedAt,
-      resolveOrderMarketUpdateTimestamp(order, orderPayload),
-    )
-    const exitEvaluatedAt = resolveOrderExitEvaluationTimestamp(order, orderPayload)
-    const markUpdatedTs = toTs(markUpdatedAt)
-    const markFresh = markUpdatedTs > 0 && Date.now() - markUpdatedTs <= 15_000
-    const providerSnapshotStatus = normalizeStatus(
-      String(
-        order.provider_snapshot_status ||
-          providerReconciliation.snapshot_status ||
-          providerSnapshot.normalized_status ||
-          providerSnapshot.status ||
-          '',
-      ),
-    )
-    const linkedDecisionId = String(order.decision_id || '').trim()
-    const signalPayload = linkedDecisionId
-      ? decisionSignalPayloadByDecisionId.get(linkedDecisionId) || null
-      : null
-    const links = buildOrderMarketLinks(order, orderPayload, signalPayload)
-    const outcome = orderOutcomeSummary(order)
-    const executionSummary = orderExecutionTypeSummary(order)
-    const venuePresentation = resolveVenueStatusPresentation(order, providerSnapshotStatus)
-    const currentValue =
-      markPx > 0 && filledSize > 0
-        ? markPx * filledSize
-        : filledNotional > 0
-          ? filledNotional
-          : requestedNotional
-
-    return {
-      order,
-      status,
-      lifecycleLabel,
-      pnl,
-      fillPx,
-      markPx,
-      filledSize,
-      filledNotional,
-      requestedNotional,
-      currentValue,
-      unrealized,
-      fillProgressPercent,
-      dynamicEdgePercent,
-      exitProgressPercent,
-      markUpdatedAt,
-      exitEvaluatedAt,
-      providerSnapshotStatus,
-      pendingExitStatus,
-      closeTrigger,
-      pendingExit: pendingExit as Record<string, unknown>,
-      markFresh,
-      links,
-      directionSide: directionPresentation.side,
-      directionLabel: directionPresentation.label,
-      yesLabel: directionPresentation.yesLabel,
-      noLabel: directionPresentation.noLabel,
-      executionSummary,
-      outcomeHeadline: outcome.headline,
-      outcomeDetail: outcome.detail,
-      venuePresentation,
-    }
-  }
+        requestedNotional,
+        currentValue,
+        unrealized,
+        fillProgressPercent,
+        dynamicEdgePercent,
+        exitProgressPercent,
+        markUpdatedAt,
+        exitEvaluatedAt,
+        providerSnapshotStatus,
+        pendingExitStatus,
+        closeTrigger,
+        pendingExit: pendingExit as Record<string, unknown>,
+        markFresh,
+        links,
+        directionSide: directionPresentation.side,
+        directionLabel: directionPresentation.label,
+        yesLabel: directionPresentation.yesLabel,
+        noLabel: directionPresentation.noLabel,
+        executionSummary,
+        outcomeHeadline: outcome.headline,
+        outcomeDetail: outcome.detail,
+        venuePresentation,
+      }
+    },
+    [decisionSignalPayloadByDecisionId, liveMarksByOrderId, resolveOrderRealtimeCryptoSnapshot],
+  )
 
   const selectedTradeOrderRows = useMemo(
     () => selectedOrders.map((order) => buildTradeTableOrderRow(order)),
-    [selectedOrders, cryptoMarkets, decisionSignalPayloadByDecisionId, liveMarksByOrderId],
+    [selectedOrders, buildTradeTableOrderRow],
   )
 
   const deferredTradeSearch = useDeferredValue(tradeSearch)
@@ -9532,7 +9580,7 @@ export default function TradingPanel({ isConnected = false }: TradingPanelProps 
 
   const allTradeOrderRows = useMemo(
     () => allOrders.map((order) => buildTradeTableOrderRow(order)),
-    [allOrders, cryptoMarkets, decisionSignalPayloadByDecisionId, liveMarksByOrderId],
+    [allOrders, buildTradeTableOrderRow],
   )
 
   const deferredAllBotsTradeSearch = useDeferredValue(allBotsTradeSearch)

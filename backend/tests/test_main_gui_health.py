@@ -12,6 +12,7 @@ if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
 import main
+from unittest.mock import AsyncMock
 from utils.utcnow import utcnow
 
 
@@ -49,6 +50,7 @@ async def test_gui_health_db_queries_use_workers_status_cache(monkeypatch) -> No
     monkeypatch.setattr(main, "AsyncSessionLocal", lambda: EmptySession())
     monkeypatch.setattr(main.shared_state, "get_scanner_status_from_db", fake_scanner_status)
     monkeypatch.setattr(main, "get_workers_status_cached_or_fallback", fake_workers_status)
+    monkeypatch.setattr(main, "read_orchestrator_snapshot", AsyncMock(return_value={}))
 
     db = await main._gui_health_db_queries()
     response = main._build_gui_health_response(db)

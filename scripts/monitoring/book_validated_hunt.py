@@ -11,11 +11,11 @@ For binary markets with two CLOB tokens it computes the true CTF arb:
 
 Usage: python book_validated_hunt.py [--min-liquidity 3000] [--limit 60] [--min-edge 1.0]
 """
+
 from __future__ import annotations
 
 import argparse
 import json
-import sys
 import urllib.request
 
 BASE = "http://127.0.0.1:8000"
@@ -66,23 +66,34 @@ def main(argv=None):
         # min executable depth across both legs (USD)
         depth = min(yb.get("ask_depth_usd") or 0.0, nb.get("ask_depth_usd") or 0.0)
         if edge_pct >= args.min_edge:
-            real.append({
-                "title": (o.get("title") or "")[:70],
-                "scanner_roi": round(o.get("roi_percent") or 0.0, 1),
-                "yes_ask": ya, "no_ask": na, "sum": round(total, 4),
-                "executable_edge_pct": round(edge_pct, 2),
-                "depth_usd": round(depth, 0),
-                "yes_token": toks[0], "no_token": toks[1],
-                "market_id": m.get("id"), "question": m.get("question"),
-                "resolves": o.get("resolution_date"),
-            })
+            real.append(
+                {
+                    "title": (o.get("title") or "")[:70],
+                    "scanner_roi": round(o.get("roi_percent") or 0.0, 1),
+                    "yes_ask": ya,
+                    "no_ask": na,
+                    "sum": round(total, 4),
+                    "executable_edge_pct": round(edge_pct, 2),
+                    "depth_usd": round(depth, 0),
+                    "yes_token": toks[0],
+                    "no_token": toks[1],
+                    "market_id": m.get("id"),
+                    "question": m.get("question"),
+                    "resolves": o.get("resolution_date"),
+                }
+            )
     real.sort(key=lambda x: -x["executable_edge_pct"])
-    print(json.dumps({
-        "candidates_with_two_tokens_checked": checked,
-        "real_arbs_found": len(real),
-        "min_edge_pct": args.min_edge,
-        "results": real,
-    }, indent=2))
+    print(
+        json.dumps(
+            {
+                "candidates_with_two_tokens_checked": checked,
+                "real_arbs_found": len(real),
+                "min_edge_pct": args.min_edge,
+                "results": real,
+            },
+            indent=2,
+        )
+    )
     return 0
 
 

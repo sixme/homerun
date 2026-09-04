@@ -82,11 +82,15 @@ class CTFBasicArbStrategy(BaseStrategy):
     }
 
     @staticmethod
-    def _quotes_for_market(market: Market, prices: dict[str, dict]) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    def _quotes_for_market(
+        market: Market, prices: dict[str, dict]
+    ) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
         token_ids = list(getattr(market, "clob_token_ids", []) or [])
         yes_payload = prices.get(token_ids[0]) if len(token_ids) > 0 else None
         no_payload = prices.get(token_ids[1]) if len(token_ids) > 1 else None
-        return yes_payload if isinstance(yes_payload, dict) else None, no_payload if isinstance(no_payload, dict) else None
+        return yes_payload if isinstance(yes_payload, dict) else None, no_payload if isinstance(
+            no_payload, dict
+        ) else None
 
     @staticmethod
     def _condition_market_id(market: Market) -> str:
@@ -147,7 +151,7 @@ class CTFBasicArbStrategy(BaseStrategy):
                     time_in_force="IOC",
                     post_only=False,
                     notional_weight=1.0,
-                    metadata={"ctf_action": "split", "condition_id": condition_id},
+                    metadata={"ctf_action": "split", "condition_id": condition_id, "wave": 0},
                 ),
                 ExecutionLeg(
                     leg_id="sell_yes_leg",
@@ -161,7 +165,7 @@ class CTFBasicArbStrategy(BaseStrategy):
                     time_in_force="IOC",
                     post_only=False,
                     notional_weight=max(0.0001, yes_price),
-                    metadata={"condition_id": condition_id},
+                    metadata={"condition_id": condition_id, "wave": 1},
                 ),
                 ExecutionLeg(
                     leg_id="sell_no_leg",
@@ -175,7 +179,7 @@ class CTFBasicArbStrategy(BaseStrategy):
                     time_in_force="IOC",
                     post_only=False,
                     notional_weight=max(0.0001, no_price),
-                    metadata={"condition_id": condition_id},
+                    metadata={"condition_id": condition_id, "wave": 1},
                 ),
             ]
         else:
@@ -192,7 +196,7 @@ class CTFBasicArbStrategy(BaseStrategy):
                     time_in_force="IOC",
                     post_only=False,
                     notional_weight=max(0.0001, yes_price),
-                    metadata={"condition_id": condition_id},
+                    metadata={"condition_id": condition_id, "wave": 0},
                 ),
                 ExecutionLeg(
                     leg_id="buy_no_leg",
@@ -206,7 +210,7 @@ class CTFBasicArbStrategy(BaseStrategy):
                     time_in_force="IOC",
                     post_only=False,
                     notional_weight=max(0.0001, no_price),
-                    metadata={"condition_id": condition_id},
+                    metadata={"condition_id": condition_id, "wave": 0},
                 ),
                 ExecutionLeg(
                     leg_id="merge_leg",
@@ -218,7 +222,7 @@ class CTFBasicArbStrategy(BaseStrategy):
                     time_in_force="IOC",
                     post_only=False,
                     notional_weight=1.0,
-                    metadata={"ctf_action": "merge", "condition_id": condition_id},
+                    metadata={"ctf_action": "merge", "condition_id": condition_id, "wave": 1},
                 ),
             ]
         return ExecutionPlan(
@@ -229,9 +233,9 @@ class CTFBasicArbStrategy(BaseStrategy):
                 max_unhedged_notional_usd=0.0,
                 hedge_timeout_seconds=5,
                 session_timeout_seconds=30,
-                max_reprice_attempts=0,
+                max_reprice_attempts=2,
                 pair_lock=True,
-                leg_fill_tolerance_ratio=0.0,
+                leg_fill_tolerance_ratio=0.02,
             ),
             metadata={
                 "ctf_bundle": mode,
@@ -250,7 +254,9 @@ class CTFBasicArbStrategy(BaseStrategy):
         no_capacity = _book_capacity(no_payload)
         capacities = [value for value in (yes_capacity, no_capacity) if value is not None and value > 0.0]
         if capacities:
-            opportunity.max_position_size = min(float(opportunity.max_position_size or 0.0) or capacities[0], min(capacities))
+            opportunity.max_position_size = min(
+                float(opportunity.max_position_size or 0.0) or capacities[0], min(capacities)
+            )
 
     def _create_split_sell_opportunity(
         self,

@@ -394,6 +394,17 @@ function PanelFallback({ label }: { label: string }) {
   )
 }
 
+const HIDDEN_SOURCE_KEYS = new Set(['manual'])
+const SOURCE_GROUP_ORDER = ['scanner', 'weather', 'news', 'crypto', 'traders', 'manual'] as const
+const SOURCE_GROUP_LABELS: Record<string, string> = {
+  scanner: 'Scanner',
+  weather: 'Weather',
+  news: 'News',
+  crypto: 'Crypto',
+  traders: 'Traders',
+  manual: 'Manual',
+}
+
 const NAV_ITEMS: { id: Tab; icon: React.ElementType; labelKey: string; shortcut: string }[] = [
   { id: 'opportunities', icon: Zap, labelKey: 'nav.opportunities', shortcut: '1' },
   { id: 'trading', icon: Bot, labelKey: 'nav.bots', shortcut: '2' },
@@ -1187,9 +1198,10 @@ function App() {
     refetchInterval: isConnected ? false : 10000,
   })
 
-  const opportunities = Array.isArray(opportunitiesData?.opportunities)
-    ? opportunitiesData.opportunities
-    : []
+  const opportunities = useMemo(
+    () => (Array.isArray(opportunitiesData?.opportunities) ? opportunitiesData.opportunities : []),
+    [opportunitiesData?.opportunities],
+  )
   const parsedTotalOpportunities = Number(opportunitiesData?.total ?? 0)
   const totalOpportunities = Number.isFinite(parsedTotalOpportunities)
     ? parsedTotalOpportunities
@@ -1259,7 +1271,7 @@ function App() {
     retry: false,
   })
 
-  const workers = workersData?.workers || []
+  const workers = useMemo(() => workersData?.workers || [], [workersData?.workers])
   const managedWorkers = useMemo(
     () =>
       workers.filter((worker) => {
@@ -1339,7 +1351,7 @@ function App() {
       overallTone,
       counts: { green, amber, red, total: rows.length },
     }
-  }, [managedWorkers])
+  }, [managedWorkers, t])
 
   const tradingVpnHealth = useMemo(() => {
     if (tradingVpnStatusLoading && !tradingVpnStatus) {
@@ -1427,7 +1439,7 @@ function App() {
       return Boolean(status && !status.enabled)
     }
     return managedWorkers.every((worker) => Boolean((worker.control || {}).is_paused))
-  }, [managedWorkers, status?.enabled])
+  }, [managedWorkers, status])
 
   // Sync scanner activity from polled status as fallback
   useEffect(() => {
@@ -1851,7 +1863,6 @@ function App() {
 
   // Build opportunities subtabs from the fixed supported source keys.
   // Source keys that are exit-only (no detect/opportunities) are hidden from tabs.
-  const HIDDEN_SOURCE_KEYS = new Set(['manual'])
   const opportunityTabs = useMemo(() => {
     const strategySourceKeys = new Set(
       strategies.map((s) => normalizeStrategiesSourceKey(s.source_key)),
@@ -1894,13 +1905,16 @@ function App() {
     staleTime: 60000,
   })
 
-  const polymarketResults = polymarketSearchData?.opportunities || []
+  const polymarketResults = useMemo(
+    () => polymarketSearchData?.opportunities || [],
+    [polymarketSearchData?.opportunities],
+  )
   const polymarketTotal = polymarketSearchData?.total || 0
 
   const strategyFilterSet = useMemo(() => {
     if (!selectedStrategy) return null
     return new Set([selectedStrategy])
-  }, [selectedStrategy, strategies])
+  }, [selectedStrategy])
 
   // Client-side sorting and filtering for polymarket search results
   const processedPolymarketResults = useMemo(
@@ -2119,8 +2133,14 @@ function App() {
       }))
   }, [subfilterCounts?.sub_strategies, selectedStrategy])
 
-  const strategyCounts = strategyFacetCounts?.strategies || {}
-  const categoryCounts = categoryFacetCounts?.categories || {}
+  const strategyCounts = useMemo(
+    () => strategyFacetCounts?.strategies || {},
+    [strategyFacetCounts?.strategies],
+  )
+  const categoryCounts = useMemo(
+    () => categoryFacetCounts?.categories || {},
+    [categoryFacetCounts?.categories],
+  )
   const visibleStrategies = useMemo(
     () =>
       strategies.filter((s) => {
@@ -2131,15 +2151,6 @@ function App() {
     [strategies, selectedStrategy, showZeroCountStrategies, strategyCounts],
   )
 
-  const SOURCE_GROUP_ORDER = ['scanner', 'weather', 'news', 'crypto', 'traders', 'manual'] as const
-  const SOURCE_GROUP_LABELS: Record<string, string> = {
-    scanner: 'Scanner',
-    weather: 'Weather',
-    news: 'News',
-    crypto: 'Crypto',
-    traders: 'Traders',
-    manual: 'Manual',
-  }
   const groupedStrategies = useMemo(() => {
     const groups: Record<string, typeof visibleStrategies> = {}
     for (const s of visibleStrategies) {
