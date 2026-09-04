@@ -288,7 +288,7 @@ class HoldingRewardYieldStrategy(BaseStrategy):
                 session_timeout_seconds=60,
                 max_reprice_attempts=0,
                 pair_lock=False,
-                leg_fill_tolerance_ratio=0.0,
+                leg_fill_tolerance_ratio=0.02,
             ),
             metadata={
                 "ctf_bundle": "holding_reward_split",

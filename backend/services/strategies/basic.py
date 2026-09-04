@@ -11,6 +11,7 @@ from services.fee_model import fee_model
 from services.quality_filter import QualityFilterOverrides
 from services.strategies.base import BaseStrategy, DecisionCheck, ExitDecision, ScoringWeights, SizingConfig
 from utils.converters import safe_float, to_float
+
 logger = logging.getLogger(__name__)
 
 
@@ -85,11 +86,15 @@ class BasicArbStrategy(BaseStrategy):
     }
 
     @staticmethod
-    def _quotes_for_market(market: Market, prices: dict[str, dict]) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    def _quotes_for_market(
+        market: Market, prices: dict[str, dict]
+    ) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
         token_ids = list(getattr(market, "clob_token_ids", []) or [])
         yes_payload = prices.get(token_ids[0]) if len(token_ids) > 0 else None
         no_payload = prices.get(token_ids[1]) if len(token_ids) > 1 else None
-        return yes_payload if isinstance(yes_payload, dict) else None, no_payload if isinstance(no_payload, dict) else None
+        return yes_payload if isinstance(yes_payload, dict) else None, no_payload if isinstance(
+            no_payload, dict
+        ) else None
 
     def _eligible_market(self, market: Market, config: dict[str, Any]) -> bool:
         if len(list(getattr(market, "outcome_prices", []) or [])) != 2:
@@ -98,7 +103,10 @@ class BasicArbStrategy(BaseStrategy):
             return False
         if bool(getattr(market, "resolved", False)) or bool(getattr(market, "archived", False)):
             return False
-        if bool(config.get("require_polymarket", True)) and str(getattr(market, "platform", "") or "").strip().lower() != "polymarket":
+        if (
+            bool(config.get("require_polymarket", True))
+            and str(getattr(market, "platform", "") or "").strip().lower() != "polymarket"
+        ):
             return False
         if len(list(getattr(market, "clob_token_ids", []) or [])) < 2:
             return False
@@ -118,7 +126,9 @@ class BasicArbStrategy(BaseStrategy):
         liquidity: float,
     ) -> float:
         spread_component = 0.0 if max_allowed_spread <= 0.0 else min(max_leg_spread / max_allowed_spread, 1.0) * 0.18
-        depth_component = 0.0 if min_depth_required <= 0.0 else max(0.0, 1.0 - min(min_depth_seen / min_depth_required, 1.0)) * 0.12
+        depth_component = (
+            0.0 if min_depth_required <= 0.0 else max(0.0, 1.0 - min(min_depth_seen / min_depth_required, 1.0)) * 0.12
+        )
         liquidity_credit = min(liquidity / 25000.0, 1.0) * 0.06
         return max(0.08, min(0.45, 0.18 + spread_component + depth_component - liquidity_credit))
 
@@ -149,9 +159,7 @@ class BasicArbStrategy(BaseStrategy):
         market_id = str(market.id)
         roster_scope = str(market_roster.get("scope") or "").strip().lower() if isinstance(market_roster, dict) else ""
         roster_hash = (
-            str(market_roster.get("roster_hash") or "").strip() or None
-            if isinstance(market_roster, dict)
-            else None
+            str(market_roster.get("roster_hash") or "").strip() or None if isinstance(market_roster, dict) else None
         )
         roster_market_ids = []
         if isinstance(market_roster, dict):
@@ -204,7 +212,7 @@ class BasicArbStrategy(BaseStrategy):
                 session_timeout_seconds=30,
                 max_reprice_attempts=0,
                 pair_lock=True,
-                leg_fill_tolerance_ratio=0.0,
+                leg_fill_tolerance_ratio=0.02,
             ),
             metadata={
                 "strategy_type": self.strategy_type,

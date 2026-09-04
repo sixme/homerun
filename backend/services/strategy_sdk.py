@@ -134,6 +134,7 @@ def _prime_book_via_rest(token_id: str) -> None:
     try:
         import asyncio
         from services.ws_feeds import get_feed_manager
+
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:
@@ -143,7 +144,8 @@ def _prime_book_via_rest(token_id: str) -> None:
     except Exception as exc:
         logger.debug(
             "StrategySDK REST prime failed for token %s: %s",
-            token_id[:18] if token_id else "?", exc,
+            token_id[:18] if token_id else "?",
+            exc,
         )
 
 
@@ -291,6 +293,7 @@ class StrategySDK:
         def __get__(self, obj, objtype=None):
             if StrategySDK._CryptoDescriptor._resolved is None:
                 from services.strategy_helpers import crypto_strategy_utils as _module
+
                 StrategySDK._CryptoDescriptor._resolved = _module
             return StrategySDK._CryptoDescriptor._resolved
 
@@ -313,6 +316,7 @@ class StrategySDK:
         def __get__(self, obj, objtype=None):
             if StrategySDK._OptimizationDescriptor._resolved is None:
                 from services.strategy_helpers import optimization_utils as _module
+
                 StrategySDK._OptimizationDescriptor._resolved = _module
             return StrategySDK._OptimizationDescriptor._resolved
 
@@ -511,10 +515,30 @@ class StrategySDK:
             {"key": "min_order_size_usd", "label": "Min Order Size (USD)", "type": "number", "min": 0.01},
             {"key": "shadow_min_order_size_usd", "label": "Shadow Min Order Size (USD)", "type": "number", "min": 0.01},
             {"key": "live_min_order_size_usd", "label": "Live Min Order Size (USD)", "type": "number", "min": 0.01},
-            {"key": "firehose_require_active_signal", "label": "Require Active Signal", "type": "boolean", "phase": "signal"},
-            {"key": "firehose_require_tradable_market", "label": "Require Tradable Market", "type": "boolean", "phase": "signal"},
-            {"key": "firehose_exclude_crypto_markets", "label": "Exclude Crypto Markets", "type": "boolean", "phase": "signal"},
-            {"key": "firehose_require_qualified_source", "label": "Require Qualified Source", "type": "boolean", "phase": "signal"},
+            {
+                "key": "firehose_require_active_signal",
+                "label": "Require Active Signal",
+                "type": "boolean",
+                "phase": "signal",
+            },
+            {
+                "key": "firehose_require_tradable_market",
+                "label": "Require Tradable Market",
+                "type": "boolean",
+                "phase": "signal",
+            },
+            {
+                "key": "firehose_exclude_crypto_markets",
+                "label": "Exclude Crypto Markets",
+                "type": "boolean",
+                "phase": "signal",
+            },
+            {
+                "key": "firehose_require_qualified_source",
+                "label": "Require Qualified Source",
+                "type": "boolean",
+                "phase": "signal",
+            },
             {
                 "key": "firehose_max_age_minutes",
                 "label": "Firehose Max Age (min)",
@@ -1000,11 +1024,7 @@ class StrategySDK:
             escalation = EscalationSpec(
                 after_seconds=float(escalation_after_seconds),
                 action=str(escalation_action or "marketable_ioc"),
-                widen_bps=(
-                    float(escalation_widen_bps)
-                    if escalation_widen_bps is not None
-                    else None
-                ),
+                widen_bps=(float(escalation_widen_bps) if escalation_widen_bps is not None else None),
                 max_escalations=int(max(0, max_escalations)),
             )
         return ExitPolicy(
@@ -1014,9 +1034,7 @@ class StrategySDK:
             order_type_mix=order_type_mix,
             escalation=escalation,
             reprice_on_mid_drift_bps=(
-                float(reprice_on_mid_drift_bps)
-                if reprice_on_mid_drift_bps is not None
-                else None
+                float(reprice_on_mid_drift_bps) if reprice_on_mid_drift_bps is not None else None
             ),
             min_chunk_notional_usd=float(max(0.01, min_chunk_notional_usd)),
             min_reprice_interval_seconds=float(max(0.0, min_reprice_interval_seconds)),
@@ -1485,7 +1503,9 @@ class StrategySDK:
             payload = {}
 
         wallets: set[str] = set()
-        direct_wallet = StrategySDK.normalize_trader_wallet(payload.get("wallet_address") or payload.get("source_wallet"))
+        direct_wallet = StrategySDK.normalize_trader_wallet(
+            payload.get("wallet_address") or payload.get("source_wallet")
+        )
         if direct_wallet:
             wallets.add(direct_wallet)
         for raw in payload.get("wallets") or []:
@@ -2201,17 +2221,13 @@ class StrategySDK:
         cfg["allow_averaging"] = _coerce_bool(cfg.get("allow_averaging"), False)
         cfg["halt_on_consecutive_losses"] = _coerce_bool(cfg.get("halt_on_consecutive_losses"), True)
         cfg["max_consecutive_losses"] = StrategySDK._coerce_int(cfg.get("max_consecutive_losses"), 4, 0, 1000)
-        cfg["max_entry_drift_pct"] = StrategySDK._coerce_float(
-            cfg.get("max_entry_drift_pct"), 10.0, 0.0, 100.0
-        )
+        cfg["max_entry_drift_pct"] = StrategySDK._coerce_float(cfg.get("max_entry_drift_pct"), 10.0, 0.0, 100.0)
         raw_max_md_age = cfg.get("max_market_data_age_ms")
         if raw_max_md_age is None or (isinstance(raw_max_md_age, str) and not raw_max_md_age.strip()):
             cfg["max_market_data_age_ms"] = None
         else:
             cfg["max_market_data_age_ms"] = StrategySDK._coerce_int(raw_max_md_age, 10000, 50, 300_000)
-        cfg["allow_taker_limit_buy_above_signal"] = _coerce_bool(
-            cfg.get("allow_taker_limit_buy_above_signal"), False
-        )
+        cfg["allow_taker_limit_buy_above_signal"] = _coerce_bool(cfg.get("allow_taker_limit_buy_above_signal"), False)
         default_portfolio = StrategySDK.TRADER_RISK_DEFAULTS.get("portfolio")
         portfolio_cfg = dict(default_portfolio) if isinstance(default_portfolio, dict) else {}
         raw_portfolio = cfg.get("portfolio")
@@ -2281,14 +2297,20 @@ class StrategySDK:
         idx = 0 if side.upper() == "YES" else 1
         fallback = 0.0
         if hasattr(market, "outcome_prices") and len(market.outcome_prices) > idx:
-            fallback = market.outcome_prices[idx]
+            try:
+                fallback = float(market.outcome_prices[idx] or 0.0)
+            except (TypeError, ValueError):
+                fallback = 0.0
 
         token_ids = getattr(market, "clob_token_ids", None) or []
-        if len(token_ids) > idx:
+        if len(token_ids) > idx and isinstance(prices, dict):
             token_id = token_ids[idx]
-            if token_id in prices:
-                return prices[token_id].get("mid", fallback)
-        return fallback
+            payload = prices.get(token_id)
+            if isinstance(payload, dict):
+                mid_raw = payload.get("mid")
+                if isinstance(mid_raw, (int, float)) and mid_raw > 0:
+                    return float(mid_raw)
+        return float(fallback or 0.0)
 
     @staticmethod
     def get_spread_bps(market: Any, prices: dict[str, dict], side: str = "YES") -> Optional[float]:
@@ -2541,9 +2563,7 @@ class StrategySDK:
     # (no duplicated fee math).
     # ------------------------------------------------------------------
     @staticmethod
-    def fee_adjusted_edge_pct(
-        edge_pct: float, entry_price: float, platform: str = "polymarket"
-    ) -> float:
+    def fee_adjusted_edge_pct(edge_pct: float, entry_price: float, platform: str = "polymarket") -> float:
         """Edge percent after platform taker fees (canonical impl on
         BaseStrategy)."""
         from services.strategies.base import BaseStrategy
@@ -2631,8 +2651,7 @@ class StrategySDK:
         else:
             f_star = edge_price
         f_capped = max(0.0, min(float(kelly_fraction), f_star * float(kelly_fraction)))
-        conf_scale = max(float(confidence_floor),
-                         min(1.0, float(confidence) + 0.15))
+        conf_scale = max(float(confidence_floor), min(1.0, float(confidence) + 0.15))
         risk_scale = max(float(risk_floor), 1.0 - float(risk_score))
         size = float(base_size) * (1.0 + float(kelly_size_multiplier) * f_capped) * conf_scale * risk_scale
         return max(1.0, min(float(max_size), size))
@@ -2646,9 +2665,7 @@ class StrategySDK:
     # (scripts/refresh_category_yes_rates.py) which queries the DB and
     # writes the file. The SDK reads it lazily — no DB dependency from
     # synchronous detect() paths.
-    _CATEGORY_RATES_PATH = (
-        Path(__file__).resolve().parents[1] / "data" / "category_yes_rates.json"
-    )
+    _CATEGORY_RATES_PATH = Path(__file__).resolve().parents[1] / "data" / "category_yes_rates.json"
     _category_yes_rates_cache: dict[str, float] | None = None
     _category_yes_rates_cache_at: float = 0.0
     _CATEGORY_RATES_TTL_SECONDS = 600.0
@@ -2703,10 +2720,7 @@ class StrategySDK:
         """
         now = time.time()
         cached = cls._category_yes_rates_cache
-        if (
-            cached is not None
-            and (now - cls._category_yes_rates_cache_at) < cls._CATEGORY_RATES_TTL_SECONDS
-        ):
+        if cached is not None and (now - cls._category_yes_rates_cache_at) < cls._CATEGORY_RATES_TTL_SECONDS:
             base = dict(cached)
             if defaults:
                 base.update(defaults)
@@ -3108,7 +3122,8 @@ class StrategySDK:
         if len(token_ids) <= token_idx:
             logger.debug(
                 "StrategySDK orderbook lookup: market %s has no token id for side=%s",
-                market_label, side,
+                market_label,
+                side,
             )
             return None
         return str(token_ids[token_idx])
@@ -3174,7 +3189,9 @@ class StrategySDK:
             logger.debug(
                 "StrategySDK.get_order_book_depth: no cached book for token %s "
                 "(market %s, side %s) — token may not be subscribed",
-                token_id[:18], getattr(market, "id", "?"), side,
+                token_id[:18],
+                getattr(market, "id", "?"),
+                side,
             )
             now_s = time.monotonic()
             last = _rest_prime_last_ts.get(token_id, 0.0)
@@ -3188,7 +3205,8 @@ class StrategySDK:
         except Exception as e:
             logger.exception(
                 "StrategySDK.get_order_book_depth: VWAP failed for token %s: %s",
-                token_id[:18], e,
+                token_id[:18],
+                e,
             )
             return None
 
@@ -3250,7 +3268,9 @@ class StrategySDK:
             logger.debug(
                 "StrategySDK.get_book_levels: no cached book for token %s "
                 "(market %s, side %s) — token may not be subscribed",
-                token_id[:18], getattr(market, "id", "?"), side,
+                token_id[:18],
+                getattr(market, "id", "?"),
+                side,
             )
             now_s = time.monotonic()
             last = _rest_prime_last_ts.get(token_id, 0.0)
@@ -3463,12 +3483,7 @@ class StrategySDK:
             t = float(seconds_remaining)
         except (TypeError, ValueError):
             return None
-        if not (
-            math.isfinite(s)
-            and math.isfinite(k)
-            and math.isfinite(sigma)
-            and math.isfinite(t)
-        ):
+        if not (math.isfinite(s) and math.isfinite(k) and math.isfinite(sigma) and math.isfinite(t)):
             return None
         if s <= 0.0 or k <= 0.0 or sigma < 0.0 or t < 0.0:
             return None

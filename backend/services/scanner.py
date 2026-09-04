@@ -57,9 +57,9 @@ class ArbitrageScanner:
 
     def __init__(self, data_provider: Optional[MarketDataProvider] = None):
         try:
-            asyncio.get_event_loop()
+            asyncio.get_running_loop()
         except RuntimeError:
-            asyncio.set_event_loop(asyncio.new_event_loop())
+            pass
 
         self.market_data = data_provider or market_data_provider
 
@@ -889,7 +889,9 @@ class ArbitrageScanner:
             existing_raw = list(getattr(market, "outcome_prices", None) or [])
             existing_sig: tuple[float, ...] = ()
             if existing_raw:
-                existing_point = self._build_market_history_point(1, [self._coerce_history_price(v) for v in existing_raw])
+                existing_point = self._build_market_history_point(
+                    1, [self._coerce_history_price(v) for v in existing_raw]
+                )
                 if existing_point is not None:
                     existing_sig = self._history_point_signature(existing_point)
 
@@ -920,9 +922,7 @@ class ArbitrageScanner:
         platform = str(getattr(market, "platform", "polymarket") or "polymarket").strip().lower()
         if platform == "polymarket":
             condition_id = str(getattr(market, "condition_id", "") or "").strip()
-            clob_token_ids = ArbitrageScanner._coerce_market_token_ids(
-                getattr(market, "clob_token_ids", None)
-            )
+            clob_token_ids = ArbitrageScanner._coerce_market_token_ids(getattr(market, "clob_token_ids", None))
             if not condition_id or not clob_token_ids:
                 return False
             if getattr(market, "enable_order_book", None) is False:
@@ -970,9 +970,7 @@ class ArbitrageScanner:
             condition_id = str(getattr(market, "condition_id", "") or "").strip()
             if not condition_id:
                 return False
-            clob_token_ids = ArbitrageScanner._coerce_market_token_ids(
-                getattr(market, "clob_token_ids", None)
-            )
+            clob_token_ids = ArbitrageScanner._coerce_market_token_ids(getattr(market, "clob_token_ids", None))
             if not clob_token_ids:
                 return False
         try:
@@ -1003,7 +1001,8 @@ class ArbitrageScanner:
         kept_events: list = []
         for event in events:
             event_kept = [
-                m for m in list(getattr(event, "markets", None) or [])
+                m
+                for m in list(getattr(event, "markets", None) or [])
                 if str(getattr(m, "id", "") or "") in kept_market_ids
             ]
             if event_kept:
@@ -1031,9 +1030,7 @@ class ArbitrageScanner:
             from models.database import AppSettings
 
             async with AsyncSessionLocal() as session:
-                result = await session.execute(
-                    select(AppSettings).where(AppSettings.id == "default")
-                )
+                result = await session.execute(select(AppSettings).where(AppSettings.id == "default"))
                 row = result.scalar_one_or_none()
             if row is None:
                 return frozenset()
@@ -1050,8 +1047,7 @@ class ArbitrageScanner:
             return frozenset(normalised)
         except Exception as exc:
             logger.warning(
-                "Failed to load market_filter_tags from app_settings; "
-                "treating filter as inactive (fail-open)",
+                "Failed to load market_filter_tags from app_settings; treating filter as inactive (fail-open)",
                 exc_info=exc,
             )
             return frozenset()
@@ -1109,9 +1105,7 @@ class ArbitrageScanner:
 
         pre_count = len(markets)
         kept_markets = [m for m in markets if _market_tags(m) & whitelist]
-        kept_market_ids = {
-            str(getattr(m, "id", "") or "") for m in kept_markets if getattr(m, "id", None)
-        }
+        kept_market_ids = {str(getattr(m, "id", "") or "") for m in kept_markets if getattr(m, "id", None)}
         kept_events: list = []
         for event in events:
             event_kept = [
@@ -1249,11 +1243,7 @@ class ArbitrageScanner:
     def _heavy_has_priority_filter(self, heavy_slugs) -> bool:
         wanted = {str(s).strip().lower() for s in (heavy_slugs or [])}
         for inst in self._priority_filter_strategies():
-            slug = (
-                getattr(inst, "slug", None)
-                or getattr(inst, "strategy_type", None)
-                or getattr(inst, "name", None)
-            )
+            slug = getattr(inst, "slug", None) or getattr(inst, "strategy_type", None) or getattr(inst, "name", None)
             if slug and str(slug).strip().lower() in wanted:
                 return True
         return False
@@ -1333,17 +1323,11 @@ class ArbitrageScanner:
             }
 
         orphan_markets = [
-            market
-            for market in markets
-            if str(getattr(market, "id", "") or "").strip() not in grouped_market_ids
+            market for market in markets if str(getattr(market, "id", "") or "").strip() not in grouped_market_ids
         ]
         orphan_markets.sort(key=self._market_priority_key, reverse=True)
 
-        capped_markets = [
-            market
-            for _, event_markets in selected_event_rows
-            for market in event_markets
-        ]
+        capped_markets = [market for _, event_markets in selected_event_rows for market in event_markets]
         if market_cap > 0:
             remaining_capacity = max(0, market_cap - len(capped_markets))
             if remaining_capacity > 0:
@@ -1489,7 +1473,11 @@ class ArbitrageScanner:
 
         cap = max(10, int(settings.REALTIME_SCAN_MAX_BATCH_MARKETS or 800))
         expanded_markets = self._expand_markets_to_event_rosters(direct_markets, market_cap=cap)
-        ordered = [str(getattr(market, "id", "") or "").strip() for market in expanded_markets if str(getattr(market, "id", "") or "").strip()]
+        ordered = [
+            str(getattr(market, "id", "") or "").strip()
+            for market in expanded_markets
+            if str(getattr(market, "id", "") or "").strip()
+        ]
         if len(ordered) > cap:
             self._reactive_backpressure_dropped_markets += len(ordered) - cap
         return ordered
@@ -2035,9 +2023,7 @@ class ArbitrageScanner:
                     mkt_payload: list = []
                     for mk in markets:
                         try:
-                            mkt_payload.append(
-                                mk.model_dump(mode="json") if hasattr(mk, "model_dump") else mk
-                            )
+                            mkt_payload.append(mk.model_dump(mode="json") if hasattr(mk, "model_dump") else mk)
                         except Exception:
                             pass
                     px_payload: dict = {}
@@ -2676,6 +2662,7 @@ class ArbitrageScanner:
             return 0
 
         import time as _time
+
         _overall_start = _time.monotonic()
         _hydrate_elapsed = 0.0
         _lookup_elapsed = 0.0
@@ -2696,7 +2683,9 @@ class ArbitrageScanner:
                 for market_id in lookup_ids:
                     if market_id not in self._market_price_history:
                         needed_ids.add(market_id)
-        hydrate_on_hot_path = bool(block_for_backfill or timeout_seconds is None or (timeout_seconds and timeout_seconds > 0))
+        hydrate_on_hot_path = bool(
+            block_for_backfill or timeout_seconds is None or (timeout_seconds and timeout_seconds > 0)
+        )
         if needed_ids and hydrate_on_hot_path:
             _t = _time.monotonic()
             try:
@@ -2741,9 +2730,7 @@ class ArbitrageScanner:
         # safe because the caller is the single writer of this payload
         # until we return.
         _t = _time.monotonic()
-        market_history = await asyncio.to_thread(
-            self.get_market_history_for_opportunities, opportunities
-        )
+        market_history = await asyncio.to_thread(self.get_market_history_for_opportunities, opportunities)
         _lookup_elapsed = _time.monotonic() - _t
 
         def _attach_loop() -> int:
@@ -3125,9 +3112,7 @@ class ArbitrageScanner:
                 if not events and not markets:
                     raise next(iter(core_fetch_failures.values()))
                 log_fn = (
-                    logger.info
-                    if sorted(core_fetch_failures.keys()) == sorted(fallback_labels)
-                    else logger.warning
+                    logger.info if sorted(core_fetch_failures.keys()) == sorted(fallback_labels) else logger.warning
                 )
                 log_fn(
                     "Catalog refresh core fetch degraded; using cached or partial data",
@@ -3171,7 +3156,9 @@ class ArbitrageScanner:
                     events.extend(kalshi_events)
 
                     if kalshi_markets:
-                        logger.info(f"  Fetched {len(kalshi_events)} Kalshi events and {len(kalshi_markets)} Kalshi markets")
+                        logger.info(
+                            f"  Fetched {len(kalshi_events)} Kalshi events and {len(kalshi_markets)} Kalshi markets"
+                        )
                         logger.debug(f"  [timing] Kalshi fetch: {_time.monotonic() - _phase_t:.1f}s")
                 except Exception as e:
                     logger.info(f"  Kalshi fetch failed (non-fatal): {e}")
@@ -3199,9 +3186,7 @@ class ArbitrageScanner:
             # cached-merged-scan and incremental-fetch paths see the
             # latest operator selection without an extra DB hit.
             self._cached_market_filter_tags = await self._load_market_filter_tags()
-            events, markets = self._apply_market_tag_whitelist(
-                events, markets, self._cached_market_filter_tags
-            )
+            events, markets = self._apply_market_tag_whitelist(events, markets, self._cached_market_filter_tags)
             events, markets = self._filter_tradable_markets(events, markets)
             events, markets = self._enforce_catalog_caps(events, markets)
             dedup_msg = f" (+{extra_from_events} from events)" if extra_from_events else ""
@@ -3230,9 +3215,12 @@ class ArbitrageScanner:
                     )
                 except asyncio.TimeoutError:
                     prices = {}
-                    logger.warning(f"  Price load timed out after {optional_stage_timeout:.1f}s; continuing with cached market prices")
+                    logger.warning(
+                        f"  Price load timed out after {optional_stage_timeout:.1f}s; continuing with cached market prices"
+                    )
                 logger.info(f"  Loaded prices for {len(prices)}/{len(all_token_ids)} tokens from WS cache")
                 logger.debug(f"  [timing] Price load: {_time.monotonic() - _phase_t:.1f}s")
+
             # Phase 4 — Update in-memory caches (offloaded to thread)
             def _update_caches_after_catalog(scanner, evts, mkts, prc, ts):
                 scanner._apply_live_prices_to_markets(mkts, prc)
@@ -3292,10 +3280,7 @@ class ArbitrageScanner:
                 self._background_tasks.add(t)
                 t.add_done_callback(self._background_tasks.discard)
 
-            logger.info(
-                f"Catalog refresh complete: "
-                f"{len(events)} events, {len(markets)} markets in {duration:.1f}s"
-            )
+            logger.info(f"Catalog refresh complete: {len(events)} events, {len(markets)} markets in {duration:.1f}s")
             await self._set_activity(f"Catalog refresh complete — {len(events)} events, {len(markets)} markets")
             return len(markets)
 
@@ -3321,6 +3306,7 @@ class ArbitrageScanner:
     ) -> dict[str, object]:
         """Incremental market/event sync with periodic full-reconcile fallback."""
         import time as _time
+
         _t0 = _time.monotonic()
         now = datetime.now(timezone.utc)
 
@@ -3529,11 +3515,10 @@ class ArbitrageScanner:
                 event.markets = linked_markets
 
         merged_events = list(event_map.values())
+
         def _prune_and_cap(scanner, evts, mkts, ts):
             evts, mkts = scanner._prune_active_catalog(evts, mkts, ts)
-            evts, mkts = scanner._apply_market_tag_whitelist(
-                evts, mkts, scanner._cached_market_filter_tags
-            )
+            evts, mkts = scanner._apply_market_tag_whitelist(evts, mkts, scanner._cached_market_filter_tags)
             evts, mkts = scanner._filter_tradable_markets(evts, mkts)
             evts, mkts = scanner._enforce_catalog_caps(evts, mkts)
             return evts, mkts
@@ -3627,7 +3612,9 @@ class ArbitrageScanner:
 
             async with AsyncSessionLocal() as session:
                 _, _, meta_check = await read_market_catalog(
-                    session, include_events=False, include_markets=False,
+                    session,
+                    include_events=False,
+                    include_markets=False,
                 )
             catalog_age = meta_check.get("updated_at")
 
@@ -3639,11 +3626,15 @@ class ArbitrageScanner:
 
             async with AsyncSessionLocal() as session:
                 _, markets, metadata = await read_market_catalog(
-                    session, include_events=False, include_markets=True,
+                    session,
+                    include_events=False,
+                    include_markets=True,
                 )
             async with AsyncSessionLocal() as session:
                 events, _, _ = await read_market_catalog(
-                    session, include_events=True, include_markets=False,
+                    session,
+                    include_events=True,
+                    include_markets=False,
                 )
             relink_event_markets(events, markets)
         except Exception as e:
@@ -3662,9 +3653,7 @@ class ArbitrageScanner:
 
         def _hydrate_sync(scanner, evts, mkts, ts):
             evts, mkts = scanner._prune_active_catalog(evts, mkts, ts)
-            evts, mkts = scanner._apply_market_tag_whitelist(
-                evts, mkts, scanner._cached_market_filter_tags
-            )
+            evts, mkts = scanner._apply_market_tag_whitelist(evts, mkts, scanner._cached_market_filter_tags)
             evts, mkts = scanner._filter_tradable_markets(evts, mkts)
             evts, mkts = scanner._enforce_catalog_caps(evts, mkts)
             scanner._cached_events = evts
@@ -4016,9 +4005,7 @@ class ArbitrageScanner:
                 if fast_actionable:
                     await self._attach_ai_judgments(fast_actionable)
                 if fast_actionable:
-                    self._opportunities = await loop.run_in_executor(
-                        None, self._merge_opportunities, fast_actionable
-                    )
+                    self._opportunities = await loop.run_in_executor(None, self._merge_opportunities, fast_actionable)
 
                 self._opportunities = await self.refresh_opportunity_prices(
                     self._opportunities,
@@ -4162,7 +4149,11 @@ class ArbitrageScanner:
                         seen_event_market_ids: set[str] = set()
                         for market in list(getattr(event, "markets", None) or []):
                             market_id = str(getattr(market, "id", "") or "").strip()
-                            if not market_id or market_id in seen_event_market_ids or market_id not in snapshot_market_by_id:
+                            if (
+                                not market_id
+                                or market_id in seen_event_market_ids
+                                or market_id not in snapshot_market_by_id
+                            ):
                                 continue
                             seen_event_market_ids.add(market_id)
                             ordered_ids.append(market_id)
@@ -4300,11 +4291,11 @@ class ArbitrageScanner:
                         cap = 0
                     else:
                         cap = int(getattr(settings, "SCANNER_FULL_SNAPSHOT_MAX_MARKETS", 0) or 0)
-                    active_markets = [market for market in cached_markets_snapshot if self._is_market_active(market, now)]
+                    active_markets = [
+                        market for market in cached_markets_snapshot if self._is_market_active(market, now)
+                    ]
                     if self._heavy_has_priority_filter(heavy_slugs):
-                        tail_priority = [
-                            market for market in active_markets if self._is_priority_market(market, now)
-                        ]
+                        tail_priority = [market for market in active_markets if self._is_priority_market(market, now)]
                         tail_priority.sort(key=lambda market: self._priority_market_sort_key(market, now), reverse=True)
                         if cap > 0 and len(tail_priority) >= cap:
                             seed_markets = tail_priority[:cap]
@@ -4365,7 +4356,10 @@ class ArbitrageScanner:
 
                     if not targeted_mode:
                         requested_cursor = max(0, int(self._full_snapshot_cursor_index or 0))
-                        if requested_cursor >= universe_count or self._full_snapshot_cycle_total_markets != universe_count:
+                        if (
+                            requested_cursor >= universe_count
+                            or self._full_snapshot_cycle_total_markets != universe_count
+                        ):
                             requested_cursor = 0
                             cycle_started_at = chunk_now
                         elif self._full_snapshot_cycle_started_at is None:
@@ -4552,8 +4546,7 @@ class ArbitrageScanner:
                     cycle_suffix = ""
                 else:
                     cycle_suffix = (
-                        f" coverage advanced to {last_processed_markets}/{universe_count}; "
-                        f"continuing next pass."
+                        f" coverage advanced to {last_processed_markets}/{universe_count}; continuing next pass."
                     )
                 await self._set_activity(
                     f"Heavy lane complete — {len(last_full_filtered)} opportunities "
@@ -4593,7 +4586,9 @@ class ArbitrageScanner:
             all_articles = news_feed_service.get_articles(max_age_hours=settings.NEWS_ARTICLE_TTL_HOURS)
             all_articles.sort(
                 key=lambda article: (
-                    (getattr(article, "published", None) or getattr(article, "fetched_at", None) or utcnow()).timestamp(),
+                    (
+                        getattr(article, "published", None) or getattr(article, "fetched_at", None) or utcnow()
+                    ).timestamp(),
                     getattr(article, "article_id", ""),
                 ),
                 reverse=True,
@@ -4707,7 +4702,9 @@ class ArbitrageScanner:
             existing = existing_map.get(new_opp.stable_id)
             if existing:
                 # Preserve immutable first-detection time and ID while updating recency.
-                preserved_first = _make_aware(getattr(existing, "first_detected_at", None) or existing.detected_at) or now
+                preserved_first = (
+                    _make_aware(getattr(existing, "first_detected_at", None) or existing.detected_at) or now
+                )
                 new_opp.first_detected_at = preserved_first
                 new_opp.detected_at = preserved_first
                 new_opp.id = existing.id
@@ -5276,7 +5273,10 @@ class ArbitrageScanner:
             full_coverage_completion_seconds = None
             if self._full_snapshot_cycle_started_at is not None and self._full_snapshot_cycle_completed_at is not None:
                 full_coverage_completion_seconds = round(
-                    max(0.0, (self._full_snapshot_cycle_completed_at - self._full_snapshot_cycle_started_at).total_seconds()),
+                    max(
+                        0.0,
+                        (self._full_snapshot_cycle_completed_at - self._full_snapshot_cycle_started_at).total_seconds(),
+                    ),
                     3,
                 )
             coverage_ratio = None

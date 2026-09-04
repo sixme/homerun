@@ -34,6 +34,7 @@ from typing import Any, Optional
 from models import Market, Event, Opportunity
 from .base import BaseStrategy, DecisionCheck, ExitDecision, ScoringWeights, SizingConfig
 from services.quality_filter import QualityFilterOverrides
+from services.strategy_sdk import StrategySDK
 from utils.kelly import kelly_fraction
 from utils.logger import get_logger
 
@@ -167,23 +168,11 @@ class ProbSurfaceArbStrategy(BaseStrategy):
 
     @staticmethod
     def _live_yes_price(market: Market, prices: dict[str, dict]) -> float:
-        """Return the best available YES price (live > static)."""
-        yes_price = market.yes_price
-        if market.clob_token_ids and len(market.clob_token_ids) > 0:
-            yes_token = market.clob_token_ids[0]
-            if yes_token in prices:
-                yes_price = prices[yes_token].get("mid", yes_price)
-        return yes_price
+        return StrategySDK.get_live_price(market, prices, side="YES")
 
     @staticmethod
     def _live_no_price(market: Market, prices: dict[str, dict]) -> float:
-        """Return the best available NO price (live > static)."""
-        no_price = market.no_price
-        if market.clob_token_ids and len(market.clob_token_ids) > 1:
-            no_token = market.clob_token_ids[1]
-            if no_token in prices:
-                no_price = prices[no_token].get("mid", no_price)
-        return no_price
+        return StrategySDK.get_live_price(market, prices, side="NO")
 
     @staticmethod
     def _yes_token_spread(market: Market, prices: dict[str, dict]) -> float | None:

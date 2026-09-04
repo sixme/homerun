@@ -552,6 +552,7 @@ class _KalshiMarketCache:
                 condition_id=ticker,
                 question=title,
                 slug=ticker,
+                platform="kalshi",
                 tokens=[
                     Token(
                         token_id=f"{ticker}_yes",
@@ -963,9 +964,7 @@ class CrossPlatformStrategy(BaseStrategy):
                 best_score = score
                 best_market = km
 
-        match_threshold = float(
-            self.config.get("match_threshold", _MATCH_THRESHOLD) or _MATCH_THRESHOLD
-        )
+        match_threshold = float(self.config.get("match_threshold", _MATCH_THRESHOLD) or _MATCH_THRESHOLD)
         if best_market is not None and best_score >= match_threshold:
             return best_market, best_score
         return None

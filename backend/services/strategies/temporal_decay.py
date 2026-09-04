@@ -31,6 +31,7 @@ from typing import Any, Optional
 from models import Event, Market, Opportunity
 from .base import BaseStrategy, DecisionCheck, ExitDecision, ScoringWeights, SizingConfig, make_aware, utcnow
 from services.quality_filter import QualityFilterOverrides
+from services.strategy_sdk import StrategySDK
 
 logger = logging.getLogger(__name__)
 
@@ -172,20 +173,10 @@ class TemporalDecayStrategy(BaseStrategy):
         return " | ".join(chunks)
 
     def _live_yes_price(self, market: Market, prices: dict[str, dict]) -> float:
-        yes_price = market.yes_price
-        if market.clob_token_ids and len(market.clob_token_ids) > 0:
-            yes_token = market.clob_token_ids[0]
-            if yes_token in prices:
-                yes_price = prices[yes_token].get("mid", yes_price)
-        return yes_price
+        return StrategySDK.get_live_price(market, prices, side="YES")
 
     def _live_no_price(self, market: Market, prices: dict[str, dict]) -> float:
-        no_price = market.no_price
-        if market.clob_token_ids and len(market.clob_token_ids) > 1:
-            no_token = market.clob_token_ids[1]
-            if no_token in prices:
-                no_price = prices[no_token].get("mid", no_price)
-        return no_price
+        return StrategySDK.get_live_price(market, prices, side="NO")
 
     def _extract_deadline(self, market: Market) -> Optional[datetime]:
         if market.end_date:

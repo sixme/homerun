@@ -35,6 +35,7 @@ from models import Market, Event, Opportunity
 from services.data_events import DataEvent, EventType
 from .base import BaseStrategy, DecisionCheck, ExitDecision, ScoringWeights, SizingConfig
 from services.quality_filter import QualityFilterOverrides
+from services.strategy_sdk import StrategySDK
 from utils.converters import to_float
 from utils.utcnow import utcnow  # replay-clock-aware "now" (honors backtest sim time)
 from utils.logger import get_logger
@@ -451,9 +452,7 @@ class DependencyValidator:
                     self._contradiction_warned.clear()
                 self._contradiction_warned.add(pair_key)
                 logger.warning(
-                    f"Dependency contradictions detected between "
-                    f"'{pair_key[0]}' and '{pair_key[1]}': "
-                    f"{contradictions}"
+                    f"Dependency contradictions detected between '{pair_key[0]}' and '{pair_key[1]}': {contradictions}"
                 )
             return [], 0.0, "REJECT"
 
@@ -1032,29 +1031,21 @@ class CombinatorialStrategy(BaseStrategy):
     def _get_market_prices(self, market: Market, prices: dict[str, dict]) -> list[float]:
         """Get outcome prices for a market."""
         if len(market.outcome_prices) == 2:
-            # Binary market
-            yes_price = market.yes_price
-            no_price = market.no_price
-
-            if market.clob_token_ids:
-                if len(market.clob_token_ids) > 0:
-                    token = market.clob_token_ids[0]
-                    if token in prices:
-                        yes_price = prices[token].get("mid", yes_price)
-                if len(market.clob_token_ids) > 1:
-                    token = market.clob_token_ids[1]
-                    if token in prices:
-                        no_price = prices[token].get("mid", no_price)
-
-            return [yes_price, no_price]
+            return [
+                StrategySDK.get_live_price(market, prices, side="YES"),
+                StrategySDK.get_live_price(market, prices, side="NO"),
+            ]
 
         elif len(market.outcome_prices) > 2:
-            # Multi-outcome market
-            result = list(market.outcome_prices)
-            if market.clob_token_ids:
+            result = [float(p or 0.0) for p in market.outcome_prices]
+            if market.clob_token_ids and isinstance(prices, dict):
                 for i, token in enumerate(market.clob_token_ids):
-                    if token in prices and i < len(result):
-                        result[i] = prices[token].get("mid", result[i])
+                    if i < len(result):
+                        payload = prices.get(token)
+                        if isinstance(payload, dict):
+                            mid = payload.get("mid")
+                            if isinstance(mid, (int, float)) and mid > 0:
+                                result[i] = float(mid)
             return result
 
         return []

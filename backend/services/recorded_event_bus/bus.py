@@ -35,6 +35,7 @@ Kafka; this is an institutional-grade trading system, not an event-
 sourcing platform, and adding a new infra dep would dwarf the cost
 of any latency we'd save.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -42,7 +43,11 @@ import heapq
 import logging
 from dataclasses import dataclass
 from typing import (
-    Any, AsyncIterator, Awaitable, Callable, Optional,
+    Any,
+    AsyncIterator,
+    Awaitable,
+    Callable,
+    Optional,
     Iterable,
 )
 
@@ -87,6 +92,7 @@ class Subscription:
     the handler — call it from teardown so a restarted strategy
     doesn't end up double-subscribed (the same leak class the existing
     services.event_bus had to defend against)."""
+
     topic: str
     handler: SubscriberHandler
     _bus: "RecordedEventBus"
@@ -108,6 +114,7 @@ class ReplayWindow:
     pruning) so callers don't have to remember a different rule per
     layer.
     """
+
     start_us: int
     end_us: int
     topics: tuple[str, ...]
@@ -123,15 +130,11 @@ class ReplayWindow:
 
     def __post_init__(self) -> None:
         if self.start_us >= self.end_us:
-            raise ValueError(
-                f"ReplayWindow start_us={self.start_us} must precede end_us={self.end_us}"
-            )
+            raise ValueError(f"ReplayWindow start_us={self.start_us} must precede end_us={self.end_us}")
         if not self.topics:
             raise ValueError("ReplayWindow must specify at least one topic")
         if self.time_field not in {"observed_at_us", "ingested_at_us"}:
-            raise ValueError(
-                f"time_field={self.time_field!r} must be observed_at_us or ingested_at_us"
-            )
+            raise ValueError(f"time_field={self.time_field!r} must be observed_at_us or ingested_at_us")
 
 
 # ── The bus ─────────────────────────────────────────────────────────
@@ -154,9 +157,7 @@ class RecordedEventBus:
         # and prevent strategies from importing the bus without the
         # full data plane).  See storage.attach_writer().
         self._storage_writer: Optional[Callable[[RecordedEvent, TopicSpec], Awaitable[None]]] = None
-        self._storage_replayer: Optional[
-            Callable[[TopicSpec, ReplayWindow], AsyncIterator[RecordedEvent]]
-        ] = None
+        self._storage_replayer: Optional[Callable[[TopicSpec, ReplayWindow], AsyncIterator[RecordedEvent]]] = None
 
     # ── Wiring storage backends (lazy import) ──────────────────────
 
@@ -197,7 +198,8 @@ class RecordedEventBus:
         existing.append(sub)
         logger.debug(
             "RecordedEventBus: subscribed to %s (n=%d)",
-            topic, len(existing),
+            topic,
+            len(existing),
         )
         return sub
 
@@ -230,16 +232,13 @@ class RecordedEventBus:
         # validates at construction, but a caller might have monkeyed
         # with the frozen instance via ``object.__setattr__``).
         if not isinstance(event, RecordedEvent):
-            raise EnvelopeValidationError(
-                f"event must be RecordedEvent, got {type(event).__name__}"
-            )
+            raise EnvelopeValidationError(f"event must be RecordedEvent, got {type(event).__name__}")
 
         # Catalog lookup — fail-closed on unregistered topics.
         spec = await require_topic(event.topic)
 
         # Optional payload-schema validation (currently presence-only;
-        # full JSON-Schema validation lands when a topic actually
-        # opts in by setting payload_schema_json).  TODO when needed.
+        # full JSON-Schema validation lands when a topic opts in via payload_schema_json).
 
         # Fan out to live subscribers (background tasks).
         await self._dispatch(event)
@@ -253,6 +252,7 @@ class RecordedEventBus:
         # it the ephemeral source spec, not the parent.
         if self._storage_writer is not None:
             from services.recorded_event_bus.storage.multi_source import resolve_writable_parquet_source
+
             writable = resolve_writable_parquet_source(spec)
             if writable is not None:
                 try:
@@ -260,7 +260,8 @@ class RecordedEventBus:
                 except Exception:  # noqa: BLE001
                     logger.exception(
                         "RecordedEventBus: storage_writer failed for %s/%s",
-                        event.topic, event.entity_id,
+                        event.topic,
+                        event.entity_id,
                     )
 
         # Bookkeeping — best-effort, runs as a fire-and-forget task so
@@ -300,6 +301,7 @@ class RecordedEventBus:
                 await self._dispatch(e)
             if self._storage_writer is not None:
                 from services.recorded_event_bus.storage.multi_source import resolve_writable_parquet_source
+
                 writable = resolve_writable_parquet_source(spec)
                 if writable is not None:
                     for e in batch:
@@ -308,7 +310,8 @@ class RecordedEventBus:
                         except Exception:  # noqa: BLE001
                             logger.exception(
                                 "RecordedEventBus.publish_many: storage failed for %s/%s",
-                                e.topic, e.entity_id,
+                                e.topic,
+                                e.entity_id,
                             )
             # Same counter semantics as publish() — see that docstring.
             if spec.storage_kind == "parquet":
@@ -319,9 +322,7 @@ class RecordedEventBus:
     async def _dispatch(self, event: RecordedEvent) -> None:
         """Fan out to live subscribers as tasks — never awaits a
         handler.  ``*`` wildcard subscribers receive every topic."""
-        callbacks: list[SubscriberHandler] = [
-            sub.handler for sub in self._subscribers.get(event.topic, [])
-        ]
+        callbacks: list[SubscriberHandler] = [sub.handler for sub in self._subscribers.get(event.topic, [])]
         callbacks.extend(sub.handler for sub in self._subscribers.get("*", []))
         if not callbacks:
             return
@@ -348,8 +349,7 @@ class RecordedEventBus:
         """
         if self._storage_replayer is None:
             raise RuntimeError(
-                "RecordedEventBus: no storage replayer attached — "
-                "import services.recorded_event_bus.storage first"
+                "RecordedEventBus: no storage replayer attached — import services.recorded_event_bus.storage first"
             )
 
         # Resolve every topic's spec once before opening any streams
@@ -360,8 +360,7 @@ class RecordedEventBus:
             specs[topic] = await require_topic(topic)
             if not specs[topic].is_replayable:
                 raise ValueError(
-                    f"topic {topic!r} has is_replayable=false in catalog "
-                    "(memory-only or ops-disabled); cannot replay"
+                    f"topic {topic!r} has is_replayable=false in catalog (memory-only or ops-disabled); cannot replay"
                 )
 
         # Open per-topic async iterators.  Each one yields envelopes
@@ -402,7 +401,8 @@ class RecordedEventBus:
                 nxt = await per_topic_iters[topic].__anext__()
                 head[topic] = nxt
                 heapq.heappush(
-                    heap, (_replay_order_key(nxt, time_attr), topic),
+                    heap,
+                    (_replay_order_key(nxt, time_attr), topic),
                 )
             except StopAsyncIteration:
                 head[topic] = None

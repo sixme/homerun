@@ -31,6 +31,7 @@ from typing import Any, Optional
 from models import Market, Event, Opportunity, MispricingType
 from .base import BaseStrategy, DecisionCheck, ExitDecision, ScoringWeights, SizingConfig, utcnow, make_aware
 from services.quality_filter import QualityFilterOverrides
+from services.strategy_sdk import StrategySDK
 from utils.converters import to_float
 from utils.logger import get_logger
 
@@ -117,19 +118,8 @@ class SettlementLagStrategy(BaseStrategy):
             if len(market.outcome_prices) != 2:
                 continue
 
-            # Get live prices
-            yes_price = market.yes_price
-            no_price = market.no_price
-
-            if market.clob_token_ids:
-                if len(market.clob_token_ids) > 0:
-                    token = market.clob_token_ids[0]
-                    if token in prices:
-                        yes_price = prices[token].get("mid", yes_price)
-                if len(market.clob_token_ids) > 1:
-                    token = market.clob_token_ids[1]
-                    if token in prices:
-                        no_price = prices[token].get("mid", no_price)
+            yes_price, _, _ = StrategySDK.get_ask_priced_fill(market, prices, side="YES")
+            no_price, _, _ = StrategySDK.get_ask_priced_fill(market, prices, side="NO")
 
             opp = self._check_settlement_lag(market, yes_price, no_price)
             if opp:
@@ -320,18 +310,13 @@ class SettlementLagStrategy(BaseStrategy):
 
         market_prices = []
         for m in active_markets:
-            yes_price = m.yes_price
-            if m.clob_token_ids and len(m.clob_token_ids) > 0:
-                token = m.clob_token_ids[0]
-                if token in prices:
-                    yes_price = prices[token].get("mid", yes_price)
+            fill_price, _, _ = StrategySDK.get_ask_priced_fill(m, prices, side="YES")
+            market_prices.append((m, fill_price))
+            total_yes += fill_price
 
-            market_prices.append((m, yes_price))
-            total_yes += yes_price
-
-            if yes_price <= self.NEAR_ZERO_THRESHOLD:
+            if fill_price <= self.NEAR_ZERO_THRESHOLD:
                 near_zero_count += 1
-            elif yes_price > self.NEAR_ONE_THRESHOLD:
+            elif fill_price > self.NEAR_ONE_THRESHOLD:
                 near_one_count += 1
 
         # Settlement lag signals for NegRisk:
@@ -435,7 +420,10 @@ class SettlementLagStrategy(BaseStrategy):
         if " vs " not in title and " vs. " not in title:
             return False
 
-        if not all(str(getattr(market, "sports_market_type", "") or "").strip().lower() == "moneyline" for market in active_markets):
+        if not all(
+            str(getattr(market, "sports_market_type", "") or "").strip().lower() == "moneyline"
+            for market in active_markets
+        ):
             return False
 
         market_texts = [

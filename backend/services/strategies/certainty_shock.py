@@ -29,6 +29,7 @@ from typing import Any, Optional
 from models import Event, Market, Opportunity
 from .base import BaseStrategy, DecisionCheck, ExitDecision, ScoringWeights, SizingConfig, make_aware, utcnow
 from services.quality_filter import QualityFilterOverrides
+from services.strategy_sdk import StrategySDK
 
 logger = logging.getLogger(__name__)
 
@@ -41,10 +42,30 @@ _DEADLINE_PATTERNS = [
 ]
 
 _MONTH_MAP = {
-    "january": 1, "jan": 1, "february": 2, "feb": 2, "march": 3, "mar": 3,
-    "april": 4, "apr": 4, "may": 5, "june": 6, "jun": 6, "july": 7, "jul": 7,
-    "august": 8, "aug": 8, "september": 9, "sep": 9, "sept": 9, "october": 10,
-    "oct": 10, "november": 11, "nov": 11, "december": 12, "dec": 12,
+    "january": 1,
+    "jan": 1,
+    "february": 2,
+    "feb": 2,
+    "march": 3,
+    "mar": 3,
+    "april": 4,
+    "apr": 4,
+    "may": 5,
+    "june": 6,
+    "jun": 6,
+    "july": 7,
+    "jul": 7,
+    "august": 8,
+    "aug": 8,
+    "september": 9,
+    "sep": 9,
+    "sept": 9,
+    "october": 10,
+    "oct": 10,
+    "november": 11,
+    "nov": 11,
+    "december": 12,
+    "dec": 12,
 }
 
 # All numeric tunables live in default_config below — module-level
@@ -80,9 +101,9 @@ class CertaintyShockStrategy(BaseStrategy):
         "shock_max_retrace": 0.08,
         "shock_min_favored_price": 0.65,
         "shock_target_certainty": 0.96,
-        "shock_min_points": 5,            # min price-history snapshots needed
+        "shock_min_points": 5,  # min price-history snapshots needed
         "shock_max_favored_price": 0.97,  # ceiling on entry-side favored price
-        "shock_extension_factor": 0.45,   # multiplier on lookback move for target exit
+        "shock_extension_factor": 0.45,  # multiplier on lookback move for target exit
         "shock_min_expected_move": 0.03,  # reject if target − entry < this
         # Bundle-level gates passed into create_opportunity.
         "min_liquidity_hard": 1500.0,
@@ -100,8 +121,15 @@ class CertaintyShockStrategy(BaseStrategy):
         "stop_loss_pct": 4.0,
         "trailing_stop_pct": 6.0,
         "exclude_market_keywords": [
-            "bitcoin", "btc", "ethereum", "eth", "solana", "sol", "xrp",
-            "doge", "crypto",
+            "bitcoin",
+            "btc",
+            "ethereum",
+            "eth",
+            "solana",
+            "sol",
+            "xrp",
+            "doge",
+            "crypto",
         ],
     }
 
@@ -149,28 +177,17 @@ class CertaintyShockStrategy(BaseStrategy):
     @staticmethod
     def _market_text(market: Market) -> str:
         chunks: list[str] = []
-        for value in (market.id, market.question, getattr(market, "slug", None),
-                      getattr(market, "event_slug", None)):
+        for value in (market.id, market.question, getattr(market, "slug", None), getattr(market, "event_slug", None)):
             text = str(value or "").strip().lower()
             if text:
                 chunks.append(text)
         return " | ".join(chunks)
 
     def _live_yes_price(self, market: Market, prices: dict[str, dict]) -> float:
-        yes_price = market.yes_price
-        if market.clob_token_ids and len(market.clob_token_ids) > 0:
-            yes_token = market.clob_token_ids[0]
-            if yes_token in prices:
-                yes_price = prices[yes_token].get("mid", yes_price)
-        return yes_price
+        return StrategySDK.get_live_price(market, prices, side="YES")
 
     def _live_no_price(self, market: Market, prices: dict[str, dict]) -> float:
-        no_price = market.no_price
-        if market.clob_token_ids and len(market.clob_token_ids) > 1:
-            no_token = market.clob_token_ids[1]
-            if no_token in prices:
-                no_price = prices[no_token].get("mid", no_price)
-        return no_price
+        return StrategySDK.get_live_price(market, prices, side="NO")
 
     def _extract_deadline(self, market: Market) -> Optional[datetime]:
         if market.end_date:
@@ -202,6 +219,7 @@ class CertaintyShockStrategy(BaseStrategy):
                 except ValueError:
                     return None
                 import calendar
+
                 _, day = calendar.monthrange(year, month)
                 return datetime(year, month, day, 23, 59, 59, tzinfo=timezone.utc)
             try:
@@ -319,17 +337,19 @@ class CertaintyShockStrategy(BaseStrategy):
             if expected_move < min_expected_move:
                 continue
 
-            positions = [{
-                "action": "BUY",
-                "outcome": outcome,
-                "market": market.question[:50],
-                "price": entry_price,
-                "token_id": token_id,
-                "rationale": (
-                    f"{shock_desc}; lookback move {move:.3f}, retrace {retrace:.3f}, "
-                    f"target ${target_exit_price:.3f}"
-                ),
-            }]
+            positions = [
+                {
+                    "action": "BUY",
+                    "outcome": outcome,
+                    "market": market.question[:50],
+                    "price": entry_price,
+                    "token_id": token_id,
+                    "rationale": (
+                        f"{shock_desc}; lookback move {move:.3f}, retrace {retrace:.3f}, "
+                        f"target ${target_exit_price:.3f}"
+                    ),
+                }
+            ]
 
             # Realized capital efficiency if our directional view holds:
             # (target_price - entry_price) / entry_price.
@@ -383,8 +403,7 @@ class CertaintyShockStrategy(BaseStrategy):
     def custom_checks(self, signal, context, params, payload):
         source = str(getattr(signal, "source", "") or "").strip().lower()
         return [
-            DecisionCheck("source", "Signal source", source == "scanner",
-                          detail=f"got={source}"),
+            DecisionCheck("source", "Signal source", source == "scanner", detail=f"got={source}"),
         ]
 
     def should_exit(self, position: Any, market_state: dict) -> ExitDecision:
@@ -408,9 +427,7 @@ class CertaintyShockStrategy(BaseStrategy):
         return self.default_exit_check(position, market_state)
 
     def on_blocked(self, signal, reason: str, context: dict) -> None:
-        logger.info("%s: signal blocked — %s (market=%s)", self.name, reason,
-                    getattr(signal, "market_id", "?"))
+        logger.info("%s: signal blocked — %s (market=%s)", self.name, reason, getattr(signal, "market_id", "?"))
 
     def on_size_capped(self, original_size: float, capped_size: float, reason: str) -> None:
-        logger.info("%s: size capped $%.0f → $%.0f — %s", self.name,
-                    original_size, capped_size, reason)
+        logger.info("%s: size capped $%.0f → $%.0f — %s", self.name, original_size, capped_size, reason)

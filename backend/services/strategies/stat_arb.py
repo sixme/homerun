@@ -57,56 +57,191 @@ _PLAYER_STAT_RE = re.compile(r"[A-Z][a-z]+ [A-Z][a-z]+:\s*\d+\+", re.IGNORECASE)
 # Categories on the parent Event whose markets are bookmaker-efficient and
 # unsuitable for ensemble-statistical alpha. Bookmakers price these tighter
 # than our category-base-rate / anchoring / longshot signals can detect.
-_SPORTS_CATEGORIES = frozenset({
-    "sports", "soccer", "football", "tennis", "basketball", "baseball", "hockey",
-    "esports", "e-sports", "mma", "boxing", "golf", "cricket", "racing",
-    "horse racing", "motorsports", "motorsport", "formula 1", "f1", "nascar",
-    "ufc", "rugby", "darts", "snooker", "volleyball", "handball",
-})
+_SPORTS_CATEGORIES = frozenset(
+    {
+        "sports",
+        "soccer",
+        "football",
+        "tennis",
+        "basketball",
+        "baseball",
+        "hockey",
+        "esports",
+        "e-sports",
+        "mma",
+        "boxing",
+        "golf",
+        "cricket",
+        "racing",
+        "horse racing",
+        "motorsports",
+        "motorsport",
+        "formula 1",
+        "f1",
+        "nascar",
+        "ufc",
+        "rugby",
+        "darts",
+        "snooker",
+        "volleyball",
+        "handball",
+    }
+)
 
 # Polymarket/Kalshi slug prefixes for sport leagues + event series. The slug
 # carries league context even when the question text doesn't — e.g.
 # "Miami Marlins vs. Los Angeles Dodgers" has slug "mlb-mia-lad-2026-04-29".
 _SPORTS_SLUG_PREFIXES = (
-    "epl-", "ucl-", "uel-", "uefa-", "fifwc-", "fifa-", "wc-", "world-cup-",
-    "euro-", "copa-", "la-liga-", "laliga-", "bundesliga-", "bl1-", "bl2-",
-    "serie-a-", "seria-", "ligue-1-", "ligue1-", "ere-", "eredivisie-",
-    "premier-league-", "champions-league-", "mls-", "usl-",
-    "mlb-", "nba-", "nfl-", "nhl-", "ncaa-", "ncaab-", "ncaaf-",
-    "march-madness-", "atp-", "wta-", "itf-", "ufc-", "pfl-", "bellator-",
-    "lol-", "lpl-", "lck-", "lec-", "lcs-", "msi-", "worlds-",
-    "kbo-", "npb-", "cpbl-", "kbl-",
-    "valorant-", "csgo-", "cs2-", "dota-", "rocket-league-", "rl-",
-    "f1-", "indycar-", "nascar-", "motogp-",
-    "set-1-", "set-2-", "set-3-", "game-1-", "game-2-", "game-3-",
-    "map-1-", "map-2-", "map-3-",
+    "epl-",
+    "ucl-",
+    "uel-",
+    "uefa-",
+    "fifwc-",
+    "fifa-",
+    "wc-",
+    "world-cup-",
+    "euro-",
+    "copa-",
+    "la-liga-",
+    "laliga-",
+    "bundesliga-",
+    "bl1-",
+    "bl2-",
+    "serie-a-",
+    "seria-",
+    "ligue-1-",
+    "ligue1-",
+    "ere-",
+    "eredivisie-",
+    "premier-league-",
+    "champions-league-",
+    "mls-",
+    "usl-",
+    "mlb-",
+    "nba-",
+    "nfl-",
+    "nhl-",
+    "ncaa-",
+    "ncaab-",
+    "ncaaf-",
+    "march-madness-",
+    "atp-",
+    "wta-",
+    "itf-",
+    "ufc-",
+    "pfl-",
+    "bellator-",
+    "lol-",
+    "lpl-",
+    "lck-",
+    "lec-",
+    "lcs-",
+    "msi-",
+    "worlds-",
+    "kbo-",
+    "npb-",
+    "cpbl-",
+    "kbl-",
+    "valorant-",
+    "csgo-",
+    "cs2-",
+    "dota-",
+    "rocket-league-",
+    "rl-",
+    "f1-",
+    "indycar-",
+    "nascar-",
+    "motogp-",
+    "set-1-",
+    "set-2-",
+    "set-3-",
+    "game-1-",
+    "game-2-",
+    "game-3-",
+    "map-1-",
+    "map-2-",
+    "map-3-",
 )
 
 # Question text patterns that scream "match-up market". " vs. " / " vs " is
 # the strongest single signal — true cross-event statistical alpha would
 # almost never come through a head-to-head question.
 _SPORTS_QUESTION_PATTERNS = (
-    " vs. ", " vs ", "end in a draw", "game 1 winner", "game 2 winner",
-    "game 3 winner", "game 4 winner", "game 5 winner",
-    "map 1 winner", "map 2 winner", "map 3 winner",
-    "set 1 winner", "set 2 winner", "set 3 winner",
-    "first half", "second half", "halftime", "half-time", "1st half", "2nd half",
-    "first set", "first game", "first map", "first round",
-    "match winner", "moneyline", "handicap", "spread",
-    "total goals", "total points", "total kills", "total sets", "total runs",
-    "anytime scorer", "first scorer", "last scorer", "btts", "both teams",
-    "to lift the trophy", "to win the trophy", "race to ",
-    "o/u ", "over/under", "win on 20", "win on 21",  # "Will X win on 2026-..."
+    " vs. ",
+    " vs ",
+    "end in a draw",
+    "game 1 winner",
+    "game 2 winner",
+    "game 3 winner",
+    "game 4 winner",
+    "game 5 winner",
+    "map 1 winner",
+    "map 2 winner",
+    "map 3 winner",
+    "set 1 winner",
+    "set 2 winner",
+    "set 3 winner",
+    "first half",
+    "second half",
+    "halftime",
+    "half-time",
+    "1st half",
+    "2nd half",
+    "first set",
+    "first game",
+    "first map",
+    "first round",
+    "match winner",
+    "moneyline",
+    "handicap",
+    "spread",
+    "total goals",
+    "total points",
+    "total kills",
+    "total sets",
+    "total runs",
+    "anytime scorer",
+    "first scorer",
+    "last scorer",
+    "btts",
+    "both teams",
+    "to lift the trophy",
+    "to win the trophy",
+    "race to ",
+    "o/u ",
+    "over/under",
+    "win on 20",
+    "win on 21",  # "Will X win on 2026-..."
     # Tournament-bracket / sport-tournament Y/N markets — bookmakers price
     # these tightly even when there's no head-to-head "vs." in the question.
-    "reach the final", "reach the semifinal", "reach the semi-final",
-    "reach the semi finals", "reach the quarterfinal", "reach the quarter-final",
-    "reach the quarter finals", "advance to", "advance from",
-    "world cup", "fifa", "euro 2026", "uefa euro",
-    "champions league", "conference league", "europa league",
-    "stanley cup", "world series", "super bowl", "ncaa",
-    "olympics", "olympic", "wimbledon", "us open", "french open", "australian open",
-    "masters", "the masters",
+    "reach the final",
+    "reach the semifinal",
+    "reach the semi-final",
+    "reach the semi finals",
+    "reach the quarterfinal",
+    "reach the quarter-final",
+    "reach the quarter finals",
+    "advance to",
+    "advance from",
+    "world cup",
+    "fifa",
+    "euro 2026",
+    "uefa euro",
+    "champions league",
+    "conference league",
+    "europa league",
+    "stanley cup",
+    "world series",
+    "super bowl",
+    "ncaa",
+    "olympics",
+    "olympic",
+    "wimbledon",
+    "us open",
+    "french open",
+    "australian open",
+    "masters",
+    "the masters",
 )
 
 # Open-ended / award markets where the outcome universe is unbounded
@@ -114,13 +249,29 @@ _SPORTS_QUESTION_PATTERNS = (
 # category-base-rate and consensus signals can't calibrate against an
 # unbounded outcome set.
 _OPEN_ENDED_QUESTION_PATTERNS = (
-    "eurovision", "oscar", "grammy", "emmy", "ballon d'or", "mvp",
-    "nobel", "pulitzer", "anime award", "crunchyroll",
-    "best picture", "best actor", "best actress", "best director",
-    "song of the year", "album of the year",
-    "person of the year", "time person",
+    "eurovision",
+    "oscar",
+    "grammy",
+    "emmy",
+    "ballon d'or",
+    "mvp",
+    "nobel",
+    "pulitzer",
+    "anime award",
+    "crunchyroll",
+    "best picture",
+    "best actor",
+    "best actress",
+    "best director",
+    "song of the year",
+    "album of the year",
+    "person of the year",
+    "time person",
     # M&A / acquisition markets - any company could acquire
-    "will acquire", "will buy", "who will purchase", "takeover bid",
+    "will acquire",
+    "will buy",
+    "who will purchase",
+    "takeover bid",
 )
 
 _MULTILEG_MARKET_PREFIXES = ("KXMVESPORTSMULTIGAMEEXTENDED-",)
@@ -629,22 +780,10 @@ class StatArbStrategy(BaseStrategy):
     # Helpers
     # ------------------------------------------------------------------
     def _live_yes_price(self, market: Market, prices: dict[str, dict]) -> float:
-        """Return the best available YES price (live > static)."""
-        yes_price = market.yes_price
-        if market.clob_token_ids and len(market.clob_token_ids) > 0:
-            yes_token = market.clob_token_ids[0]
-            if yes_token in prices:
-                yes_price = prices[yes_token].get("mid", yes_price)
-        return yes_price
+        return StrategySDK.get_live_price(market, prices, side="YES")
 
     def _live_no_price(self, market: Market, prices: dict[str, dict]) -> float:
-        """Return the best available NO price (live > static)."""
-        no_price = market.no_price
-        if market.clob_token_ids and len(market.clob_token_ids) > 1:
-            no_token = market.clob_token_ids[1]
-            if no_token in prices:
-                no_price = prices[no_token].get("mid", no_price)
-        return no_price
+        return StrategySDK.get_live_price(market, prices, side="NO")
 
     def _is_sports_or_match_market(self, market: Market, event: Optional[Event] = None) -> bool:
         """Reject markets where the ensemble has no edge.
@@ -946,8 +1085,10 @@ class StatArbStrategy(BaseStrategy):
             # ROI net of taker fees, computed from the absolute edge as a
             # fraction of the entry price. (price_disagreement / buy_price)
             # × 100 = realized capital efficiency on a directional bet.
-            fee = polymarket_taker_fee(buy_price) if platform == "polymarket" else (
-                kalshi_taker_fee(buy_price) if platform == "kalshi" else 0.0
+            fee = (
+                polymarket_taker_fee(buy_price)
+                if platform == "polymarket"
+                else (kalshi_taker_fee(buy_price) if platform == "kalshi" else 0.0)
             )
             net_edge = max(0.0, abs(edge) - fee)
             roi = (net_edge / max(buy_price, 1e-6)) * 100.0
@@ -1072,9 +1213,7 @@ class StatArbStrategy(BaseStrategy):
                     pass
                 opp.strategy_context["edge_percent"] = conviction_edge
                 opp.strategy_context["fair_probability"] = round(fair_prob, 4)
-                opp.strategy_context["signal_agreement"] = (
-                    f"{agreeing}/{total_voting}" if total_voting else "0/0"
-                )
+                opp.strategy_context["signal_agreement"] = f"{agreeing}/{total_voting}" if total_voting else "0/0"
 
             opportunities.append(opp)
 
