@@ -125,20 +125,10 @@ class MarketMakingStrategy(BaseStrategy):
 
     def _get_prices(self, market: Market, prices: dict[str, dict]) -> tuple[float, float]:
         """Get live YES/NO prices, falling back to market snapshot."""
-        yes_price = market.yes_price
-        no_price = market.no_price
-
-        if market.clob_token_ids:
-            if len(market.clob_token_ids) > 0:
-                yes_token = market.clob_token_ids[0]
-                if yes_token in prices:
-                    yes_price = prices[yes_token].get("mid", yes_price)
-            if len(market.clob_token_ids) > 1:
-                no_token = market.clob_token_ids[1]
-                if no_token in prices:
-                    no_price = prices[no_token].get("mid", no_price)
-
-        return yes_price, no_price
+        return (
+            StrategySDK.get_live_price(market, prices, side="YES"),
+            StrategySDK.get_live_price(market, prices, side="NO"),
+        )
 
     def _calculate_spread(
         self,

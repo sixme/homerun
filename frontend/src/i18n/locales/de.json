@@ -1874,7 +1874,7 @@
     "colDuration": "Dauer",
     "colActions": "Aktionen",
     "noSessionsYet": "Noch keine Sitzungen. Klicken Sie auf <strong>Neue Sitzung</strong>, um eine Marktdatenscheibe auf Anfrage zu erfassen.",
-    "sessionsFootnote": "Jede abgeschlossene Sitzung ist über den vereinheitlichten Backtester wiederabspielbar — übergeben Sie <code>session_id</code> bei POST /backtest/run und der Backtester begrenzt seine Wiedergabe auf die Zieltoken × Zeitfenster der Sitzung.",
+    "sessionsFootnote": "Jede abgeschlossene Sitzung ist über den vereinheitlichten Backtester wiederabspielbar — übergeben Sie <code>session_id</code> bei POST /backtest/runs/enqueue und der Backtester begrenzt seine Wiedergabe auf die Zieltoken × Zeitfenster der Sitzung.",
     "newSessionTitle": "Neue Aufnahmesitzung",
     "newSessionSub": "Wählen Sie Märkte, Erfassungstypen und ein Fenster — der Backtester wird diese Scheibe wiedergeben.",
     "identity": "Identität",

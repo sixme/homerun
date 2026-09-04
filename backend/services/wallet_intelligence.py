@@ -231,28 +231,28 @@ class ConfluenceDetector:
                 total_size = sum(sizes) if sizes else None
                 net_notional = sum(abs(float(event.get("notional") or 0.0)) for event in active_events)
                 timestamps = [
-                    event["traded_at"]
-                    for event in active_events
-                    if isinstance(event.get("traded_at"), datetime)
+                    event["traded_at"] for event in active_events if isinstance(event.get("traded_at"), datetime)
                 ]
                 timing_tightness = self._timing_tightness(timestamps)
 
-                built.append({
-                    "market_id": market_id,
-                    "side": side,
-                    "unique_wallets": unique_wallets,
-                    "cluster_adjusted": cluster_adjusted,
-                    "window_minutes": window_minutes,
-                    "wallets_sorted": wallets_sorted,
-                    "avg_rank": avg_rank,
-                    "weighted_wallet_score": weighted_wallet_score,
-                    "anomaly_avg": anomaly_avg,
-                    "core_wallets": core_wallets,
-                    "avg_entry_price": avg_entry_price,
-                    "total_size": total_size,
-                    "net_notional": net_notional,
-                    "timing_tightness": timing_tightness,
-                })
+                built.append(
+                    {
+                        "market_id": market_id,
+                        "side": side,
+                        "unique_wallets": unique_wallets,
+                        "cluster_adjusted": cluster_adjusted,
+                        "window_minutes": window_minutes,
+                        "wallets_sorted": wallets_sorted,
+                        "avg_rank": avg_rank,
+                        "weighted_wallet_score": weighted_wallet_score,
+                        "anomaly_avg": anomaly_avg,
+                        "core_wallets": core_wallets,
+                        "avg_entry_price": avg_entry_price,
+                        "total_size": total_size,
+                        "net_notional": net_notional,
+                        "timing_tightness": timing_tightness,
+                    }
+                )
 
             built.sort(
                 key=lambda candidate: (
@@ -317,42 +317,46 @@ class ConfluenceDetector:
                 unique_wallet_count=len(c["unique_wallets"]),
             )
             strength = max(0.0, min(conviction / 100.0, 1.0))
-            signal_payloads.append({
-                "market_id": market_id,
-                "market_question": market_context.get("question") or "",
-                "signal_type": signal_type,
-                "strength": strength,
-                "conviction_score": conviction,
-                "tier": tier,
-                "window_minutes": c["window_minutes"],
-                "wallet_count": len(c["unique_wallets"]),
-                "cluster_adjusted_wallet_count": c["cluster_adjusted"],
-                "unique_core_wallets": c["core_wallets"],
-                "weighted_wallet_score": c["weighted_wallet_score"],
-                "wallets": c["wallets_sorted"],
-                "outcome": outcome,
-                "avg_entry_price": c["avg_entry_price"],
-                "total_size": c["total_size"],
-                "avg_wallet_rank": c["avg_rank"],
-                "net_notional": c["net_notional"],
-                "conflicting_notional": conflicting_notional,
-                "market_slug": market_context.get("market_slug"),
-                "market_liquidity": market_context.get("liquidity"),
-                "market_volume_24h": market_context.get("volume_24h"),
-            })
-            if tier in ("HIGH", "EXTREME"):
-                broadcast_payloads.append({
+            signal_payloads.append(
+                {
                     "market_id": market_id,
                     "market_question": market_context.get("question") or "",
-                    "market_slug": market_context.get("market_slug"),
-                    "outcome": outcome,
-                    "tier": tier,
+                    "signal_type": signal_type,
+                    "strength": strength,
                     "conviction_score": conviction,
-                    "cluster_adjusted_wallet_count": c["cluster_adjusted"],
-                    "wallet_count": len(c["unique_wallets"]),
+                    "tier": tier,
                     "window_minutes": c["window_minutes"],
-                    "detected_at": now.isoformat(),
-                })
+                    "wallet_count": len(c["unique_wallets"]),
+                    "cluster_adjusted_wallet_count": c["cluster_adjusted"],
+                    "unique_core_wallets": c["core_wallets"],
+                    "weighted_wallet_score": c["weighted_wallet_score"],
+                    "wallets": c["wallets_sorted"],
+                    "outcome": outcome,
+                    "avg_entry_price": c["avg_entry_price"],
+                    "total_size": c["total_size"],
+                    "avg_wallet_rank": c["avg_rank"],
+                    "net_notional": c["net_notional"],
+                    "conflicting_notional": conflicting_notional,
+                    "market_slug": market_context.get("market_slug"),
+                    "market_liquidity": market_context.get("liquidity"),
+                    "market_volume_24h": market_context.get("volume_24h"),
+                }
+            )
+            if tier in ("HIGH", "EXTREME"):
+                broadcast_payloads.append(
+                    {
+                        "market_id": market_id,
+                        "market_question": market_context.get("question") or "",
+                        "market_slug": market_context.get("market_slug"),
+                        "outcome": outcome,
+                        "tier": tier,
+                        "conviction_score": conviction,
+                        "cluster_adjusted_wallet_count": c["cluster_adjusted"],
+                        "wallet_count": len(c["unique_wallets"]),
+                        "window_minutes": c["window_minutes"],
+                        "detected_at": now.isoformat(),
+                    }
+                )
 
         await self._batch_upsert_signals(signal_payloads)
 
@@ -564,7 +568,9 @@ class ConfluenceDetector:
         """Fetch conflicting notionals for all candidate market/side pairs in one grouped query."""
         if not candidates or not addresses:
             return {}
-        candidate_pairs = {(str(market_id or ""), str(side or "").upper()) for market_id, side in candidates if market_id}
+        candidate_pairs = {
+            (str(market_id or ""), str(side or "").upper()) for market_id, side in candidates if market_id
+        }
         market_ids = sorted({market_id for market_id, _ in candidate_pairs})
         if not market_ids:
             return {}
@@ -1638,8 +1644,13 @@ class CrossPlatformTracker:
                 _tokenize,
                 _detect_multiway_kalshi_events,
             )
+
             matcher = self._matcher_strategy()
-            kalshi_markets = await asyncio.to_thread(matcher._kalshi_cache.get_markets)
+            get_async = getattr(matcher._kalshi_cache, "get_markets_async", None)
+            if callable(get_async):
+                kalshi_markets = await get_async()
+            else:
+                kalshi_markets = await asyncio.to_thread(matcher._kalshi_cache.get_markets)
 
             if not kalshi_markets:
                 logger.info("No Kalshi markets available, skipping cross-platform scan")
@@ -1695,9 +1706,7 @@ class CrossPlatformTracker:
                     )
                 return pairs
 
-            matched_pairs = await asyncio.to_thread(
-                _build_matched_pairs, matcher, poly_markets, kalshi_markets
-            )
+            matched_pairs = await asyncio.to_thread(_build_matched_pairs, matcher, poly_markets, kalshi_markets)
 
             logger.info(
                 "Cross-platform market matches found",

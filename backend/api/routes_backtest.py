@@ -7,6 +7,7 @@ and per-run retrieval.
 Old code-backtest endpoints in routes_validation.py are unchanged
 for back-compat.  The new UI uses these.
 """
+
 from __future__ import annotations
 
 import logging
@@ -20,7 +21,6 @@ from pydantic import BaseModel, Field
 from services.backtest.unified_runner import (
     get_recent_run,
     list_recent_runs,
-    run_unified_backtest,
 )
 
 
@@ -104,95 +104,6 @@ class UnifiedBacktestRequest(BaseModel):
     discovery_max_ticks: int | None = Field(default=None, ge=1, le=2_000_000)
 
 
-@router.post("/run")
-async def run_backtest(req: UnifiedBacktestRequest):
-    """Run the unified pipeline and return the augmented result.
-
-    The result includes the execution-realistic backtest plus the
-    Cox PH fill model snapshot, empirical constants, latency
-    distribution, trade-vs-cancel decomposition, sample
-    counterfactual replays, and sample ensemble bands.  All fields
-    are JSON-safe; the UI consumes the response directly.
-    """
-    # Resolve session_id (if any) into concrete token_ids + window.
-    # Session scoping wins over per-request token_ids / start / end so
-    # the operator can hit the same backtest button against a session
-    # without re-typing window bounds.
-    token_ids = req.token_ids
-    start = req.start
-    end = req.end
-    session_meta: dict[str, Any] | None = None
-    provider_dataset_meta: dict[str, Any] | None = None
-    if req.session_id:
-        from services.recording_session_service import session_backtest_scope
-
-        scope = await session_backtest_scope(req.session_id)
-        if scope is None:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Recording session '{req.session_id}' not found or has no captured data",
-            )
-        token_ids = scope["token_ids"]
-        start = scope["start"]
-        end = scope["end"]
-        session_meta = {"session_id": scope["session_id"], "session_name": scope["session_name"]}
-    elif req.provider_dataset_ids:
-        from services.external_data.provider_import_service import resolve_dataset_scope
-
-        scope = await resolve_dataset_scope(list(req.provider_dataset_ids))
-        if scope is None:
-            raise HTTPException(
-                status_code=404,
-                detail=(
-                    "None of the requested provider_dataset_ids resolved to "
-                    "an imported dataset. Import them via Data Lab → Providers first."
-                ),
-            )
-        token_ids = scope["token_ids"]
-        start = scope["start"]
-        end = scope["end"]
-        provider_dataset_meta = {
-            "dataset_ids": scope["dataset_ids"],
-            "labels": scope["labels"],
-            "token_ids": scope["token_ids"],
-        }
-
-    try:
-        result = await run_unified_backtest(
-            source_code=req.source_code,
-            slug=req.slug,
-            config=req.config,
-            token_ids=token_ids,
-            start=start,
-            end=end,
-            initial_capital_usd=req.initial_capital_usd,
-            submit_p50_ms=req.submit_p50_ms,
-            submit_p95_ms=req.submit_p95_ms,
-            cancel_p50_ms=req.cancel_p50_ms,
-            cancel_p95_ms=req.cancel_p95_ms,
-            seed=req.seed,
-            counterfactual_sample_size=req.counterfactual_sample_size,
-            ensemble_sample_size=req.ensemble_sample_size,
-            impact_strength_bps=req.impact_strength_bps,
-            maker_rebate_bps=req.maker_rebate_bps,
-            maker_rebate_max_spread_bps=req.maker_rebate_max_spread_bps,
-            n_trials=req.n_trials,
-            fills_sample_size=req.fills_sample_size,
-            discovery_sample_interval_seconds=req.discovery_sample_interval_seconds,
-            discovery_max_ticks=req.discovery_max_ticks,
-        )
-    except Exception as exc:
-        logger.exception("Unified backtest failed")
-        raise HTTPException(status_code=500, detail=f"backtest failed: {exc}") from exc
-
-    if isinstance(result, dict):
-        if session_meta is not None:
-            result["recording_session"] = session_meta
-        if provider_dataset_meta is not None:
-            result["provider_datasets"] = provider_dataset_meta
-    return _sanitize_floats(result)
-
-
 @router.get("/runs")
 async def list_runs(limit: int = 32) -> dict[str, list[dict[str, Any]]]:
     runs = await list_recent_runs(limit=int(max(1, min(200, limit))))
@@ -207,22 +118,15 @@ async def get_run(run_id: str):
     return _sanitize_floats(run)
 
 
-# ── Async-job-queue endpoints ───────────────────────────────────────────
-#
-# The default UX flow goes through these now:
-#
-#   POST /backtest/runs/enqueue        → 202 Accepted with run_id
-#   GET  /backtest/runs/{run_id}/status → poll for progress (1s cadence)
-#   POST /backtest/runs/{run_id}/cancel → operator stop
+# ── Job-queue endpoints ─────────────────────────────────────────────────
 #
 # Engine work runs in the dedicated backtest worker process (always-on
 # ``jobs`` plane, see workers/backtest_worker.py).  Full GIL + crash
 # isolation from the API + orchestrator.
 #
-# The legacy ``POST /backtest/run`` (sync) path stays for backwards
-# compatibility but should be considered deprecated — running a 1M+
-# snapshot replay on the API process makes the entire backend
-# unresponsive for the run's duration.
+#   POST /backtest/runs/enqueue         → 202 Accepted with run_id
+#   GET  /backtest/runs/{run_id}/status  → poll for progress (1s cadence)
+#   POST /backtest/runs/{run_id}/cancel  → operator stop
 
 
 @router.post("/runs/enqueue", status_code=202)
@@ -279,11 +183,7 @@ async def get_run_status(run_id: str) -> dict[str, Any]:
     from models.database import AsyncSessionLocal as _Sess, BacktestRun
 
     async with _Sess() as session:
-        row = (
-            await session.execute(
-                sa_select(BacktestRun).where(BacktestRun.id == run_id)
-            )
-        ).scalar_one_or_none()
+        row = (await session.execute(sa_select(BacktestRun).where(BacktestRun.id == run_id))).scalar_one_or_none()
     if row is None:
         raise HTTPException(status_code=404, detail=f"Run '{run_id}' not found")
     return {
@@ -293,9 +193,7 @@ async def get_run_status(run_id: str) -> dict[str, Any]:
         "message": row.message,
         "snapshots_processed": int(row.snapshots_processed or 0),
         "snapshots_total_estimate": (
-            int(row.snapshots_total_estimate)
-            if row.snapshots_total_estimate is not None
-            else None
+            int(row.snapshots_total_estimate) if row.snapshots_total_estimate is not None else None
         ),
         "trade_count": int(row.trade_count or 0),
         "total_return_pct": float(row.total_return_pct or 0.0),
@@ -338,9 +236,7 @@ async def get_run_pdf(run_id: str) -> Response:
     from models.database import AsyncSessionLocal, BacktestRun
 
     async with AsyncSessionLocal() as session:
-        row = (
-            await session.execute(select(BacktestRun).where(BacktestRun.id == run_id))
-        ).scalar_one_or_none()
+        row = (await session.execute(select(BacktestRun).where(BacktestRun.id == run_id))).scalar_one_or_none()
     if row is None:
         raise HTTPException(status_code=404, detail=f"Run '{run_id}' not found")
 
@@ -360,23 +256,22 @@ async def get_run_pdf(run_id: str) -> Response:
             # handler directly as a coroutine — it's just an async fn.
             # Avoids re-implementing the bucket-by-mode aggregation here.
             from api.routes_fill_model import get_triangulation
-            triangulation_payload = await get_triangulation(
-                strategy_slug=row.strategy_slug, days=30
-            )
+
+            triangulation_payload = await get_triangulation(strategy_slug=row.strategy_slug, days=30)
         except Exception:
             logger.exception("triangulation fetch failed for run %s", run_id)
     try:
         from services.backtest.portfolio_correlation import (
             compute_portfolio_correlation,
         )
-        port_result = await compute_portfolio_correlation(
-            window_days=30, min_strategy_trades=5
-        )
+
+        port_result = await compute_portfolio_correlation(window_days=30, min_strategy_trades=5)
         portfolio_payload = port_result.to_dict() if port_result else None
     except Exception:
         logger.exception("portfolio correlation fetch failed for run %s", run_id)
     try:
         from services.backtest.drift import compute_drift
+
         drift_result = await compute_drift(window_days=30)
         drift_payload = drift_result.to_dict() if drift_result else None
     except Exception:
@@ -387,6 +282,7 @@ async def get_run_pdf(run_id: str) -> Response:
             ReportRenderError,
             render_backtest_run_report,
         )
+
         result_blob = row.result_json or {}
         pdf_bytes = render_backtest_run_report(
             run_row=row,
@@ -428,9 +324,7 @@ async def delete_run(run_id: str) -> dict[str, Any]:
     from models.database import AsyncSessionLocal, BacktestRun
 
     async with AsyncSessionLocal() as session:
-        row = (
-            await session.execute(select(BacktestRun).where(BacktestRun.id == run_id))
-        ).scalar_one_or_none()
+        row = (await session.execute(select(BacktestRun).where(BacktestRun.id == run_id))).scalar_one_or_none()
         if row is None:
             raise HTTPException(status_code=404, detail=f"Run '{run_id}' not found")
         if row.status in ("queued", "running"):
@@ -451,6 +345,7 @@ class BulkDeleteRequest(BaseModel):
     """List of run IDs to delete.  Active runs are skipped silently
     and reported in the response so the UI can surface which ones
     needed cancellation first."""
+
     run_ids: list[str] = Field(..., min_length=1, max_length=500)
 
 
@@ -470,11 +365,7 @@ async def bulk_delete_runs(req: BulkDeleteRequest) -> dict[str, Any]:
     skipped_active: list[str] = []
     not_found: list[str] = []
     async with AsyncSessionLocal() as session:
-        rows = (
-            await session.execute(
-                select(BacktestRun).where(BacktestRun.id.in_(req.run_ids))
-            )
-        ).scalars().all()
+        rows = (await session.execute(select(BacktestRun).where(BacktestRun.id.in_(req.run_ids)))).scalars().all()
         seen_ids = {r.id for r in rows}
         for run_id in req.run_ids:
             if run_id not in seen_ids:
@@ -486,9 +377,7 @@ async def bulk_delete_runs(req: BulkDeleteRequest) -> dict[str, Any]:
             else:
                 deletable_ids.append(r.id)
         if deletable_ids:
-            await session.execute(
-                sql_delete(BacktestRun).where(BacktestRun.id.in_(deletable_ids))
-            )
+            await session.execute(sql_delete(BacktestRun).where(BacktestRun.id.in_(deletable_ids)))
             await session.commit()
             deleted.extend(deletable_ids)
     return {
@@ -699,9 +588,7 @@ async def run_fill_calibration_route(req: FillCalibrationRequest):
         )
     except Exception as exc:
         logger.exception("fill calibration failed")
-        raise HTTPException(
-            status_code=500, detail=f"fill-calibration failed: {exc}"
-        ) from exc
+        raise HTTPException(status_code=500, detail=f"fill-calibration failed: {exc}") from exc
     return _sanitize_floats(
         {
             "window_start": req.start.isoformat(),

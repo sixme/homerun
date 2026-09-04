@@ -1874,7 +1874,7 @@
     "colDuration": "持续时间",
     "colActions": "操作",
     "noSessionsYet": "尚无会话。点击 <strong>新建会话</strong> 按需捕获市场数据片段。",
-    "sessionsFootnote": "每个完成的会话都可通过统一回测器回放 — 在 POST /backtest/run 上传递 <code>session_id</code>,回测器将其回放范围限定到会话的目标代币 × 时间窗口。",
+    "sessionsFootnote": "每个完成的会话都可通过统一回测器回放 — 在 POST /backtest/runs/enqueue 上传递 <code>session_id</code>,回测器将其回放范围限定到会话的目标代币 × 时间窗口。",
     "newSessionTitle": "新建录制会话",
     "newSessionSub": "选择市场、捕获类型和窗口 — 回测器将回放此片段。",
     "identity": "身份",

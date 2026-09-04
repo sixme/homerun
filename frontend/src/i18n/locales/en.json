@@ -1902,7 +1902,7 @@
     "colDuration": "Duration",
     "colActions": "Actions",
     "noSessionsYet": "No sessions yet. Click <strong>New session</strong> to capture a slice of market data on demand.",
-    "sessionsFootnote": "Each completed session is replayable through the unified backtester — pass <code>session_id</code> on POST /backtest/run and the backtester scopes its replay to the session's target tokens × time window.",
+    "sessionsFootnote": "Each completed session is replayable through the unified backtester — pass <code>session_id</code> on POST /backtest/runs/enqueue and the backtester scopes its replay to the session's target tokens × time window.",
     "newSessionTitle": "New recording session",
     "newSessionSub": "Pick markets, capture types, and a window — backtester will replay this slice.",
     "identity": "Identity",

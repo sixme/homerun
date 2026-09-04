@@ -1874,7 +1874,7 @@
     "colDuration": "Durée",
     "colActions": "Actions",
     "noSessionsYet": "Pas encore de sessions. Cliquez sur <strong>Nouvelle session</strong> pour capturer une tranche de données de marché à la demande.",
-    "sessionsFootnote": "Chaque session terminée est rejouable via le backtester unifié — passez <code>session_id</code> sur POST /backtest/run et le backtester limite son rejeu aux tokens cibles × fenêtre de temps de la session.",
+    "sessionsFootnote": "Chaque session terminée est rejouable via le backtester unifié — passez <code>session_id</code> sur POST /backtest/runs/enqueue et le backtester limite son rejeu aux tokens cibles × fenêtre de temps de la session.",
     "newSessionTitle": "Nouvelle session d'enregistrement",
     "newSessionSub": "Sélectionnez les marchés, les types de capture et une fenêtre — le backtester rejouera cette tranche.",
     "identity": "Identité",

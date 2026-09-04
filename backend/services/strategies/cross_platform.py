@@ -35,6 +35,7 @@ Key safeguards (each addresses a documented class of false positive):
 
 from __future__ import annotations
 
+import asyncio
 import re
 import string
 import time
@@ -48,6 +49,7 @@ from models import Market, Event, Opportunity
 from config import settings
 from .base import BaseStrategy, DecisionCheck, ExitDecision, ScoringWeights, SizingConfig
 from services.quality_filter import QualityFilterOverrides
+from services.strategy_sdk import StrategySDK
 from utils.kelly import kelly_fraction, polymarket_taker_fee, kalshi_taker_fee
 from utils.logger import get_logger
 
@@ -489,6 +491,7 @@ class _KalshiMarketCache:
         self._read_cooldown_until: float = 0.0
         self._read_429_warning_cooldown_until: float = 0.0
         self._shared_client: httpx.Client | None = None
+        self._shared_async_client: httpx.AsyncClient | None = None
 
     @property
     def is_stale(self) -> bool:
@@ -523,36 +526,30 @@ class _KalshiMarketCache:
             status = (data.get("status", "") or "").lower()
             is_active = status in ("open", "active", "")
             is_closed = status in ("closed", "settled", "finalized")
-
             if is_closed or not is_active:
                 return None
 
-            # Parse close_time / expiration_time as end_date
-            end_date: Optional[datetime] = None
-            for date_key in (
-                "close_time",
-                "expiration_time",
-                "expected_expiration_time",
-            ):
-                raw = data.get(date_key)
-                if raw and isinstance(raw, str):
-                    try:
-                        end_date = datetime.fromisoformat(raw.replace("Z", "+00:00"))
-                        break
-                    except (ValueError, TypeError):
-                        pass
+            # Parse end_date from expiration_time (ISO format)
+            end_date = None
+            raw_exp = data.get("expiration_time") or data.get("close_time")
+            if raw_exp:
+                try:
+                    end_date = datetime.fromisoformat(raw_exp.replace("Z", "+00:00"))
+                except (ValueError, TypeError):
+                    end_date = None
 
+            # Kalshi volume / open_interest are in contracts (each $1 max payout)
             volume_raw = data.get("volume", 0) or 0
-            liquidity_raw = data.get("liquidity", 0) or data.get("open_interest", 0) or 0
+            liquidity_raw = data.get("open_interest", 0) or 0
 
             from models.market import Token
 
             return Market(
                 id=ticker,
-                condition_id=ticker,
-                question=title,
-                slug=ticker,
                 platform="kalshi",
+                question=title or ticker,
+                description=f"Kalshi: {ticker}",
+                outcomes=["Yes", "No"],
                 tokens=[
                     Token(
                         token_id=f"{ticker}_yes",
@@ -697,10 +694,141 @@ class _KalshiMarketCache:
         logger.info("Kalshi market cache refreshed", count=len(all_markets))
         return all_markets
 
+    async def _fetch_markets_async(self) -> list[Market]:
+        """Fetch all active Kalshi markets via paginated GET requests asynchronously.
+
+        Uses httpx.AsyncClient. Resilient: returns an empty list on any HTTP
+        or parsing failure so the strategy never crashes.
+        Uses non-blocking asyncio.sleep for rate-limit pacing and 429 backoff.
+        """
+        all_markets: list[Market] = []
+        cursor: Optional[str] = None
+        max_pages = 12
+        fetch_deadline_mono = time.monotonic() + 6.0
+
+        try:
+            if self._shared_async_client is None or self._shared_async_client.is_closed:
+                self._shared_async_client = httpx.AsyncClient(
+                    timeout=6.0,
+                    follow_redirects=True,
+                    headers={
+                        "Accept": "application/json",
+                        "User-Agent": "homerun-arb-scanner/1.0",
+                    },
+                )
+            client = self._shared_async_client
+            for page in range(max_pages):
+                if time.monotonic() >= fetch_deadline_mono:
+                    logger.info(
+                        "Kalshi market refresh hit fetch deadline",
+                        pages_fetched=page,
+                        markets=len(all_markets),
+                    )
+                    break
+                params: dict = {"limit": 200, "status": "open"}
+                if cursor:
+                    params["cursor"] = cursor
+
+                # Rate limit: pause between pages to avoid 429
+                if page > 0:
+                    remaining_budget = fetch_deadline_mono - time.monotonic()
+                    if remaining_budget <= 0:
+                        break
+                    await asyncio.sleep(min(0.35, remaining_budget))
+
+                data = None
+                max_retries = 3
+                for attempt in range(max_retries + 1):
+                    if time.monotonic() >= fetch_deadline_mono:
+                        break
+                    try:
+                        now = time.monotonic()
+                        if now < self._read_cooldown_until:
+                            remaining_budget = fetch_deadline_mono - now
+                            if remaining_budget <= 0:
+                                break
+                            await asyncio.sleep(min(self._read_cooldown_until - now, remaining_budget))
+                        resp = await client.get(f"{self._api_url}/markets", params=params)
+                        if resp.status_code == 429 and attempt < max_retries:
+                            backoff = 2**attempt  # 1s, 2s, 4s
+                            retry_after = resp.headers.get("Retry-After")
+                            if retry_after:
+                                try:
+                                    backoff = max(backoff, float(retry_after))
+                                except ValueError:
+                                    pass
+                            self._read_cooldown_until = max(
+                                self._read_cooldown_until,
+                                time.monotonic() + backoff,
+                            )
+                            if time.monotonic() >= self._read_429_warning_cooldown_until:
+                                logger.info(
+                                    "Kalshi markets 429, retrying",
+                                    attempt=attempt + 1,
+                                    backoff_seconds=backoff,
+                                )
+                                self._read_429_warning_cooldown_until = time.monotonic() + 30.0
+                            remaining_budget = fetch_deadline_mono - time.monotonic()
+                            if remaining_budget <= 0:
+                                break
+                            await asyncio.sleep(min(backoff, remaining_budget))
+                            continue
+                        resp.raise_for_status()
+                        data = resp.json()
+                        break
+                    except httpx.HTTPStatusError as exc:
+                        logger.warning(
+                            "Kalshi markets HTTP error",
+                            status=exc.response.status_code,
+                        )
+                        break
+                    except Exception as exc:
+                        logger.warning(
+                            "Kalshi markets request failed",
+                            error=str(exc),
+                        )
+                        break
+
+                if data is None:
+                    break
+
+                raw_markets = data.get("markets", [])
+                if not raw_markets:
+                    break
+
+                for m_data in raw_markets:
+                    parsed = self._parse_kalshi_market(m_data)
+                    if parsed is not None:
+                        all_markets.append(parsed)
+
+                cursor = data.get("cursor") or None
+                if cursor is None:
+                    break
+
+        except Exception as exc:
+            logger.warning("Kalshi async client creation failed", error=str(exc))
+            return []
+
+        logger.info("Kalshi market cache refreshed", count=len(all_markets))
+        return all_markets
+
     def get_markets(self) -> list[Market]:
         """Return cached Kalshi markets, refreshing if stale."""
         if self.is_stale:
             fetched = self._fetch_markets()
+            if fetched:
+                self._markets = fetched
+                self._last_fetch = time.monotonic()
+            else:
+                self._last_fetch = time.monotonic()
+                if self._markets:
+                    logger.info("Kalshi market refresh failed; serving stale cache", count=len(self._markets))
+        return self._markets
+
+    async def get_markets_async(self) -> list[Market]:
+        """Return cached Kalshi markets, refreshing asynchronously if stale."""
+        if self.is_stale:
+            fetched = await self._fetch_markets_async()
             if fetched:
                 self._markets = fetched
                 self._last_fetch = time.monotonic()
@@ -1061,10 +1189,31 @@ class CrossPlatformStrategy(BaseStrategy):
         markets: list[Market],
         prices: dict[str, dict],
     ) -> list[Opportunity]:
+        """Detect cross-platform arbitrage opportunities (sync)."""
+        kalshi_markets = self._kalshi_cache.get_markets()
+        return self._detect_opportunities(events, markets, prices, kalshi_markets)
+
+    async def detect_async(
+        self,
+        events: list[Event],
+        markets: list[Market],
+        prices: dict[str, dict],
+    ) -> list[Opportunity]:
+        """Detect cross-platform arbitrage opportunities (async, non-blocking)."""
+        kalshi_markets = await self._kalshi_cache.get_markets_async()
+        return self._detect_opportunities(events, markets, prices, kalshi_markets)
+
+    def _detect_opportunities(
+        self,
+        events: list[Event],
+        markets: list[Market],
+        prices: dict[str, dict],
+        kalshi_markets: list[Market],
+    ) -> list[Opportunity]:
         """Detect cross-platform arbitrage opportunities.
 
         Takes Polymarket events/markets/prices as input (standard interface),
-        fetches/uses cached Kalshi markets, finds matching pairs via text
+        uses cached Kalshi markets, finds matching pairs via text
         similarity, and calculates cross-platform arb for each pair.
         """
         min_spread_after_fees = max(
@@ -1074,8 +1223,6 @@ class CrossPlatformStrategy(BaseStrategy):
             ),
         )
 
-        # Fetch (or use cached) Kalshi markets
-        kalshi_markets = self._kalshi_cache.get_markets()
         if not kalshi_markets:
             logger.info("No Kalshi markets available, skipping cross-platform scan")
             return []
@@ -1123,16 +1270,8 @@ class CrossPlatformStrategy(BaseStrategy):
                 continue
 
             # Get Polymarket prices (use live prices if available)
-            pm_yes = pm_market.yes_price
-            pm_no = pm_market.no_price
-
-            if pm_market.clob_token_ids:
-                yes_token = pm_market.clob_token_ids[0] if len(pm_market.clob_token_ids) > 0 else None
-                no_token = pm_market.clob_token_ids[1] if len(pm_market.clob_token_ids) > 1 else None
-                if yes_token and yes_token in prices:
-                    pm_yes = prices[yes_token].get("mid", pm_yes)
-                if no_token and no_token in prices:
-                    pm_no = prices[no_token].get("mid", pm_no)
+            pm_yes = StrategySDK.get_live_price(pm_market, prices, side="YES")
+            pm_no = StrategySDK.get_live_price(pm_market, prices, side="NO")
 
             # Tokenize Polymarket question
             pm_tokens = _tokenize(pm_market.question)

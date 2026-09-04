@@ -34,6 +34,7 @@ from utils.converters import to_float, to_confidence, clamp
 from utils.signal_helpers import signal_payload, selected_probability
 from utils.converters import safe_float
 from services.quality_filter import QualityFilterOverrides
+from services.strategy_sdk import StrategySDK
 from services.strategies.reversion_helpers import direction_opposes_impulse, market_move_pct
 
 logger = logging.getLogger(__name__)
@@ -237,8 +238,8 @@ class FlashCrashReversionStrategy(BaseStrategy):
         market: Market,
         prices: dict[str, dict],
     ) -> tuple[float, float, Optional[float], Optional[float], Optional[float], Optional[float]]:
-        yes = safe_float(market.yes_price)
-        no = safe_float(market.no_price)
+        yes = StrategySDK.get_live_price(market, prices, side="YES")
+        no = StrategySDK.get_live_price(market, prices, side="NO")
         yes_bid = None
         yes_ask = None
         no_bid = None
@@ -247,27 +248,13 @@ class FlashCrashReversionStrategy(BaseStrategy):
         token_ids = list(getattr(market, "clob_token_ids", []) or [])
         if token_ids:
             yes_raw = prices.get(token_ids[0])
-            yes_mid = self._extract_book_value(yes_raw, "mid")
-            if yes_mid is None:
-                yes_mid = self._extract_book_value(yes_raw, "price")
-            if yes_mid is not None:
-                yes = yes_mid
             yes_bid = self._extract_book_value(yes_raw, "bid") or self._extract_book_value(yes_raw, "best_bid")
             yes_ask = self._extract_book_value(yes_raw, "ask") or self._extract_book_value(yes_raw, "best_ask")
 
         if len(token_ids) > 1:
             no_raw = prices.get(token_ids[1])
-            no_mid = self._extract_book_value(no_raw, "mid")
-            if no_mid is None:
-                no_mid = self._extract_book_value(no_raw, "price")
-            if no_mid is not None:
-                no = no_mid
             no_bid = self._extract_book_value(no_raw, "bid") or self._extract_book_value(no_raw, "best_bid")
             no_ask = self._extract_book_value(no_raw, "ask") or self._extract_book_value(no_raw, "best_ask")
-
-        if (yes <= 0.0 or no <= 0.0) and len(getattr(market, "outcome_prices", []) or []) >= 2:
-            yes = yes if yes > 0.0 else safe_float(market.outcome_prices[0])
-            no = no if no > 0.0 else safe_float(market.outcome_prices[1])
 
         return yes, no, yes_bid, yes_ask, no_bid, no_ask
 

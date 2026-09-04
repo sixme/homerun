@@ -1874,7 +1874,7 @@
     "colDuration": "지속 시간",
     "colActions": "작업",
     "noSessionsYet": "아직 세션이 없습니다. 시장 데이터의 슬라이스를 온디맨드로 캡처하려면 <strong>새 세션</strong>을 클릭하세요.",
-    "sessionsFootnote": "완료된 각 세션은 통합 백테스터를 통해 재생 가능 — POST /backtest/run에서 <code>session_id</code>를 전달하면 백테스터가 세션의 대상 토큰 × 시간 윈도우로 재생을 범위 지정합니다.",
+    "sessionsFootnote": "완료된 각 세션은 통합 백테스터를 통해 재생 가능 — POST /backtest/runs/enqueue에서 <code>session_id</code>를 전달하면 백테스터가 세션의 대상 토큰 × 시간 윈도우로 재생을 범위 지정합니다.",
     "newSessionTitle": "새 기록 세션",
     "newSessionSub": "시장, 캡처 유형 및 윈도우 선택 — 백테스터가 이 슬라이스를 재생합니다.",
     "identity": "신원",

@@ -113,37 +113,6 @@ class CodeBacktestOptimizeRequest(BaseModel):
     top_k: int = Field(default=10, ge=1, le=200)
 
 
-class ExecutionBacktestRequest(BaseModel):
-    """Request for the production-grade backtest engine.
-
-    Runs full L2 order-book replay against the canonical parquet book plane
-    (via the unified ``MarketDataView``),
-    enforces venue rules (TIF, post-only, tick, min-notional), models
-    submit/cancel latency as log-normal quantiles, drives any laddered
-    exits through ``exit_executor.plan_children``, and reports headline
-    metrics with bootstrap 95% confidence intervals.
-    """
-
-    source_code: str = Field(min_length=10)
-    slug: str = Field(default="_backtest_exec", min_length=1, max_length=128)
-    config: Optional[dict[str, Any]] = None
-    token_ids: Optional[list[str]] = Field(
-        default=None,
-        description="Token universe (Polymarket CLOB token ids). Auto-selects top-5 most-active tokens in the window when omitted.",
-    )
-    lookback_hours: int = Field(default=24, ge=1, le=720)
-    initial_capital_usd: float = Field(default=1000.0, gt=0.0, le=10_000_000.0)
-    max_intents: int = Field(default=1000, ge=1, le=20_000)
-    submit_latency_p50_ms: float = Field(default=350.0, ge=1.0, le=10_000.0)
-    submit_latency_p95_ms: float = Field(default=900.0, ge=2.0, le=20_000.0)
-    cancel_latency_p50_ms: float = Field(default=200.0, ge=1.0, le=10_000.0)
-    cancel_latency_p95_ms: float = Field(default=600.0, ge=2.0, le=20_000.0)
-    seed: int = Field(default=42, ge=0, le=2_147_483_647)
-    fills_sample_size: int = Field(default=200, ge=10, le=5000)
-    equity_sample_size: int = Field(default=500, ge=10, le=5000)
-    bootstrap_resamples: int = Field(default=2000, ge=200, le=20_000)
-
-
 _LIVE_TRUTH_EXPORT_ARTIFACTS = {
     "summary_json",
     "report_jsonl",
@@ -346,7 +315,7 @@ async def run_code_backtest(req: CodeBacktestRequest):
     find right now.  This is a quick "does the code do anything" probe.
 
     For a real backtest with fills, PnL, Sharpe, drawdown, and
-    Cox-aware fill simulation, use ``POST /backtest/run`` instead —
+    Cox-aware fill simulation, use ``POST /backtest/runs/enqueue`` instead —
     that's the unified pipeline BacktestStudio uses.
     """
     from services.strategy_backtester import run_strategy_backtest
@@ -413,41 +382,6 @@ async def run_code_backtest_optimize(req: CodeBacktestOptimizeRequest):
         top_k=req.top_k,
     )
     return result.to_dict()
-
-
-@router.post("/code-backtest/execution")
-async def run_code_backtest_execution(req: ExecutionBacktestRequest):
-    """Execution-realistic backtest, delegating to the unified runner.
-
-    Kept for backwards compatibility with callers that hit this URL
-    (LLM agent tools, ad-hoc scripts).  The canonical UI path is
-    ``POST /backtest/run`` which exposes the same engine plus all of
-    the augmentation (Cox fill model, ensemble band, regime
-    decomposition, deflated Sharpe, walk-forward).  This route returns
-    the same augmented dict as ``/backtest/run`` so callers that
-    upgrade their consumer pick up the richer fields automatically;
-    the legacy flat ``ExecutionBacktestResult`` keys live unchanged
-    under the ``execution`` sub-object.
-    """
-    from datetime import datetime as _dt, timedelta as _td, timezone as _tz
-    from services.backtest.unified_runner import run_unified_backtest
-
-    end_dt = _dt.now(_tz.utc)
-    start_dt = end_dt - _td(hours=int(req.lookback_hours))
-    return await run_unified_backtest(
-        source_code=req.source_code,
-        slug=req.slug,
-        config=req.config,
-        token_ids=req.token_ids,
-        start=start_dt,
-        end=end_dt,
-        initial_capital_usd=req.initial_capital_usd,
-        submit_p50_ms=req.submit_latency_p50_ms,
-        submit_p95_ms=req.submit_latency_p95_ms,
-        cancel_p50_ms=req.cancel_latency_p50_ms,
-        cancel_p95_ms=req.cancel_latency_p95_ms,
-        seed=req.seed,
-    )
 
 
 @router.get("/guardrails/config")

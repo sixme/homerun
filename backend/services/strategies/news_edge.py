@@ -79,9 +79,30 @@ NEWS_EDGE_CONFIG_SCHEMA: dict[str, Any] = {
         {"key": "orchestrator_min_edge", "label": "Min Intent Edge (%)", "type": "number", "min": 0, "max": 100},
         {"key": "require_verifier", "label": "Require Verifier", "type": "boolean", "phase": "signal"},
         {"key": "require_second_source", "label": "Require Second Source", "type": "boolean", "phase": "signal"},
-        {"key": "min_supporting_articles", "label": "Min Supporting Articles", "type": "integer", "min": 1, "max": 10, "phase": "signal"},
-        {"key": "min_supporting_sources", "label": "Min Supporting Sources", "type": "integer", "min": 1, "max": 10, "phase": "signal"},
-        {"key": "max_signal_age_minutes", "label": "Max Signal Age (Minutes)", "type": "integer", "min": 1, "max": 1440, "phase": "signal"},
+        {
+            "key": "min_supporting_articles",
+            "label": "Min Supporting Articles",
+            "type": "integer",
+            "min": 1,
+            "max": 10,
+            "phase": "signal",
+        },
+        {
+            "key": "min_supporting_sources",
+            "label": "Min Supporting Sources",
+            "type": "integer",
+            "min": 1,
+            "max": 10,
+            "phase": "signal",
+        },
+        {
+            "key": "max_signal_age_minutes",
+            "label": "Max Signal Age (Minutes)",
+            "type": "integer",
+            "min": 1,
+            "max": 1440,
+            "phase": "signal",
+        },
     ]
 }
 
@@ -608,17 +629,8 @@ class NewsEdgeStrategy(BaseStrategy):
                 continue
 
             # Get live prices
-            yes_price = market.yes_price
-            no_price = market.no_price
-            if market.clob_token_ids:
-                if len(market.clob_token_ids) > 0:
-                    tid = market.clob_token_ids[0]
-                    if tid in prices:
-                        yes_price = prices[tid].get("mid", yes_price)
-                if len(market.clob_token_ids) > 1:
-                    tid = market.clob_token_ids[1]
-                    if tid in prices:
-                        no_price = prices[tid].get("mid", no_price)
+            yes_price = StrategySDK.get_live_price(market, prices, side="YES")
+            no_price = StrategySDK.get_live_price(market, prices, side="NO")
 
             event = event_map.get(market.id)
             infos.append(

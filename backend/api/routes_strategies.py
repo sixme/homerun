@@ -783,8 +783,7 @@ async def get_unified_docs():
             "return_value": {
                 "type": "ExitDecision",
                 "constructor": (
-                    "ExitDecision(action, reason, close_price=None, reduce_fraction=None, "
-                    "exit_policy=None, payload={})"
+                    "ExitDecision(action, reason, close_price=None, reduce_fraction=None, exit_policy=None, payload={})"
                 ),
                 "action_values": {
                     "close": "Close the entire position at close_price",
@@ -1276,12 +1275,8 @@ async def get_unified_docs():
                 "strategy_params.enable_live_market_context": (
                     "Runtime override for live context enrichment; true/false."
                 ),
-                "strategy_params.allow_new_entries": (
-                    "Runtime override for entry gating; true/false."
-                ),
-                "strategy_params.disable_new_entries": (
-                    "Runtime override alias; true disables new entries."
-                ),
+                "strategy_params.allow_new_entries": ("Runtime override for entry gating; true/false."),
+                "strategy_params.disable_new_entries": ("Runtime override alias; true disables new entries."),
             },
             "configuration_helpers": {
                 "StrategySDK.trader_filter_defaults()": "Tracked-trader filtering defaults",
@@ -1360,13 +1355,9 @@ async def get_unified_docs():
                     "Construct a per-strategy key/value cache. "
                     "Pass strategy_slug=self.strategy_type when instantiating from a strategy."
                 ),
-                "await state.load()": (
-                    "Hydrate the cache from the DB. Call once after instantiation."
-                ),
+                "await state.load()": ("Hydrate the cache from the DB. Call once after instantiation."),
                 "state.get(key, default=None)": "Read from cache (deep copy returned).",
-                "state.set(key, value)": (
-                    "Update cache + mark dirty. value must be JSON-serialisable."
-                ),
+                "state.set(key, value)": ("Update cache + mark dirty. value must be JSON-serialisable."),
                 "state.delete(key)": "Remove from cache + queue DB delete.",
                 "state.dirty": "True when there are unflushed writes.",
                 "await state.flush()": "Persist dirty entries. No-op when clean.",
@@ -1413,7 +1404,7 @@ async def get_unified_docs():
                 "StrategySDK.crypto.crypto_should_flatten_resolution_risk(params, timeframe, seconds_left, pnl_percent, exit_headroom_ratio, take_profit_armed)": "Decide whether to force-flatten an open position because resolution is too close to risk an in-flight fill",
                 "StrategySDK.crypto.crypto_param_value(config, base_key, timeframe)": "Resolve a config value with timeframe-suffix override (e.g. take_profit_pct_5m)",
                 "StrategySDK.crypto.SubStrategy": "Enum of canonical sub-strategy modes (MAKER_QUOTE / DIRECTIONAL_EDGE / CONVERGENCE)",
-                "StrategySDK.crypto.SUB_STRATEGY_ALIASES": "Map of human-readable aliases to SubStrategy enum values (e.g. \"maker\", \"passive_quote\" → MAKER_QUOTE)",
+                "StrategySDK.crypto.SUB_STRATEGY_ALIASES": 'Map of human-readable aliases to SubStrategy enum values (e.g. "maker", "passive_quote" → MAKER_QUOTE)',
                 "StrategySDK.crypto.normalize_sub_strategy(value)": "Canonicalize a sub-strategy token to a SubStrategy enum value; None for unknown tokens",
                 "StrategySDK.crypto.resolve_enabled_sub_strategies(config)": "Return the set of SubStrategy values enabled in config['enabled_sub_strategies']",
                 "StrategySDK.crypto.resolve_enabled_active_modes(config)": "Return the set of active_mode strings (dispatch keys) implied by enabled_sub_strategies",
@@ -1909,14 +1900,14 @@ async def get_unified_docs():
             "description": (
                 "Test your strategy code against real data without saving. "
                 "For a real backtest with fills, PnL, Sharpe, drawdown, and "
-                "Cox-aware fill simulation, use POST /backtest/run — that's "
+                "Cox-aware fill simulation, use POST /backtest/runs/enqueue — that's "
                 "the unified pipeline BacktestStudio uses and is the "
                 "canonical backtester.  The three modes below are quick "
                 "lifecycle-hook dry runs (no fills simulated)."
             ),
             "modes": {
                 "unified": {
-                    "endpoint": "POST /backtest/run",
+                    "endpoint": "POST /backtest/runs/enqueue",
                     "what_it_does": (
                         "Full execution-realistic backtest with L2 replay, Cox PH "
                         "fill model, ensemble bands, walk-forward, deflated Sharpe, "
@@ -2010,7 +2001,7 @@ async def get_unified_docs():
             },
             "validation": {
                 "POST /strategy-manager/validate": "Validate source code without saving",
-                "POST /backtest/run": "Unified execution-realistic backtest (canonical) — Cox fills + walk-forward + deflated Sharpe + ensemble band",
+                "POST /backtest/runs/enqueue": "Unified execution-realistic backtest (canonical) — Cox fills + walk-forward + deflated Sharpe + ensemble band",
                 "POST /backtest/walk-forward": "Walk-forward analysis across N folds",
                 "POST /validation/code-backtest": "Lifecycle-hook dry run — detect() against live market data",
                 "POST /validation/code-backtest/evaluate": "Lifecycle-hook dry run — evaluate() against recent signals",
@@ -2023,7 +2014,7 @@ async def get_unified_docs():
             "2. Import from models using Opportunity (not ArbitrageOpportunity)",
             "3. Implement detect() to find opportunities from events/markets/prices",
             "4. POST /strategy-manager/validate with your source_code → check for errors",
-            "5. POST /backtest/run with your source_code → full execution-realistic backtest with PnL, Sharpe, fills, walk-forward",
+            "5. POST /backtest/runs/enqueue with your source_code → full execution-realistic backtest with PnL, Sharpe, fills, walk-forward",
             "6. POST /strategy-manager to save it (set source_key, enabled=true)",
             "7. Optionally implement evaluate() for custom execution gating",
             "8. Optionally implement should_exit() for custom exit logic",
@@ -2068,7 +2059,6 @@ async def list_strategies(
     await refresh_strategy_runtime_if_needed(source_keys=None, force=False)
 
     async with AsyncSessionLocal() as session:
-
         query = select(Strategy).order_by(
             Strategy.is_system.desc(),
             Strategy.sort_order.asc(),

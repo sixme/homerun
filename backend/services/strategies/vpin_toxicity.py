@@ -33,6 +33,7 @@ from .base import (
 )
 from services.data_events import DataEvent, EventType
 from services.quality_filter import QualityFilterOverrides
+from services.strategy_sdk import StrategySDK
 from utils.kelly import kelly_fraction
 from utils.logger import get_logger
 
@@ -255,10 +256,8 @@ class VPINToxicityStrategy(BaseStrategy):
                 continue  # Ambiguous direction
 
             # Get live price
-            yes_price = market.yes_price
-            if market.clob_token_ids and token_id in (market.clob_token_ids or []):
-                if token_id in (prices or {}):
-                    yes_price = prices[token_id].get("mid", yes_price)
+            yes_price = StrategySDK.get_live_price(market, prices, side="YES")
+            no_price = StrategySDK.get_live_price(market, prices, side="NO")
 
             # Edge: VPIN-scaled.  Higher VPIN = more confident informed flow.
             edge_pct = (vpin - vpin_threshold) * 30.0  # scale to reasonable edge range
@@ -271,7 +270,7 @@ class VPINToxicityStrategy(BaseStrategy):
             else:
                 # Sell pressure — buy NO
                 outcome = "NO"
-                side_price = 1.0 - yes_price
+                side_price = no_price if no_price > 0 else (1.0 - yes_price)
 
             confidence = min(0.95, 0.50 + vpin * 0.4)
             risk_score, risk_factors = self.calculate_risk_score([market], getattr(market, "end_date", None))

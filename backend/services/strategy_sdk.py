@@ -2287,7 +2287,7 @@ class StrategySDK:
         Uses live CLOB prices when available, falls back to API prices.
 
         Args:
-            market: A Market object with clob_token_ids and outcome_prices.
+            market: A Market object (or dict) with clob_token_ids and outcome_prices.
             prices: The prices dict passed to detect().
             side: 'YES' or 'NO'.
 
@@ -2296,13 +2296,43 @@ class StrategySDK:
         """
         idx = 0 if side.upper() == "YES" else 1
         fallback = 0.0
+
         if hasattr(market, "outcome_prices") and len(market.outcome_prices) > idx:
             try:
                 fallback = float(market.outcome_prices[idx] or 0.0)
             except (TypeError, ValueError):
                 fallback = 0.0
+        elif idx == 0 and hasattr(market, "yes_price"):
+            try:
+                fallback = float(market.yes_price or 0.0)
+            except (TypeError, ValueError):
+                fallback = 0.0
+        elif idx == 1 and hasattr(market, "no_price"):
+            try:
+                fallback = float(market.no_price or 0.0)
+            except (TypeError, ValueError):
+                fallback = 0.0
+        elif isinstance(market, dict):
+            outcomes = market.get("outcome_prices") or []
+            if len(outcomes) > idx:
+                try:
+                    fallback = float(outcomes[idx] or 0.0)
+                except (TypeError, ValueError):
+                    fallback = 0.0
+            elif idx == 0:
+                try:
+                    fallback = float(market.get("yes_price") or 0.0)
+                except (TypeError, ValueError):
+                    fallback = 0.0
+            elif idx == 1:
+                try:
+                    fallback = float(market.get("no_price") or 0.0)
+                except (TypeError, ValueError):
+                    fallback = 0.0
 
-        token_ids = getattr(market, "clob_token_ids", None) or []
+        token_ids = (
+            market.get("clob_token_ids") if isinstance(market, dict) else getattr(market, "clob_token_ids", None)
+        ) or []
         if len(token_ids) > idx and isinstance(prices, dict):
             token_id = token_ids[idx]
             payload = prices.get(token_id)
@@ -2310,6 +2340,39 @@ class StrategySDK:
                 mid_raw = payload.get("mid")
                 if isinstance(mid_raw, (int, float)) and mid_raw > 0:
                     return float(mid_raw)
+                last_raw = payload.get("last") or payload.get("price")
+                if isinstance(last_raw, (int, float)) and last_raw > 0:
+                    return float(last_raw)
+                bid_raw = payload.get("bid") or payload.get("best_bid")
+                ask_raw = payload.get("ask") or payload.get("best_ask")
+                if (
+                    isinstance(bid_raw, (int, float))
+                    and isinstance(ask_raw, (int, float))
+                    and bid_raw > 0
+                    and ask_raw > 0
+                ):
+                    return float((bid_raw + ask_raw) / 2.0)
+
+        if fallback <= 0.0 and idx == 1:
+            yes_val = 0.0
+            if hasattr(market, "yes_price") and market.yes_price:
+                try:
+                    yes_val = float(market.yes_price)
+                except (TypeError, ValueError):
+                    pass
+            elif isinstance(market, dict) and market.get("yes_price"):
+                try:
+                    yes_val = float(market["yes_price"])
+                except (TypeError, ValueError):
+                    pass
+            elif hasattr(market, "outcome_prices") and market.outcome_prices:
+                try:
+                    yes_val = float(market.outcome_prices[0])
+                except (TypeError, ValueError, IndexError):
+                    pass
+            if 0.0 < yes_val < 1.0:
+                fallback = 1.0 - yes_val
+
         return float(fallback or 0.0)
 
     @staticmethod

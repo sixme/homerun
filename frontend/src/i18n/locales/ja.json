@@ -1874,7 +1874,7 @@
     "colDuration": "継続時間",
     "colActions": "アクション",
     "noSessionsYet": "まだセッションはありません。<strong>新規セッション</strong> をクリックして市場データのスライスをオンデマンドでキャプチャしてください。",
-    "sessionsFootnote": "完了した各セッションは統合バックテスターを通じて再生可能 — POST /backtest/run で <code>session_id</code> を渡すと、バックテスターはそのリプレイをセッションのターゲットトークン × 時間ウィンドウに範囲指定します。",
+    "sessionsFootnote": "完了した各セッションは統合バックテスターを通じて再生可能 — POST /backtest/runs/enqueue で <code>session_id</code> を渡すと、バックテスターはそのリプレイをセッションのターゲットトークン × 時間ウィンドウに範囲指定します。",
     "newSessionTitle": "新規記録セッション",
     "newSessionSub": "市場、キャプチャタイプ、ウィンドウを選択 — バックテスターはこのスライスを再生します。",
     "identity": "アイデンティティ",

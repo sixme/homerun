@@ -1874,7 +1874,7 @@
     "colDuration": "Duração",
     "colActions": "Ações",
     "noSessionsYet": "Sem sessões ainda. Clique em <strong>Nova sessão</strong> para capturar uma fatia de dados de mercado sob demanda.",
-    "sessionsFootnote": "Cada sessão completa é reproduzível através do backtester unificado — passe <code>session_id</code> em POST /backtest/run e o backtester limita seu replay aos tokens alvo × janela de tempo da sessão.",
+    "sessionsFootnote": "Cada sessão completa é reproduzível através do backtester unificado — passe <code>session_id</code> em POST /backtest/runs/enqueue e o backtester limita seu replay aos tokens alvo × janela de tempo da sessão.",
     "newSessionTitle": "Nova sessão de gravação",
     "newSessionSub": "Selecione mercados, tipos de captura e uma janela — o backtester reproduzirá esta fatia.",
     "identity": "Identidade",

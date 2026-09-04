@@ -42,6 +42,7 @@ import logging
 from utils.converters import to_float, to_confidence, clamp, safe_float
 from utils.signal_helpers import signal_payload, selected_probability
 from services.quality_filter import QualityFilterOverrides
+from services.strategy_sdk import StrategySDK
 from services.strategies.reversion_helpers import (
     breakout_shape_ok,
     direction_aligns_impulse,
@@ -310,8 +311,8 @@ class NewsMomentumBreakoutStrategy(BaseStrategy):
         market: Market,
         prices: dict[str, dict],
     ) -> tuple[float, float, Optional[float], Optional[float], Optional[float], Optional[float]]:
-        yes = safe_float(market.yes_price)
-        no = safe_float(market.no_price)
+        yes = StrategySDK.get_live_price(market, prices, side="YES")
+        no = StrategySDK.get_live_price(market, prices, side="NO")
         yes_bid = None
         yes_ask = None
         no_bid = None
@@ -320,27 +321,13 @@ class NewsMomentumBreakoutStrategy(BaseStrategy):
         token_ids = list(getattr(market, "clob_token_ids", []) or [])
         if token_ids:
             yes_raw = prices.get(token_ids[0])
-            yes_mid = self._extract_book_value(yes_raw, "mid")
-            if yes_mid is None:
-                yes_mid = self._extract_book_value(yes_raw, "price")
-            if yes_mid is not None:
-                yes = yes_mid
             yes_bid = self._extract_book_value(yes_raw, "bid") or self._extract_book_value(yes_raw, "best_bid")
             yes_ask = self._extract_book_value(yes_raw, "ask") or self._extract_book_value(yes_raw, "best_ask")
 
         if len(token_ids) > 1:
             no_raw = prices.get(token_ids[1])
-            no_mid = self._extract_book_value(no_raw, "mid")
-            if no_mid is None:
-                no_mid = self._extract_book_value(no_raw, "price")
-            if no_mid is not None:
-                no = no_mid
             no_bid = self._extract_book_value(no_raw, "bid") or self._extract_book_value(no_raw, "best_bid")
             no_ask = self._extract_book_value(no_raw, "ask") or self._extract_book_value(no_raw, "best_ask")
-
-        if (yes <= 0.0 or no <= 0.0) and len(getattr(market, "outcome_prices", []) or []) >= 2:
-            yes = yes if yes > 0.0 else safe_float(market.outcome_prices[0])
-            no = no if no > 0.0 else safe_float(market.outcome_prices[1])
 
         return yes, no, yes_bid, yes_ask, no_bid, no_ask
 
@@ -517,13 +504,7 @@ class NewsMomentumBreakoutStrategy(BaseStrategy):
                 liquidity = safe_float(getattr(market, "liquidity", 0.0))
                 liquidity_penalty = 0.0 if liquidity >= 10000.0 else 0.10
                 price_penalty = max(0.0, (current_price - 0.5) * 0.20)
-                risk_score = (
-                    0.62
-                    - min(0.18, rise * 1.0)
-                    + min(0.16, spread * 2.5)
-                    + liquidity_penalty
-                    + price_penalty
-                )
+                risk_score = 0.62 - min(0.18, rise * 1.0) + min(0.16, spread * 2.5) + liquidity_penalty + price_penalty
                 opp.risk_score = clamp(risk_score, 0.30, 0.85)
                 opp.risk_factors = [
                     f"Short-window breakout magnitude {rise:.1%}",
@@ -614,9 +595,7 @@ class NewsMomentumBreakoutStrategy(BaseStrategy):
         is_crypto_market = self._is_crypto_market_text(market_text)
         is_sports_market = self._is_sports_market_text(market_text)
         blocked_keyword = self._first_blocked_keyword(market_text, exclude_market_keywords)
-        market_scope_ok = (not exclude_crypto or not is_crypto_market) and (
-            not exclude_sports or not is_sports_market
-        )
+        market_scope_ok = (not exclude_crypto or not is_crypto_market) and (not exclude_sports or not is_sports_market)
         keyword_filter_ok = blocked_keyword is None
 
         payload["_signal_liquidity"] = liquidity
@@ -888,9 +867,7 @@ class NewsMomentumBreakoutStrategy(BaseStrategy):
             cfg = _merged_params(ctx)
             exclude_crypto = self._to_bool(cfg.get("exclude_crypto_markets"), True)
             exclude_sports = self._to_bool(cfg.get("exclude_sports_markets"), True)
-            excluded_keywords = self._normalize_excluded_keywords(
-                cfg.get("exclude_market_keywords")
-            )
+            excluded_keywords = self._normalize_excluded_keywords(cfg.get("exclude_market_keywords"))
             market_text = self._signal_market_text(ctx.runtime_signal, payload)
             if exclude_crypto and self._is_crypto_market_text(market_text):
                 return GateResult(
@@ -936,10 +913,7 @@ class NewsMomentumBreakoutStrategy(BaseStrategy):
                 return GateResult(
                     passed=False,
                     reason="news_momentum_entry_band",
-                    error_message=(
-                        f"Entry price {price:.3f} outside band "
-                        f"[{min_entry:.3f}, {max_entry:.3f}]"
-                    ),
+                    error_message=(f"Entry price {price:.3f} outside band [{min_entry:.3f}, {max_entry:.3f}]"),
                     detail={
                         "entry_price": price,
                         "min_entry_price": min_entry,
